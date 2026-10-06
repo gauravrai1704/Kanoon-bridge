@@ -42,7 +42,7 @@ def main() -> None:
     splits = ["val", "train"] if args.sample else ["val"]       # the 6-query sample has 1 val query
     queries = [q for sp in splits for q in _ilpcsr_queries(sp, cfg)][: args.limit]
     qrels = {k: v for sp in splits for k, v in load_ilpcsr.load_qrels(sp, "precedent", cfg).items()}
-    opt = SearchOptions(top_k=args.depth, max_query_terms=ev.get("e1_max_query_terms", 100))
+    opt = SearchOptions(ngram=True, top_k=args.depth, max_query_terms=ev.get("e1_max_query_terms", 100))
 
     t0 = time.time()
     data = []

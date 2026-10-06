@@ -55,11 +55,13 @@ def answer(result, docs, cfg: Config | None = None, idf=None, resolver=None, nor
         if analyzed.detected_lang != "en":                 # Hindi/Hinglish: judge the English expansions
             content = [t for t in analyzed.expanded_terms if not t.startswith(("sec:", "off:"))] or content
         look = idf_lookup(abstain_idf or idf)
-        cov = abstain.coverage(content, [c.text for c in chunks], look,
-                               unseen_idf=rcfg.get("abstain_unseen_idf", 3.0))
+        # the best SINGLE source must cover the question: words scattered over several unrelated
+        # sources ("rate" in a tax Act, "food" in an adulteration Act) do not ground an answer
+        cov = max((abstain.coverage(content, [c.text], look, unseen_idf=rcfg.get("abstain_unseen_idf", 3.0))
+                   for c in chunks), default=0.0)
         if content and cov < rcfg.get("abstain_min_coverage", 0.5):
             return Answer(text="Not enough grounding in the indexed law to answer this "
-                               f"(retrieved sources cover {cov:.0%} of the question's terms).",
+                               f"(the best source covers {cov:.0%} of the question's terms).",
                           abstained=True, generator="abstain")
 
     ans = generate.generate(query.text, chunks, incident_date=str(query.incident_date or "unknown"),

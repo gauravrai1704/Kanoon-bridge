@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -37,6 +37,16 @@ ltr:
 # generated E2 / E3 / E7 test sets (after make data)
 testsets:
 	$(PY) scripts/07_make_test_sets.py
+	$(PY) scripts/08_make_judged_sets.py
+
+# grid search on the validation split (BM25 b, zone weights, trigram beta); copy winners to configs/default.yaml
+tune:
+	$(PY) scripts/09_tune_on_val.py
+	$(PY) scripts/09_tune_on_val.py --ngram
+
+# postings, idf and a BM25F score worked out term by term (demo): make postings Q="IPC 302 murder knife"
+postings:
+	$(PY) scripts/show_postings.py "$(Q)"
 
 # significance tests from the existing run files
 significance:
@@ -65,7 +75,10 @@ app:
 test:
 	$(PY) -m pytest -q
 
-all: data index graph ltr testsets eval
+# everything needed to search (no evaluation), about 6 minutes
+build: crosswalk data index graph ltr
+
+all: crosswalk data index graph ltr testsets eval
 
 # synthetic end-to-end run (no Hugging Face access needed; BNS source still required)
 sample:

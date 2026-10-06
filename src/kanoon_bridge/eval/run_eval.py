@@ -6,7 +6,7 @@ Test sets (configs/eval.yaml):
     e1_ilpcsr            IL-PCSR test judgments as queries -> cited precedents (k chosen on val)
     e1s_ilpcsr_statutes  same queries -> cited statutes
     e2_collision         hand-built; extra metric wrong_hit@10 from each row's "wrong_refs"
-    e3_cross_version     hand-built rewrites; gold = the citations of row["source_query_id"]
+    e3_cross_version     generated: "cases under section 103 BNS"; gold = precedents that applied IPC 302
     e4_multilingual      hand-built; P@5 also reported per language
     e6_jurisdiction      hand-built; grades: binding = 2, persuasive = 1; binding_share@5
     e7_temporal          hand-built; code_accuracy@1 (top statute in the code in force)

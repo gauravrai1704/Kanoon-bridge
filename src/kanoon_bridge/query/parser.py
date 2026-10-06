@@ -64,8 +64,16 @@ def extract_filters(text: str) -> tuple[str, dict[str, str]]:
     return _FILTER_RE.sub("", text).strip(), filters
 
 
+MAX_BOOLEAN_WORDS = 60     # longer inputs are documents (IL-PCSR query judgments), not Boolean queries
+
+
 def has_operators(text: str) -> bool:
-    """True if the text uses Boolean, phrase or proximity syntax (working)."""
+    """True if the text uses Boolean, phrase or proximity syntax (working).
+
+    Text longer than MAX_BOOLEAN_WORDS is always free text: a pasted judgment contains quotes,
+    brackets and the word "AND", and reading it as a conjunction would match nothing."""
+    if len(text.split()) > MAX_BOOLEAN_WORDS:
+        return False
     # "(" after a digit is a sub-section like 103(1), not grouping; "/" in "u/s" is not proximity.
     return bool(re.search(r'"|\bAND\b|\bOR\b|\bNOT\b|(?<![a-z])/\d+|(?<![\da-z])\(', text))
 

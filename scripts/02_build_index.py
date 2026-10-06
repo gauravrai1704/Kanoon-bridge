@@ -39,6 +39,12 @@ def main() -> None:
     store.save(ZoneIndex.build(statutes, analyze), "statutes_zone")
     store.save(ZoneIndex.build(precedents, analyze), "precedents_zone")
     store.save(FacetIndex.build(statutes + precedents), "facets")
+    from kanoon_bridge.rank.ngram import NgramIndex, describe
+
+    for name, group in (("statutes", statutes), ("precedents", precedents)):
+        ng = NgramIndex.build(group, n=cfg.ngram.n, k1=cfg.ngram.k1, b=cfg.ngram.b)
+        store.save(ng, f"ngram_{name}")
+        print(name, describe(ng))
 
     # statute doc -> its canonical section token + offence tokens (input of rank/statute_bridge.py)
     statute_terms = {}

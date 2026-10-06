@@ -1,5 +1,6 @@
 # Core (same as pyproject.toml). Prefer: pip install -e ".[dev]"
 numpy>=1.24
+scipy>=1.10                 # sparse matrices for the n-gram channel (rank/ngram.py)
 pyyaml>=6.0
 nltk>=3.8
 networkx>=3.0

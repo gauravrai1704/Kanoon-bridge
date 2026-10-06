@@ -269,8 +269,11 @@ def test_ltr_rerank_and_duplicate_collapse(engine):
     w = np.zeros(len(FEATURES))
     w[FEATURES.index("binding")] = 1.0                            # a ranker that only likes binding cases
     eng.ltr = LinearRanker(weights=w)
-    res = eng.search(Query("knife murder", **Q), SearchOptions(ltr=True))
-    assert res.precedents[0].doc_id in {"P1", "P2"} and "ltr" in res.precedents[0].components
+    case_query = " ".join(["the accused stabbed with a knife in the murder"] * 8)   # LTR only re-ranks case-as-query input
+    res = eng.search(Query(case_query, **Q), SearchOptions(ltr=True))
+    assert "ltr" in res.precedents[0].components and res.precedents[0].components["ltr"] == 1.0   # a binding case on top
+    short = eng.search(Query("knife murder", **Q), SearchOptions(ltr=True))
+    assert all("ltr" not in h.components for h in short.precedents)
     eng.near_dups = {"P1": "P1", "P2": "P1"}
     res = eng.search(Query("knife murder", **Q), SearchOptions(collapse_duplicates=True))
     ids = [h.doc_id for h in res.precedents]

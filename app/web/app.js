@@ -323,7 +323,7 @@
           <span>${esc(p.court || "Court not recorded")}${p.year ? `, ${p.year}` : ""}</span>
           ${p.status === "binding" ? `<span class="badge binding"><span class="ic" data-icon="scales"></span>${d.state ? "Binds " + esc(pretty(d.state)) : "Binding"}</span>` : ""}
           ${p.status === "persuasive" ? `<span class="badge persuasive">Persuasive only</span>` : ""}
-          ${p.code ? `<span>decided under ${esc(p.code.toUpperCase())}</span>` : ""}
+          ${p.code && p.code !== "?" ? `<span>decided under ${esc(p.code.toUpperCase())}</span>` : ""}
         </div>
         ${p.snippet ? `<p class="case-snippet">${p.snippet}</p>` : ""}
         ${p.why.length ? `<ul class="why">${p.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}

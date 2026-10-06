@@ -99,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nDid you mean: {analyzed.suggestion}")
 
     docs = None
-    if not args.no_snippets:
+    if True:                                     # titles need the doc store even without snippets
         try:
             from kanoon_bridge.index.docstore import DocStore
 
@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
         meta = engine.facets.metas.get(h.doc_id)
         when = f"{meta.court_name or meta.court}, {meta.decision_date.year}" if meta and meta.decision_date else ""
         print(f"  {h.rank:2d}. {h.doc_id:12s} {h.score:8.3f}  {present.title_of(docs, h.doc_id)[:60]}  ({when}){extra}")
-        if docs is not None and h.rank <= args.snippets and h.doc_id in docs:
+        if docs is not None and not args.no_snippets and h.rank <= args.snippets and h.doc_id in docs:
             print("      " + present.snippet(docs[h.doc_id], analyzed, engine.analyzer.text_res))
             why = present.explain(h, analyzed, engine)
             if why:

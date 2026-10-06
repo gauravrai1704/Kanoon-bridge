@@ -4,7 +4,7 @@ Uses rank/qpp.py signals: max idf of the query terms (is anything specific being
 head of each ranked list (a clear winner, or a flat list of near-ties?). Abstain when the query
 has no specific term, nothing was retrieved, or BOTH the statute and precedent heads are flat.
 After chunking, a second test (`coverage`): the idf-weighted share of the question's content
-terms that occur in the retrieved chunks. Terms the indexes have never seen count with the
+terms that occur in the best single retrieved chunk (rag/answer.py takes the max over chunks). Terms the indexes have never seen count with the
 maximum idf, so "GST rate on restaurant food" is not "covered" just because "food" appears in
 some section. Below rag.abstain_min_coverage -> abstain.
 Metric: abstention precision on questions we know the corpus cannot answer (rag_questions.jsonl

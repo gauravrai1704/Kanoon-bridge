@@ -23,13 +23,13 @@ test_sets:
     queries: data/queries/e2_collision.jsonl
     qrels: data/queries/qrels/e2_collision.tsv
     target: statute
-  e3_cross_version:             # generated (scripts/07): facts + the sections named in BNS; gold = IL-PCSR citations
+  e3_cross_version:             # generated (scripts/07): "cases under section 103 BNS"; gold = precedents that applied IPC 302
     queries: data/queries/e3_cross_version.jsonl
-    qrels: ilpcsr_test
+    qrels: data/queries/qrels/e3_cross_version.tsv
     target: precedent
-  e3_control:                   # the same queries naming the IPC sections: E3 should score about the same
+  e3_control:                   # the same needs in IPC numbering: a version-aware system scores about the same
     queries: data/queries/e3_control.jsonl
-    qrels: ilpcsr_test
+    qrels: data/queries/qrels/e3_control.tsv
     target: precedent
   e4_multilingual:              # rows carry "lang": en | hi | hinglish
     queries: data/queries/e4_multilingual.jsonl
@@ -46,15 +46,17 @@ test_sets:
 
 # Ablation ladder: each step switches on one more component (names match search.SearchOptions).
 ablation_ladder:
-  - {name: bm25,          zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false}
-  - {name: +zones,        zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false}
-  - {name: +code_filter,  zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: true}
-  - {name: +bridge,       zones: true,  bridge: true,  authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: true}
-  - {name: +authority,    zones: true,  bridge: true,  authority: true,  dense: false, qpp: false, jurisdiction: false, code_filter: true}
-  - {name: +dense,        zones: true,  bridge: true,  authority: true,  dense: true,  qpp: false, jurisdiction: false, code_filter: true}
-  - {name: +qpp,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: false, code_filter: true}
-  - {name: +jurisdiction, zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true}
-  - {name: +ltr,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ltr: true}
+  - {name: bm25,          zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, version_norm: false}
+  - {name: +ngram,        zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, version_norm: false, ngram: true}
+  - {name: +version_norm, zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, ngram: true}
+  - {name: +zones,        zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, ngram: true}
+  - {name: +code_filter,  zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +bridge,       zones: true,  bridge: true,  authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +authority,    zones: true,  bridge: true,  authority: true,  dense: false, qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +dense,        zones: true,  bridge: true,  authority: true,  dense: true,  qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +qpp,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +jurisdiction, zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ngram: true}
+  - {name: +ltr,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ltr: true, ngram: true}
 
 # E4: analyzer steps switched on one at a time (stemming needs a re-index, so it is not ablated here)
 language_ablation:

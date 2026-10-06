@@ -257,7 +257,11 @@ make testsets             # = python scripts/07_make_test_sets.py   (or: --sets 
 
 Every generated row is marked `"generated": true`. Their answers are only as good as the crosswalk, so check it first with `make compare`.
 
-**Hand-built sets (E4 Hinglish, E6 jurisdiction).**
+**Hand-built sets (E4 Hinglish, E6 jurisdiction).** `scripts/08_make_judged_sets.py` (run by
+`make testsets`) writes both: E4's 20 needs × 3 languages with the gold sections chosen for each
+need, and E6's 10 topics × 4 states with citation-based topical relevance. The E4 needs and
+sections were drafted with AI help: review them (edit the `NEEDS` list in the script) and,
+for a second judgment and Cohen's kappa, follow the steps below.
 
 1. Write the queries in `data/queries/e4_multilingual.jsonl` (the same need in `en` / `hi` / `hinglish`, sharing a `need_id`) and `data/queries/e6_jurisdiction.jsonl` (the same text, once per state). Delete the `EXAMPLE` rows.
 2. Produce results to judge:

@@ -33,10 +33,13 @@ _HINGLISH_MARKERS = {
     "raha", "rahi", "rahe", "hua", "hui", "ho", "hoga", "hogi", "chahiye", "kaise", "kab", "kyun", "kaun",
     "liye", "saath", "baad", "pehle", "ghar", "bhi", "agar", "lekin", "abhi", "kal", "aaj", "sakta",
     "sakti", "sakte", "mila", "mili", "de", "di", "dena", "lena", "jab", "tab", "apne", "apni", "hamare",
+    "banta", "banti", "bante", "kitni", "kitna", "kitne",
 }
 _ENGLISH_CLASH = {"the", "de", "di", "main", "ho", "ye"}   # count these only next to other markers
 # Markers that are pure function words (never looked up in the legal lexicon).
-FUNCTION_WORDS = frozenset(_HINGLISH_MARKERS - {"maara", "mara", "maar", "bhai", "behen", "ghar", "mila", "mili"})
+# "case" in "kya case banta hai" means "is there a case": filler inside a Hinglish question.
+FUNCTION_WORDS = frozenset((_HINGLISH_MARKERS - {"maara", "mara", "maar", "ghar", "mila", "mili"})
+                           | {"case", "kese", "kaisa"})
 
 
 def detect_lang(text: str) -> str:

@@ -20,6 +20,8 @@ zakhm,ज़ख़्म,injury,1.0
 ghayal,घायल,injury,0.8
 gambhir,गंभीर,grievous,0.7
 chaku,चाकू,knife,0.8
+chaku,चाकू,stab,0.6
+chaku,चाकू,dangerous weapon,0.5
 chhura,छुरा,knife,0.8
 talwar,तलवार,sword,0.8
 banduk,बंदूक,firearm,0.8

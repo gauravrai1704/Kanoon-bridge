@@ -9,13 +9,14 @@ Overwrites data/queries/{e2_collision,e3_cross_version,e3_control,e7_temporal}.j
 qrels in data/queries/qrels/. Every row carries "generated": true, so the report can say how
 each set was made. The answers are only as good as the crosswalk (check it: make compare).
 
-E3, cross-version robustness (precedent retrieval; gold = the IL-PCSR test query's citations)
-    The IL-PCSR test queries mask their statute mentions, so E3 builds short queries from each
-    judgment's opening facts (about 60 words) plus the sections it applied, named two ways:
-        e3_control        "... under IPC 302, IPC 34"     (as the judgment's era named them)
-        e3_cross_version  "... under BNS 103, BNS 3(5)"   (the same offences in the new code)
-    A version-aware system should score about the same on both; plain BM25 drops on the BNS
-    wording because no judgment in the corpus says "BNS 103".
+E3, cross-version robustness (precedent retrieval)
+    For every IPC section that at least 3 precedents applied (IL-PCSR citation labels) and that
+    has a BNS equivalent, the same need is asked in both numberings:
+        e3_control        "cases under section 302 IPC"
+        e3_cross_version  "cases under section 103 BNS"
+    Gold (both): the precedents that applied IPC 302. A version-aware system should score about
+    the same on both; BM25 on the text as written collapses on the BNS wording, because the
+    judgments (all decided before July 2024) never say "BNS 103".
 
 E7, temporal correctness (statute retrieval)
     For each offence with a section in BOTH codes, its name ("criminal intimidation") is asked
@@ -91,35 +92,36 @@ def _offence_words(label: str) -> str:
 # --------------------------------------------------------------------------- E3
 
 
-def make_e3(norm, cfg, limit: int | None, rng: random.Random):
-    from kanoon_bridge.ingest import load_ilpcsr, metadata
-
-    table = metadata.CourtTable.load(cfg)
-    queries = load_ilpcsr.load_queries("test", cfg)
-    for q in queries:
-        metadata.enrich(q, table)
-    control, crossed = [], []
-    for q in queries:
-        ipc = [r for r in q.statutes_cited if r.startswith("ipc:")]
-        pairs = [(r, norm.equivalents(r)) for r in ipc]
-        pairs = [(r, eq) for r, eq in pairs if eq]
-        if not pairs:
+def make_e3(norm, docs, limit: int | None, rng: random.Random, min_cases: int = 3):
+    """Section-only queries for precedents, asked in the old and the new numbering."""
+    cited: dict[str, set[str]] = {}
+    for d in docs:
+        if d.doc_type.value != "precedent":
             continue
-        facts = " ".join(p.text for p in q.paragraphs if p.zone == "facts") or (q.paragraphs[0].text if q.paragraphs else "")
-        words = MASK.sub(" ", facts).split()
-        if len(words) < 12:
+        for ref in d.statutes_cited:
+            if ref.startswith("ipc:"):
+                base = re.match(r"ipc:(\d+[a-z]*)", ref)
+                cited.setdefault(base.group(1) if base else ref[4:], set()).add(d.doc_id)
+    vague = ("explanation", "definition", "general")
+    control, crossed, qrels = [], [], []
+    for num, cases in sorted(cited.items(), key=lambda kv: (len(kv[0]), kv[0])):
+        eq = [e for e in norm.equivalents(f"ipc:{num}") if e.startswith("bns:")]
+        labels = [norm.label(o).lower() for o in norm.offences_for(f"ipc:{num}")]
+        if len(cases) < min_cases or not eq or any(v in lab for lab in labels for v in vague):
             continue
-        excerpt = " ".join(words[:60])
-        ipc_names = ", ".join(_show(r) for r, _ in pairs)
-        bns_names = ", ".join(dict.fromkeys(_show(e) for _, eq in pairs for e in eq))
-        state = next((s for s in q.states if s != "*"), None)
-        base = {"lang": "en", "state": state, "source_query_id": q.doc_id, "generated": True}
-        control.append({"id": f"E3C-{q.doc_id}", "text": f"{excerpt.rstrip('. ')}; charged under {ipc_names}", "variant": "ipc", **base})
-        crossed.append({"id": f"E3-{q.doc_id}", "text": f"{excerpt.rstrip('. ')}; charged under {bns_names}", "variant": "bns", **base})
+        bns = eq[0].split(":", 1)[1]
+        base = {"lang": "en", "state": None, "ipc": f"ipc:{num}", "bns": eq[0], "generated": True}
+        control.append({"id": f"E3C-{num}", "text": f"cases under section {num} IPC", "variant": "ipc", **base})
+        crossed.append({"id": f"E3-{num}", "text": f"cases under section {bns} BNS", "variant": "bns", **base})
+        for q in (f"E3C-{num}", f"E3-{num}"):
+            qrels += [(q, d, 1) for d in sorted(cases)]
     if limit and len(crossed) > limit:
-        keep = sorted(rng.sample(range(len(crossed)), limit))
-        control, crossed = [control[i] for i in keep], [crossed[i] for i in keep]
-    return control, crossed
+        keep = set(rng.sample(range(len(crossed)), limit))
+        control = [r for i, r in enumerate(control) if i in keep]
+        crossed = [r for i, r in enumerate(crossed) if i in keep]
+        ids = {r["id"] for r in control + crossed}
+        qrels = [x for x in qrels if x[0] in ids]
+    return control, crossed, qrels
 
 
 # --------------------------------------------------------------------------- E7
@@ -206,16 +208,16 @@ def main() -> None:
     rng = random.Random(args.seed)
 
     if "e3" in args.sets:
-        control, crossed = make_e3(norm, cfg, args.limit, rng)
-        write_set("e3_control", control, None, out)
-        write_set("e3_cross_version", crossed, None, out)
+        control, crossed, qrels = make_e3(norm, list(read_documents(docs_path)), args.limit, rng)
+        write_set("e3_control", control, [x for x in qrels if x[0].startswith("E3C-")], out)
+        write_set("e3_cross_version", crossed, [x for x in qrels if not x[0].startswith("E3C-")], out)
     if "e7" in args.sets:
         rows, qrels = make_e7(norm, by_ref, args.limit, rng)
         write_set("e7_temporal", rows, qrels, out)
     if "e2" in args.sets:
         rows, qrels = make_e2(norm, by_ref, args.limit, rng)
         write_set("e2_collision", rows, qrels, out)
-    print("next: make eval   (E3 gold comes from the IL-PCSR test qrels via source_query_id)")
+    print("next: make eval")
 
 
 if __name__ == "__main__":

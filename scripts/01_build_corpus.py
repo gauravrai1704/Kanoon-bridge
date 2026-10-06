@@ -58,6 +58,10 @@ def build(cfg) -> list:
             doc.paragraphs.insert(0, Paragraph(heading(doc), "statute", -1))
             ref = doc.meta.get("ref", "")
             doc.offence_ids = normalizer.offences_for(ref) if doc.code in (Code.IPC, Code.BNS) else []
+            if doc.code == Code.IPC and doc.offence_ids:
+                # IL-PCSR names IPC sections only by number; keep the offence name for display
+                # (meta is not indexed, so retrieval is unchanged)
+                doc.meta["label"] = normalizer.label(doc.offence_ids[0])
         else:
             metadata.enrich(doc, table)
     return docs

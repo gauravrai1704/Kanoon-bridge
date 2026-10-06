@@ -10,8 +10,41 @@ CSD358 (Information Retrieval) IR Hackathon · Track T6 (vertical search: law) w
 
 ![Architecture](docs/architecture.svg)
 
-Three layers on one core: **(1) core retriever** (required) → **(2) research agent** (stretch, from hour 26)
-→ **(3) grounded RAG answer** (stretch, if layer 2 is done by ~hour 30). See `ARCHITECTURE.md`.
+Three layers on one core: **(1) core retriever** → **(2) research agent** → **(3) grounded answer**.
+See `ARCHITECTURE.md` and the pipeline figure in `docs/report/pipeline.png`.
+
+## Quick start (from the zip)
+
+```bash
+cd kanoon-bridge
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+# IL-PCSR is not redistributed (CC-BY-NC-SA): copy your five parquet files in
+mkdir -p data/raw/ilpcsr && cp /path/to/raw/ilpcsr/*.parquet data/raw/ilpcsr/
+make build          # corpus + indexes + citation graph + LTR model, about 6 minutes
+make web            # http://localhost:8000
+make test           # 156 tests
+```
+
+The BNS sections (`data/raw/bns-study-platform`) and the government crosswalk PDF are
+included. `make eval` re-runs every experiment (about an hour on 2 CPU cores); the results of
+our run are already in `results/tables/` and `results/figures/`.
+
+## Results (IL-PCSR test split and our test sets)
+
+| Set | Metric | BM25 baseline | Kanoon-Bridge |
+| --- | --- | --- | --- |
+| E1 precedents (627 judgments) | MAP / F1@k / MRR | 0.220 / 0.151 / 0.316 | **0.418 / 0.311 / 0.560** |
+| E1 statutes | MAP / F1@k / MRR | 0.156 / 0.120 / 0.307 | **0.210 / 0.185 / 0.436** |
+| E3 asked in BNS numbers | MAP | 0.006 | **0.673** |
+| E4 English / Hindi / Hinglish | MAP | 0.456 | **0.570** |
+| E6 jurisdiction | nDCG@10 | 0.366 | **0.719** |
+| E7 right code at rank 1 | accuracy | 0.475 | **0.945** |
+| E2 colliding numbers | wrong-offence hits in top 10 | 7.9% | **0%** |
+
+All differences except E2's MAP are significant (paired randomization test, Holm-corrected).
+Full tables: `results/tables/main_results.csv`, `significance.csv`, `ablation_e1_ilpcsr.csv`.
+Report and video script: `docs/report/`.
 
 ---
 

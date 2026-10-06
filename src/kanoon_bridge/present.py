@@ -125,7 +125,8 @@ def statute_ref(engine, doc_id: str) -> str:
 
 def _show(ref: str) -> str:
     code, _, num = ref.partition(":")
-    return f"{code.upper()} {num}"
+    name = code.upper() if len(code) <= 6 else code.replace("_", " ").title().replace(" Of ", " of ").replace(" And ", " and ")
+    return f"{name} {num}"
 
 
 def version_note(ref: str, normalizer) -> str:
@@ -221,4 +222,8 @@ def facet_counts(hits, engine) -> dict[str, Counter]:
 
 def title_of(docs, doc_id: str) -> str:
     d = docs.get(doc_id) if docs is not None else None
-    return (d.title if d is not None and d.title else doc_id)
+    if d is not None and d.title:
+        label = (d.meta or {}).get("label")
+        return f"{d.title} ({label})" if label and label.lower() not in d.title.lower() else d.title
+    # about 12% of IL-PCSR judgments have no case title
+    return f"Untitled judgment #{doc_id}" if d is not None and d.doc_type.value != "statute" else doc_id

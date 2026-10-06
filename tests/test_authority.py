@@ -45,7 +45,7 @@ def test_pagerank_matches_networkx_python_impl():
     assert abs(sum(ours.values()) - 1.0) < 1e-9
     assert max(ours, key=ours.get) == "c"
     if ref:
-        assert all(abs(ours[n] - ref[n]) < 1e-6 for n in g)
+        assert all(abs(ours[n] - ref[n]) < 1e-5 for n in g)      # both stop at tol 1e-6 (summed)
 
 
 def _has_scipy():

@@ -76,7 +76,11 @@ def main() -> None:
             print(f"  {system:9s} {shown}")
         print(f"  ({time.time() - t0:.1f}s)")
     if rows:
-        ablation.write_table(rows, project_path(ev.outputs.tables) / "main_results.csv")
+        out = project_path(ev.outputs.tables) / "main_results.csv"
+        if args.sets and out.exists():              # a subset was re-run: keep the other sets' rows
+            done = {r["set"] for r in rows}
+            rows = [r for r in plots.read_table(out) if r["set"] not in done] + rows
+        ablation.write_table(rows, out)
 
     if not args.skip_ablation:
         for name in ("e1_ilpcsr", "e2_collision"):

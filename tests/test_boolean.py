@@ -112,3 +112,12 @@ def test_facets_filter_and_date_range():
     assert fx.filter(cites_any=["ipc:302"]) == {"a"}
     assert fx.filter() == {"a", "b", "c", "s"}
     assert fx.filter(court="high_court", states=["maharashtra"]) == {"c"}
+
+
+def test_long_text_is_never_boolean():
+    from kanoon_bridge.query.parser import has_operators, parse
+
+    doc = 'The court held "that the accused" AND (others) were liable. ' * 20
+    assert not has_operators(doc)
+    assert not parse(doc).is_boolean
+    assert has_operators('"dowry death" AND bail')

@@ -220,9 +220,10 @@ class Backend:
         }
 
     def _answer_json(self, ans) -> dict:
+        from kanoon_bridge import present
         from kanoon_bridge.rag._util import strip_citations
 
-        sources = [{"n": c.n, "id": c.doc_id, "title": c.title or c.doc_id, "zone": c.zone} for c in ans.chunks]
+        sources = [{"n": c.n, "id": c.doc_id, "title": present.title_of(self.docs, c.doc_id) if self.docs is not None else (c.title or c.doc_id), "zone": c.zone} for c in ans.chunks]
         return {"text": ans.text, "abstained": ans.abstained, "generator": ans.generator,
                 "sentences": [{"text": strip_citations(s), "cite": n} for s, n in ans.sentences],
                 "sources": sources, "flags": ans.flags,
@@ -283,6 +284,9 @@ class Backend:
         extra = []
         for k in ("facet", "boolean_match", "feedback", "alpha"):
             extra += [f"{k}: {v}" for v in get(k)]
+        ng = get("ngram")
+        if ng:
+            add("Find cases", "Shared phrasing (word trigrams)", ng[0])
         add("Find cases", "Score precedents by zone (BM25F)",
             f"{len(out['precedents'])} shown" + (f"; {'; '.join(extra)}" if extra else ""), t.get("precedents"))
         e = self.engine
@@ -319,7 +323,11 @@ class Backend:
 
 def _show(ref: str) -> str:
     code, _, num = ref.partition(":")
-    return f"{code.upper()} {num}" if num else ref
+    if not num:
+        return ref
+    # short codes as abbreviations (IPC, BNS, CrPC-style); slugs of other Acts as words
+    name = code.upper() if len(code) <= 6 else code.replace("_", " ").title().replace(" Of ", " of ").replace(" And ", " and ")
+    return f"{name} {num}"
 
 
 def _offence_label(norm, ref: str) -> str:

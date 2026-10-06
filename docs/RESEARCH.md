@@ -28,6 +28,8 @@ systems.
 | Feature | Technique and source | File | Measured by |
 | --- | --- | --- | --- |
 | BM25F over judgment zones (facts / arguments / reasoning / decision) | Robertson, Zaragoza & Taylor, "Simple BM25 extension to multiple weighted fields", CIKM 2004 (Microsoft Research). Zone value in legal case retrieval: SAILER (Li et al., SIGIR 2023, Tsinghua) | `rank/bm25f.py`, `ingest/segment.py` | ablation "+zones" |
+| **Word-trigram BM25 channel** for case-as-query (a whole judgment as the query) | n-gram index, a generalisation of the biword index (IIR §2.4.1); BM25 over word 3-grams is IL-PCSR's strongest lexical baseline (Paul et al., EMNLP 2025, IIT Kharagpur + IIT Kanpur). Stored as a sparse doc × trigram matrix of precomputed BM25 weights | `rank/ngram.py` | ablation "+ngram"; β tuned on val (`scripts/09_tune_on_val.py --ngram`) |
+| BM25 parameters and zone weights tuned on val | Grid search on the validation split only (b, five zone-weight profiles) | `scripts/09_tune_on_val.py` | `results/tables/tuning_val.csv` |
 | tf-idf (lnc.ltc) baseline | IIR ch. 6 | `rank/vsm.py` | baseline rows |
 | Statute bridge (statutes ranked first, then used to find precedents) | Two-stage statute → precedent retrieval; the statute network as a bridge, as in Hier-SPCNet (Bhattacharya et al., SIGIR 2020, IIT Kharagpur) | `rank/statute_bridge.py` | ablation "+bridge" |
 | Citation authority | PageRank (Brin & Page, WWW 1998, Stanford) on the citation graph. Legal importance of precedents: Fowler et al., *Political Analysis* 2007 | `rank/citation_graph.py`, `rank/authority.py` | ablation "+authority" |

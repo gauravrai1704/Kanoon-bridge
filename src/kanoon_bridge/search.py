@@ -48,6 +48,8 @@ class SearchOptions:
     qpp: bool = False              # QPP-gated alpha (needs dense)
     jurisdiction: bool = True      # g(d | state) instead of g(d)
     code_filter: bool = True       # statutes restricted to the code in force on the incident date
+    version_norm: bool = True      # match sections through offence ids shared by IPC and BNS (off = text as written)
+    ngram: bool = False            # word-trigram BM25 channel for long (case-as-query) queries, rank/ngram.py
     top_k: int = 10
     max_query_terms: int | None = None   # cap long queries (E1 uses 100); None = config bm25.max_query_terms
     candidate_mode: str = "all"    # "all" | "tiers" | "champions" (efficiency experiment)
@@ -67,18 +69,18 @@ class SearchOptions:
     @classmethod
     def full(cls) -> "SearchOptions":
         """Everything on, including the learned re-ranker when one has been trained."""
-        return cls(ltr=True)
+        return cls(ltr=True, ngram=True)
 
     @classmethod
     def interactive(cls) -> "SearchOptions":
         """What the CLI and app use: full system, near-duplicates collapsed."""
-        return cls(ltr=True, collapse_duplicates=True)
+        return cls(ltr=True, ngram=True, collapse_duplicates=True)
 
     @classmethod
     def baseline(cls) -> "SearchOptions":
         """Plain BM25, nothing else: the 'obvious baseline' in the report."""
         return cls(zones=False, bridge=False, authority=False, dense=False, qpp=False,
-                   jurisdiction=False, code_filter=False)
+                   jurisdiction=False, code_filter=False, version_norm=False)
 
 
 @dataclass
@@ -94,6 +96,8 @@ class SearchEngine:
     tiers: object | None = None            # index.tiers.TieredIndex
     ltr: object | None = None              # rank.ltr.LinearRanker (scripts/06_train_ltr.py)
     near_dups: dict | None = None          # doc_id -> group representative (index/dedup.py)
+    ngram_statutes: object | None = None   # rank.ngram.NgramIndex over statutes
+    ngram_precedents: object | None = None # rank.ngram.NgramIndex over precedents
     _scorers: dict = field(default_factory=dict)
 
     # ------------------------------------------------------------------ loading
@@ -118,7 +122,24 @@ class SearchEngine:
                 warnings.warn(f"learning-to-rank model ignored: {err}")
         if store.exists("near_duplicates", "json"):
             engine.near_dups = store.load("near_duplicates", "json")
+        for which in ("statutes", "precedents"):
+            if store.exists(f"ngram_{which}"):
+                setattr(engine, f"ngram_{which}", store.load(f"ngram_{which}"))
         return engine
+
+    def _is_case_query(self, query: Query) -> bool:
+        """A pasted judgment or brief (IL-PCSR's case-as-query task), not a typed question."""
+        return len(query.text.split()) >= self.cfg.ngram.min_query_words
+
+    def _use_ngram(self, query: Query, opt: "SearchOptions") -> bool:
+        return opt.ngram and self._is_case_query(query)
+
+    @staticmethod
+    def _mix(base: dict[str, float], ngram: dict[str, float], beta: float) -> dict[str, float]:
+        """(1 - beta) * base/max + beta * ngram/max over the union of both candidate lists."""
+        tb = max(base.values(), default=0.0) or 1.0
+        tn = max(ngram.values(), default=0.0) or 1.0
+        return {d: (1 - beta) * base.get(d, 0.0) / tb + beta * ngram.get(d, 0.0) / tn for d in set(base) | set(ngram)}
 
     @classmethod
     def from_components(cls, cfg: Config, statute_index, precedent_index, facets, statute_terms=None,
@@ -176,7 +197,10 @@ class SearchEngine:
             else:
                 from kanoon_bridge.rank.bm25f import BM25F
 
-                self._scorers[key] = BM25F.from_config(zidx, self.cfg, use_zones=opt.zones)
+                scorer = BM25F.from_config(zidx, self.cfg, use_zones=opt.zones)
+                if which == "statute":           # statutes are short and uniform: their own b
+                    scorer.b = self.cfg.bm25.get("b_statutes", scorer.b)
+                self._scorers[key] = scorer
         return self._scorers[key]
 
     # ------------------------------------------------------------------ search
@@ -188,6 +212,11 @@ class SearchEngine:
         t0 = clock()
         aq: AnalyzedQuery = self.analyzer.analyze(query)
         terms = aq.weighted_terms()
+        if not opt.version_norm:
+            # the "text as written" baseline: no offence ids, no cross-code section expansions
+            written = set(aq.tokens) - {t for t in aq.tokens if t.startswith("off:")}
+            terms = {t: w for t, w in terms.items()
+                     if not t.startswith("off:") and not (t.startswith("sec:") and t not in written)}
         for term in opt.drop_terms or []:
             terms.pop(term, None)
         for term, w in (opt.extra_terms or {}).items():
@@ -209,8 +238,15 @@ class SearchEngine:
             wanted = self.facets.filter(doc_type=DocType.STATUTE.value, code=query.filters["code"])
             statute_cands = wanted if statute_cands is None else statute_cands & wanted
         statute_scores = self._scorer("statute", opt).score(terms, statute_cands)
-        statutes = to_scored(top_k(statute_scores, opt.top_k), DocType.STATUTE,
-                             {d: {"lexical": s} for d, s in statute_scores.items()})
+        st_components = {d: {"lexical": s} for d, s in statute_scores.items()}
+        use_ngram = self._use_ngram(query, opt)
+        if use_ngram and self.ngram_statutes is not None:
+            ng = self.ngram_statutes.score(query.text, statute_cands, top=300)
+            for d, v in ng.items():
+                st_components.setdefault(d, {})["ngram"] = v
+            statute_scores = self._mix(statute_scores, ng, self.cfg.ngram.beta_statutes)
+            aq.trace.append(("ngram_statutes", f"{len(ng)} statutes share word {self.ngram_statutes.n}-grams with the query"))
+        statutes = to_scored(top_k(statute_scores, opt.top_k), DocType.STATUTE, st_components)
         t["statutes"] = clock() - t0
 
         # --- statute bridge -------------------------------------------------------
@@ -267,6 +303,12 @@ class SearchEngine:
         # are comparable across queries; ranking by relevance alone is unchanged
         top_lex = max(lexical.values(), default=0.0) or 1.0
         relevance = {d: s / top_lex for d, s in lexical.items()}
+        if use_ngram and self.ngram_precedents is not None:
+            ng = self.ngram_precedents.score(query.text, prec_cands, top=300)
+            for d, v in ng.items():
+                components.setdefault(d, {})["ngram"] = v
+            relevance = self._mix(relevance, ng, self.cfg.ngram.beta)
+            aq.trace.append(("ngram", f"{len(ng)} precedents share word {self.ngram_precedents.n}-grams; beta {self.cfg.ngram.beta}"))
 
         if opt.dense and self.dense is not None:
             from kanoon_bridge.rank.fusion import fuse
@@ -302,7 +344,9 @@ class SearchEngine:
                 final[d] = net_score(rel, g, lam)
                 components.setdefault(d, {})["authority"] = g
         # --- learning-to-rank re-ranking of the head (rank/ltr.py) -------------------
-        if opt.ltr and self.ltr is not None and final:
+        # the model is trained on IL-PCSR val, i.e. on whole judgments as queries: apply it only to
+        # queries of that kind (a short typed question has a different feature distribution)
+        if opt.ltr and self.ltr is not None and final and self._is_case_query(query):
             head = to_scored(top_k(final, max(self.ltr.depth, opt.top_k)), DocType.PRECEDENT, components)
             learned = self.ltr.score(head, aq, self)
             final = {h.doc_id: float(v) for h, v in zip(head, learned)}

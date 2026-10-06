@@ -39,23 +39,32 @@ text:
   wildcard_weight: 0.8            # weight of each term a wildcard ("extort*") expands to
   wildcard_max_terms: 30          # most frequent expansions kept per wildcard
 
-zones:                            # BM25F zone weights
-  facts: 1.0
-  arguments: 0.8
-  ratio: 1.5
-  decision: 1.2
+zones:                            # BM25F zone weights, tuned on IL-PCSR val (scripts/09_tune_on_val.py):
+  facts: 1.0                      # uniform beat every skewed profile; hand-set was facts 1, arguments 0.8,
+  arguments: 1.0                  # ratio 1.5, decision 1.2, other 0.5 (results/tables/tuning_val.csv)
+  ratio: 1.0
+  decision: 1.0
   statute: 1.0                    # statute documents have a single zone
-  other: 0.5
+  other: 1.0
 
 bm25:
   k1: 1.6
-  b: 0.7
+  b: 1.0                          # judgments: tuned on val (0.7 -> 1.0 = MAP 0.196 -> 0.231 for BM25)
+  b_statutes: 0.7                 # statutes keep the default
   max_query_terms: 300            # long queries (whole judgments) keep their highest-idf terms
 
 collision:
   date_prior: 0.75                # P(code in force on the date) before looking at context
   context_weight: 4.0             # each matching offence keyword multiplies a reading by (1 + this)
   keep_second_below: 0.7          # also index the runner-up reading when the top one is less sure
+
+ngram:                            # word-trigram BM25 channel (rank/ngram.py), long queries only
+  n: 3                            # trigrams (IL-PCSR's best lexical baseline is BM25 over 3-5-grams); n <= 3
+  k1: 1.2
+  b: 0.9
+  min_query_words: 50             # a pasted judgment, not a typed question
+  beta: 1.0                       # precedents: (1 - beta) * unigram + beta * trigram; val MAP 0.227 (beta 0) -> 0.402 (beta 1)
+  beta_statutes: 0.7              # statutes: val MAP 0.155 (beta 0) -> 0.202 (beta 0.7)
 
 statute_bridge:
   top_statutes: 10                # statutes used to expand/filter the precedent query

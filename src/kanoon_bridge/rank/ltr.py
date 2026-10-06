@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 FEATURES = ("lexical", "zone_facts", "zone_ratio", "zone_arguments", "zone_decision", "zone_other",
-            "bridge", "authority", "dense", "offence_match", "binding", "supreme_court", "recency")
+            "bridge", "authority", "dense", "offence_match", "binding", "supreme_court", "recency", "ngram")
 
 
 def feature_rows(hits, aq, engine) -> np.ndarray:
@@ -70,7 +70,8 @@ def feature_rows(hits, aq, engine) -> np.ndarray:
                 X[i, 12] = math.exp(-abs(year - meta.decision_date.year) / 10)
             else:
                 X[i, 12] = 0.5
-    for j in (0, 1, 2, 3, 4, 5, 6):                       # unbounded columns: per-query max-normalise
+        X[i, 13] = c.get("ngram", 0.0)
+    for j in (0, 1, 2, 3, 4, 5, 6, 13):                       # unbounded columns: per-query max-normalise
         top = X[:, j].max() if len(X) else 0.0
         if top > 0:
             X[:, j] /= top
@@ -118,9 +119,10 @@ def coordinate_ascent(data: list[tuple[np.ndarray, np.ndarray, int]], init: np.n
 
 
 def _default_init() -> np.ndarray:
-    """Start from the hand-set system: relevance + bridge + 0.2 * authority."""
+    """Start from the hand-set system: relevance (unigram 0.3 + trigram 0.7) + bridge + 0.2 * authority."""
     w = np.zeros(len(FEATURES))
-    w[FEATURES.index("lexical")] = 1.0
+    w[FEATURES.index("lexical")] = 0.3
+    w[FEATURES.index("ngram")] = 0.7
     w[FEATURES.index("bridge")] = 1.0
     w[FEATURES.index("authority")] = 0.2
     return w
