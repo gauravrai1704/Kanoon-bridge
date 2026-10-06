@@ -34,14 +34,42 @@ def soundex(word: str) -> str:
 
 
 def hindi_soundex(word: str) -> str:
-    """Phonetic code tuned for Roman Hindi.
+    """Phonetic code tuned for Romanised Hindi."""
+    from kanoon_bridge.text.transliterate import normalize_roman
 
-    TODO(C): before coding, normalise (text.transliterate.normalize_roman), drop 'h' after
-    consonants (aspiration), map consonant groups that Hindi speakers interchange
-    (v/w, z/j, f/ph, q/k), keep the first letter, and do NOT truncate to 4 characters
-    (Hindi legal words are short, truncation over-merges). Test on tests/test_phonetic.py.
-    """
-    raise NotImplementedError("TODO(C): Hindi-aware phonetic code")
+    word = normalize_roman(word.lower())
+    if not word:
+        return ""
+
+    # Normalize common Hindi phonetic variants.
+    replacements = (
+        ("ph", "f"),
+        ("bh", "b"),
+        ("chh", "ch"),
+        ("kh", "k"),
+        ("gh", "g"),
+        ("th", "t"),
+        ("dh", "d"),
+        ("q", "k"),
+        ("w", "v"),
+        ("z", "j"),
+    )
+
+    for old, new in replacements:
+        word = word.replace(old, new)
+
+    # Aspirated h should no longer affect the phonetic representation.
+    word = word.replace("h", "")
+
+    # Collapse repeated consonants.
+    result = []
+    for ch in word:
+        if result and ch == result[-1] and ch not in "aeiou":
+            continue
+        result.append(ch)
+
+    return "".join(result)
+
 
 
 @dataclass
@@ -52,9 +80,19 @@ class PhoneticIndex:
 
     @classmethod
     def build(cls, vocabulary: list[str]) -> "PhoneticIndex":
-        """TODO(C): bucket every Roman-script word by hindi_soundex."""
-        raise NotImplementedError("TODO(C): build phonetic buckets")
+        index = cls()
+
+        for word in vocabulary:
+            word = word.strip().lower()
+            if word:
+                code = hindi_soundex(word)
+                if code:
+                    index.buckets[code].add(word)
+
+        return index
 
     def matches(self, word: str) -> set[str]:
-        """Vocabulary words that sound like `word`. TODO(C)."""
-        raise NotImplementedError("TODO(C): phonetic lookup")
+        code = hindi_soundex(word)
+        if not code:
+            return set()
+        return set(self.buckets.get(code, set()))

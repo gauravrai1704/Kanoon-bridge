@@ -32,13 +32,17 @@ def stem_english(token: str) -> str:
 
 
 def stem_hindi(token: str) -> str:
-    """Strip one Hindi suffix from a Devanagari token.
+    """Strip one Hindi suffix from a Devanagari token."""
+    if _protected(token):
+        return token
 
-    TODO(C): implement using HINDI_SUFFIXES (keep a minimum stem length of 2 characters),
-    then add cases to tests/test_stem.py. Romanised Hindi goes through text/transliterate.py
-    first, not through here.
-    """
-    raise NotImplementedError("TODO(C): Hindi light stemmer")
+    for suffix in HINDI_SUFFIXES:
+        if token.endswith(suffix):
+            stem = token[:-len(suffix)]
+            if len(stem) >= 2:
+                return stem
+
+    return token
 
 
 def _is_devanagari(token: str) -> bool:

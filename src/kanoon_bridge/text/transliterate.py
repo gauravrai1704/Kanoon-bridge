@@ -43,22 +43,126 @@ def detect_lang(text: str) -> str:
 
 
 def devanagari_to_roman(text: str) -> str:
-    """Transliterate Devanagari to a simple Roman scheme.
+    """Convert common Devanagari Hindi text to a simple Roman representation."""
 
-    TODO(C): use a character table (or the `indic-transliteration` package, declared in the
-    report), then pass the result through normalize_roman so both scripts meet.
-    """
-    raise NotImplementedError("TODO(C): Devanagari -> Roman")
+    consonants = {
+        "क": "k", "ख": "kh", "ग": "g", "घ": "gh", "ङ": "n",
+        "च": "ch", "छ": "chh", "ज": "j", "झ": "jh", "ञ": "n",
+        "ट": "t", "ठ": "th", "ड": "d", "ढ": "dh", "ण": "n",
+        "त": "t", "थ": "th", "द": "d", "ध": "dh", "न": "n",
+        "प": "p", "फ": "ph", "ब": "b", "भ": "bh", "म": "m",
+        "य": "y", "र": "r", "ल": "l", "व": "v",
+        "श": "sh", "ष": "sh", "स": "s", "ह": "h",
+        "ड़": "r", "ढ़": "rh",
+        "क़": "q", "ख़": "kh", "ग़": "g", "ज़": "z",
+        "फ़": "f", "ड़": "r", "ढ़": "rh",
+    }
 
+    vowels = {
+        "अ": "a", "आ": "a", "इ": "i", "ई": "i",
+        "उ": "u", "ऊ": "u", "ए": "e", "ऐ": "ai",
+        "ओ": "o", "औ": "au",
+    }
+
+    matras = {
+        "ा": "a", "ि": "i", "ी": "i",
+        "ु": "u", "ू": "u", "ृ": "ri",
+        "े": "e", "ै": "ai", "ो": "o", "ौ": "au",
+    }
+
+    result = []
+    i = 0
+
+    while i < len(text):
+        ch = text[i]
+
+        # Preserve spaces and punctuation.
+        if ch.isspace() or not _DEVANAGARI.search(ch):
+            result.append(ch)
+            i += 1
+            continue
+
+        if ch in vowels:
+            result.append(vowels[ch])
+            i += 1
+            continue
+
+        if ch in consonants:
+            roman = consonants[ch]
+
+            # Look for a following matra.
+            if i + 1 < len(text) and text[i + 1] in matras:
+                result.append(roman + matras[text[i + 1]])
+                i += 2
+                continue
+
+            # Virama means no inherent vowel.
+            if i + 1 < len(text) and text[i + 1] == "्":
+                result.append(roman)
+                i += 2
+                continue
+
+            # Default inherent vowel.
+            result.append(roman + "a")
+            i += 1
+            continue
+
+        # Anusvara / chandrabindu — approximate as nasal n.
+        if ch in {"ं", "ँ"}:
+            result.append("n")
+            i += 1
+            continue
+
+        if ch == "ः":
+            result.append("h")
+            i += 1
+            continue
+
+        # Unknown Devanagari character: preserve it.
+        result.append(ch)
+        i += 1
+
+    return normalize_roman("".join(result))
 
 def normalize_roman(word: str) -> str:
-    """Normalise Roman Hindi spellings so variants meet.
+    """Normalise common Roman-Hindi spelling variants.
 
-    TODO(C): rules such as aa->a, ee->i, oo->u, w->v, ph->f, merge aspirated forms
-    (th->t, dh->d, kh->k, bh->b, chh->ch), collapse doubled consonants (tt->t). Keep a table
-    of the rules in the report; they are part of the IR story (normalisation).
+    The goal is to make different spellings of the same Hindi word
+    converge before lexicon and phonetic lookup.
     """
-    raise NotImplementedError("TODO(C): Roman Hindi spelling normalisation")
+    word = word.lower().strip()
+
+    if not word:
+        return ""
+
+    # Normalize repeated vowels / vowel length.
+    word = re.sub(r"a{2,}", "a", word)
+    word = re.sub(r"e{2,}", "i", word)
+    word = re.sub(r"i{2,}", "i", word)
+    word = re.sub(r"o{2,}", "u", word)
+    word = re.sub(r"u{2,}", "u", word)
+
+    # Common Roman-Hindi spelling variants.
+    replacements = (
+        ("chh", "ch"),
+        ("ph", "f"),
+        ("th", "t"),
+        ("dh", "d"),
+        ("kh", "k"),
+        ("gh", "g"),
+        ("bh", "b"),
+        ("sh", "s"),
+        ("w", "v"),
+    )
+
+    for old, new in replacements:
+        word = word.replace(old, new)
+
+    # Collapse repeated consonants:
+    # maara -> mara, hattya -> hatya
+    word = re.sub(r"([bcdfghjklmnpqrstvwxyz])\1+", r"\1", word)
+
+    return word
 
 
 @dataclass
@@ -83,9 +187,30 @@ class LegalLexicon:
         return lex
 
     def lookup(self, word: str) -> list[tuple[str, float]]:
-        """English terms for a Hindi/Hinglish word.
-
-        TODO(C): try the exact key, then normalize_roman(word), then the phonetic code
-        (text/phonetic.py) against normalised keys. Return [] if nothing matches.
-        """
-        raise NotImplementedError("TODO(C): lexicon lookup with normalisation")
+        """Look up a Hindi/Hinglish word in the legal lexicon."""
+        if not word:
+            return []
+    
+        # 1. Exact lookup
+        key = word.strip().lower()
+        if key in self.entries:
+            return list(self.entries[key])
+    
+        # 2. Normalized Roman lookup
+        normalized = normalize_roman(key)
+        if normalized in self.entries:
+            return list(self.entries[normalized])
+    
+        # 3. Phonetic lookup
+        from kanoon_bridge.text.phonetic import PhoneticIndex
+    
+        vocabulary = list(self.entries.keys())
+        phonetic_index = PhoneticIndex.build(vocabulary)
+        matches = phonetic_index.matches(normalized)
+    
+        results: list[tuple[str, float]] = []
+    
+        for match in matches:
+            results.extend(self.entries.get(match, []))
+    
+        return results
