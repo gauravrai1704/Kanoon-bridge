@@ -25,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-k", type=int, default=10)
     ap.add_argument("--baseline", action="store_true", help="plain BM25 only")
     ap.add_argument("--no-jurisdiction", action="store_true")
+    ap.add_argument("--agent", action="store_true", help="layer 2: research agent (several sub-queries, fused)")
+    ap.add_argument("--answer", action="store_true", help="layer 3: cited answer on top (implies --agent)")
     ap.add_argument("--debug", action="store_true")
     args = ap.parse_args(argv)
 
@@ -36,12 +38,22 @@ def main(argv: list[str] | None = None) -> int:
 
     opt = SearchOptions.baseline() if args.baseline else SearchOptions(jurisdiction=not args.no_jurisdiction)
     opt.top_k = args.k
-    res = engine.search(Query(args.query, state=args.state, incident_date=args.date), opt)
+    query = Query(args.query, state=args.state, incident_date=args.date)
+
+    if args.agent or args.answer:
+        from kanoon_bridge.agent.research import ResearchAgent
+
+        agent = ResearchAgent.load(engine)
+        res = agent.run(query, opt)
+        trace = res.trace
+    else:
+        res = engine.search(query, opt)
+        trace = res.query.trace
 
     if args.debug:
-        print("\n-- query analysis --")
-        for step, out in res.query.trace:
-            print(f"  {step:15s} {out}")
+        print("\n-- trace --")
+        for step, out in trace:
+            print(f"  {step:22s} {out}")
 
     print("\n-- statutes --")
     for h in res.statutes:
@@ -51,7 +63,18 @@ def main(argv: list[str] | None = None) -> int:
         extra = "  " + "  ".join(f"{k}={v:.3f}" for k, v in h.components.items()) if args.debug else ""
         print(f"  {h.rank:2d}. {h.doc_id:20s} {h.score:8.3f}{extra}")
 
-    if args.debug:
+    if args.answer:
+        from kanoon_bridge.rag.answer import answer
+
+        try:
+            ans = answer(res, agent.docs or {})
+            print("\n-- answer --\n" + ans.text)
+            for flag in ans.flags:
+                print("  FLAG:", flag)
+        except NotImplementedError as err:
+            print(f"\n-- answer -- not available yet ({err})")
+
+    if args.debug and hasattr(res, "timings_ms"):
         print("\n-- timings (ms) --  " + "  ".join(f"{k}={v:.1f}" for k, v in res.timings_ms.items()))
     print("\nNot legal advice.")
     return 0

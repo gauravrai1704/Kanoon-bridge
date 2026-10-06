@@ -8,6 +8,11 @@ CSD358 (Information Retrieval) IR Hackathon · Track T6 (vertical search: law) w
 
 > Not legal advice. This is a course research prototype.
 
+![Architecture](docs/architecture.svg)
+
+Three layers on one core: **(1) core retriever** (required) → **(2) research agent** (stretch, from hour 26)
+→ **(3) grounded RAG answer** (stretch, if layer 2 is done by ~hour 30). See `ARCHITECTURE.md`.
+
 ---
 
 ## Status
@@ -21,7 +26,8 @@ CSD358 (Information Retrieval) IR Hackathon · Track T6 (vertical search: law) w
 | Transliteration, phonetic matching, stemming, dense channel | C | stub |
 | tf-idf, BM25F, statute bridge, authority, QPP, tiers | D | stub |
 | Evaluation metrics | D | working |
-| RAG layer (additional work) | first free member | stub |
+| Research agent, layer 2 (RRF fusion + loop working) | agent owner | wiring works, rules stub |
+| RAG answer, layer 3 (orchestration working) | first free member | stub |
 
 Update this table as components land. Stubs raise `NotImplementedError` with a TODO saying what to build.
 
@@ -65,11 +71,14 @@ make dense     # scripts/04_encode_dense.py  → paragraph embeddings (GPU recom
 make eval      # scripts/05_run_all_evals.py → results/tables, results/figures
 make app       # streamlit demo
 python app/cli.py "mere bhai ko chaku maara" --state delhi --date 2025-03-01 --debug
+python app/cli.py "..." --agent            # layer 2: several sub-queries, fused
+python app/cli.py "..." --answer           # layer 3: cited answer with checks
 ```
 
 ## Repo layout
 
-See `PROJECT_STRUCTURE.md` for every file and what it does.
+`ARCHITECTURE.md` explains the design end to end (data usage, worked example, evaluation, gates).
+`PROJECT_STRUCTURE.md` lists every file: owner, status, purpose, and the functions it must contain.
 
 ## Team rules
 

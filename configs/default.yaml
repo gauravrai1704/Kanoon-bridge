@@ -63,3 +63,22 @@ tiers:
 
 search:
   top_k: 10
+
+# Layer 2: research agent (agent/)
+agent:
+  enabled: false                  # switch on after the hour-26 gate
+  planner: rules                  # rules | llm
+  max_rounds: 2                   # plan + at most one reformulation round
+  depth: 50                       # results per sub-query that go into fusion
+  rrf_k: 60                       # reciprocal rank fusion constant
+  prf_top_docs: 5                 # pseudo-relevance feedback: docs used
+  prf_terms: 10                   # pseudo-relevance feedback: terms added
+  facet_weight: 0.8               # fusion weight of the binding-only sub-query
+
+# Layer 3: grounded answers (rag/)
+rag:
+  enabled: false                  # switch on only if the agent is done by ~hour 30
+  model: ""                       # LLM name; key in .env, never in git
+  max_chunks: 8
+  max_chunk_chars: 1200
+  support_threshold: 0.2          # tf-idf cosine below this = unsupported sentence
