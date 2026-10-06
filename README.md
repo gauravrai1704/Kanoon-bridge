@@ -23,9 +23,9 @@ Three layers on one core: **(1) core retriever** (required) → **(2) research a
 | Data fetch, IL-PCSR loader, BNS loader, segmentation, metadata (courts, states, dates) | Gaurav | **working** |
 | Crosswalk (496 IPC-BNS pairs), version normalisation, collision resolver | Gaurav | **working** |
 | tf-idf, BM25F, statute bridge, citation graph, PageRank authority, QPP, tiers | Gaurav | **working** |
-| Legal tokeniser (section tokens) | Sharanya | working baseline |
-| Positional / zone / facet indexes, Boolean + proximity query parser | Sharanya | stub |
-| Transliteration, phonetic matching, Hindi stemming, dense channel | Kashvi | stub |
+| Legal tokeniser (section tokens) | Sharanya | working |
+| Positional / zone / facet indexes, Boolean + phrase + proximity query parser and evaluation | Sharanya | **working** |
+| Transliteration, Hinglish normalisation, ~165-row legal lexicon, phonetic matching, Hindi stemming, dense channel | Kashvi | **working** (dense needs `make dense` on a GPU) |
 | Research agent, layer 2: rule planner (cross-code, Boolean, facet, statutes), RRF/CombSUM, QPP reflection + PRF, optional LLM planner | Shaurya | **working** |
 | Evaluation: test sets E1-E7, ablation ladder, language ablation, efficiency, plots | Gaurav | **working** |
 | Agent vs core and RAG evaluation | Gaurav | **working** |
@@ -77,7 +77,7 @@ section-number correspondences; none of its commentary.
 
 **No Hugging Face access yet?** `make sample` runs the whole offline build on a tiny synthetic
 sample in IL-PCSR's exact schema (`tests/data/`, fictional cases — never report results on it).
-Step 02 needs the index build (Sharanya) to be implemented.
+
 
 No crawling. If any is added later: obey robots.txt, rate-limit, collect no personal data.
 
@@ -96,9 +96,6 @@ python app/cli.py "..." --answer           # layer 3: cited answer with checks (
 make compare   # crosswalk vs the government PDF (download it by hand first)
 make eval-quick / make eval-sample / make plots
 ```
-
-Until the index code (Sharanya) is merged, `export KB_DEV_SHIM=1` runs the pipeline with a clearly
-labelled temporary stand-in (`src/kanoon_bridge/dev/reference_index.py`); see SETUP_AND_RUN.md.
 
 ## Repo layout
 

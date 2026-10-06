@@ -1,4 +1,4 @@
-"""Soundex-style phonetic codes for Romanised Hindi.  [owner: C]
+"""Soundex-style phonetic codes for Romanised Hindi.  [owner: C — working]
 
 Classic Soundex was designed for English surnames and fails on Roman Hindi
 ("hatya" / "hathya" / "hattya", "chori" / "chouri"). We need our own code where
@@ -33,15 +33,37 @@ def soundex(word: str) -> str:
     return (out + "000")[:4]
 
 
+# Consonants Hindi speakers interchange in Roman spelling share a class (after normalize_roman
+# has already merged aspirates, w/v, q/k, z/j and ph/f).
+_CLASSES = {"c": "c", "s": "s", "k": "k", "g": "g", "j": "j", "t": "t", "d": "d", "p": "p", "b": "b", "f": "f",
+            "v": "v", "m": "m", "n": "n", "r": "r", "l": "l", "y": "y", "h": "h", "x": "k"}
+
+
 def hindi_soundex(word: str) -> str:
     """Phonetic code tuned for Roman Hindi.
 
-    TODO(C): before coding, normalise (text.transliterate.normalize_roman), drop 'h' after
-    consonants (aspiration), map consonant groups that Hindi speakers interchange
-    (v/w, z/j, f/ph, q/k), keep the first letter, and do NOT truncate to 4 characters
-    (Hindi legal words are short, truncation over-merges). Test on tests/test_phonetic.py.
+    1. normalise the spelling (text.transliterate.normalize_roman: aspirates, vowel length,
+       doubled letters, w/v, z/j, q/k, ph/f)
+    2. keep the first letter; then keep consonant classes, dropping vowels
+       ("sh" folds into "s"; "h" after a vowel is kept only at the start)
+    3. collapse repeated codes, and do NOT truncate (Hindi legal words are short;
+       truncation would over-merge)
+
+        hindi_soundex("hatya") == hindi_soundex("hathya") == hindi_soundex("hattya") == "hty"
     """
-    raise NotImplementedError("TODO(C): Hindi-aware phonetic code")
+    from kanoon_bridge.text.transliterate import normalize_roman
+
+    w = normalize_roman(word).replace("sh", "s")
+    if not w:
+        return ""
+    out = [w[0]]
+    for ch in w[1:]:
+        code = _CLASSES.get(ch)
+        if code is None or code == "h":
+            continue
+        if out[-1] != code:
+            out.append(code)
+    return "".join(out)
 
 
 @dataclass
@@ -51,10 +73,18 @@ class PhoneticIndex:
     buckets: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
 
     @classmethod
-    def build(cls, vocabulary: list[str]) -> "PhoneticIndex":
-        """TODO(C): bucket every Roman-script word by hindi_soundex."""
-        raise NotImplementedError("TODO(C): build phonetic buckets")
+    def build(cls, vocabulary: list[str], min_len: int = 3) -> "PhoneticIndex":
+        """Bucket every Roman-script word (letters only, min_len+) by hindi_soundex.
+        Section/offence tokens and words with digits are skipped."""
+        idx = cls()
+        for word in vocabulary:
+            if len(word) >= min_len and word.isascii() and word.isalpha():
+                idx.buckets[hindi_soundex(word)].add(word)
+        idx.buckets = dict(idx.buckets)
+        return idx
 
     def matches(self, word: str) -> set[str]:
-        """Vocabulary words that sound like `word`. TODO(C)."""
-        raise NotImplementedError("TODO(C): phonetic lookup")
+        """Vocabulary words that sound like `word` (the word itself excluded)."""
+        if not word or not word.isascii():
+            return set()
+        return set(self.buckets.get(hindi_soundex(word), set())) - {word}

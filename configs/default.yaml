@@ -63,8 +63,10 @@ authority:
 
 dense:
   enabled: false
-  model: ArkadeepAcharya/NLLB-E5  # fallback: intfloat/multilingual-e5-base
-  max_paragraph_tokens: 512
+  model: ArkadeepAcharya/NLLB-E5  # Hindi-BEIR (NAACL 2025); check the exact HF id before encoding
+  fallback_model: intfloat/multilingual-e5-base   # used automatically if the model above fails to load
+  e5_prefixes: true               # "query: " / "passage: " prefixes (E5 family)
+  max_paragraph_tokens: 512       # words kept per paragraph before encoding
 
 fusion:
   alpha_default: 0.7              # weight of lexical score when QPP is off

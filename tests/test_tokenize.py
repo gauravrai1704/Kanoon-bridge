@@ -54,3 +54,13 @@ def test_year_is_not_a_section():
 
 def test_indian_kanoon_style_title():
     assert tokenize("Section 302 in The Indian Penal Code")[0] == "sec:ipc:302"
+
+
+def test_read_with_and_ranges():
+    from kanoon_bridge.text.tokenize import tokenize
+
+    assert [t for t in tokenize("convicted u/s 302 r/w 34 IPC") if t.startswith("sec:")] == ["sec:ipc:302", "sec:ipc:34"]
+    assert [t for t in tokenize("sections 302 read with 149 of the IPC") if t.startswith("sec:")] == ["sec:ipc:302", "sec:ipc:149"]
+    assert [t for t in tokenize("sections 323-325 IPC") if t.startswith("sec:")] == ["sec:ipc:323", "sec:ipc:324", "sec:ipc:325"]
+    assert [t for t in tokenize("Section 103(1) BNS") if t.startswith("sec:")] == ["sec:bns:103(1)"]
+    assert "2019" in tokenize("in 2019-20 the accused")

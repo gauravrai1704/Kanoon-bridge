@@ -30,12 +30,20 @@ class PositionalIndex:
 
     # ------------------------------------------------------------------ build
     def add(self, doc_id: str, tokens: list[str]) -> None:
-        """Add one document's tokens with their positions.
+        """Add one document's tokens with their positions (0-based, in token order).
 
-        TODO(A): record positions for every token; set doc_len[doc_id]. Adding the same
-        doc_id twice should raise ValueError (catches double-ingest bugs).
+        Adding the same doc_id twice raises ValueError (catches double-ingest bugs).
         """
-        raise NotImplementedError("TODO(A): add a document to the positional index")
+        if doc_id in self.doc_len:
+            raise ValueError(f"document added twice: {doc_id}")
+        postings = self.postings
+        for pos, term in enumerate(tokens):
+            plist = postings[term].get(doc_id)
+            if plist is None:
+                postings[term][doc_id] = [pos]
+            else:
+                plist.append(pos)
+        self.doc_len[doc_id] = len(tokens)
 
     # ------------------------------------------------------------------ statistics (implement after add)
     @property
@@ -69,9 +77,29 @@ class PositionalIndex:
 
     # ------------------------------------------------------------------ phrase queries
     def phrase(self, terms: list[str]) -> set[str]:
-        """Documents containing `terms` consecutively.
+        """Documents containing `terms` consecutively (positional intersection).
 
-        TODO(A): positional intersection — start from the rarest term's docs, check that
-        term i appears at position p+i for some p. Test with tests/test_positional.py.
+        Candidate docs = intersection of the terms' postings, rarest term first (so the
+        running set is as small as possible). In each candidate, a start position p matches
+        when term i occurs at p + i for every i: the start set is narrowed term by term.
         """
-        raise NotImplementedError("TODO(A): phrase query over positions")
+        if not terms:
+            return set()
+        if any(t not in self.postings for t in terms):
+            return set()
+        by_df = sorted(set(terms), key=self.df)
+        docs = set(self.postings[by_df[0]])
+        for t in by_df[1:]:
+            docs &= self.postings[t].keys()
+            if not docs:
+                return set()
+        out = set()
+        for d in docs:
+            starts = set(self.postings[terms[0]][d])
+            for offset, t in enumerate(terms[1:], start=1):
+                starts &= {p - offset for p in self.postings[t][d]}
+                if not starts:
+                    break
+            if starts:
+                out.add(d)
+        return out

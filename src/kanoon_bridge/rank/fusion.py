@@ -1,12 +1,12 @@
-"""Combine lexical and dense scores.  [owner: C]
+"""Combine lexical and dense scores.  [owner: C — working]
 
     fused(d) = alpha * norm(lexical)(d) + (1 - alpha) * norm(dense)(d)
 
 Score ranges differ (BM25 is unbounded, cosine is in [-1, 1]), so normalise per query
 first. IL-PCSR uses z-score normalisation; min-max is the simple alternative — compare both.
 
-Working: minmax, zscore, fuse. TODO(C): choose alpha per query with rank/qpp.py
-(when configs fusion.qpp_gated is true) and report the effect in the ablation.
+Working: minmax, zscore, fuse. With SearchOptions(qpp=True) search.py sets alpha per query
+from rank/qpp.alpha_from_qpp (the "+qpp" step of the ablation ladder).
 """
 
 from __future__ import annotations

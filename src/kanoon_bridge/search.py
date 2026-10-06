@@ -115,7 +115,12 @@ class SearchEngine:
         if cfg.dense.enabled:
             from kanoon_bridge.rank.dense import DenseRetriever
 
-            engine.dense = DenseRetriever.load(cfg)
+            try:
+                engine.dense = DenseRetriever.load(cfg)
+            except FileNotFoundError as err:
+                import warnings
+
+                warnings.warn(f"dense channel off: {err}")
         return engine
 
     def _scorer(self, which: str, opt: SearchOptions):
@@ -164,6 +169,9 @@ class SearchEngine:
             all_statutes = self.facets.filter(doc_type=DocType.STATUTE.value)
             statute_cands = all_statutes - self.facets.filter(doc_type=DocType.STATUTE.value, code=superseded)
             aq.trace.append(("statute_filter", f"excluded {superseded.upper()} sections (code in force: {aq.code_in_force.value.upper()})"))
+        if query.filters.get("code"):                      # explicit code:bns / code:ipc filter
+            wanted = self.facets.filter(doc_type=DocType.STATUTE.value, code=query.filters["code"])
+            statute_cands = wanted if statute_cands is None else statute_cands & wanted
         statute_scores = self._scorer("statute", opt).score(terms, statute_cands)
         statutes = to_scored(top_k(statute_scores, opt.top_k), DocType.STATUTE,
                              {d: {"lexical": s} for d, s in statute_scores.items()})
@@ -187,6 +195,15 @@ class SearchEngine:
             binding = self.facets.filter(doc_type=DocType.PRECEDENT.value, states=list(opt.restrict_states))
             prec_cands = binding if prec_cands is None else prec_cands & binding
             aq.trace.append(("facet", f"precedents binding in {', '.join(opt.restrict_states)}: {len(binding)}"))
+        if aq.boolean is not None:
+            from kanoon_bridge.query.boolean import evaluate
+            from kanoon_bridge.text.pipeline import analyze_text
+
+            res = self.analyzer.text_res
+            sel = evaluate(aq.boolean, self.precedent_index.whole,
+                           lambda t: analyze_text(t, res, date=query.incident_date))
+            prec_cands = sel if prec_cands is None else prec_cands & sel
+            aq.trace.append(("boolean_match", f"{len(sel)} precedents match the Boolean query"))
         if opt.require_terms:
             sel = self.boolean_candidates(opt.require_terms)
             prec_cands = sel if prec_cands is None else prec_cands & sel

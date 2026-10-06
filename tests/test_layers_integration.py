@@ -3,8 +3,7 @@
 Builds the real pipeline (text pipeline with the committed crosswalk, zone + facet indexes,
 statute bridge, citation graph, PageRank authority, tiers) with SearchEngine.from_components,
 then checks that layer 1 (search), layer 2 (agent), layer 3 (RAG) and the evaluator all accept
-each other's outputs. Until the index code is merged, the temporary reference index
-(src/kanoon_bridge/dev/reference_index.py) fills in for it during THIS module only.
+each other's outputs.
 """
 
 from __future__ import annotations
@@ -64,34 +63,28 @@ for d in DOCS:                                  # citations between precedents f
 
 @pytest.fixture(scope="module")
 def engine():
-    from kanoon_bridge.dev import reference_index
+    from kanoon_bridge.index.facets import FacetIndex
+    from kanoon_bridge.index.tiers import TieredIndex
+    from kanoon_bridge.index.zones import ZoneIndex
+    from kanoon_bridge.rank.authority import Authority
+    from kanoon_bridge.rank.citation_graph import build_graph, jurisdiction_subgraphs
+    from kanoon_bridge.search import SearchEngine
+    from kanoon_bridge.text.pipeline import TextResources, analyze_text
 
-    reference_index.install(quiet=True)
-    try:
-        from kanoon_bridge.index.facets import FacetIndex
-        from kanoon_bridge.index.tiers import TieredIndex
-        from kanoon_bridge.index.zones import ZoneIndex
-        from kanoon_bridge.rank.authority import Authority
-        from kanoon_bridge.rank.citation_graph import build_graph, jurisdiction_subgraphs
-        from kanoon_bridge.search import SearchEngine
-        from kanoon_bridge.text.pipeline import TextResources, analyze_text
+    cfg = load_config()
+    res = TextResources.load(cfg)
 
-        cfg = load_config()
-        res = TextResources.load(cfg)
+    def analyze(text, doc):
+        return analyze_text(text, res, lang=doc.lang, date=doc.decision_date)
 
-        def analyze(text, doc):
-            return analyze_text(text, res, lang=doc.lang, date=doc.decision_date)
-
-        statutes = [d for d in DOCS if d.doc_type == DocType.STATUTE]
-        precs = [d for d in DOCS if d.doc_type == DocType.PRECEDENT]
-        sz, pz, facets = ZoneIndex.build(statutes, analyze), ZoneIndex.build(precs, analyze), FacetIndex.build(DOCS)
-        terms = {d.doc_id: [f"sec:{d.meta['ref']}"] + d.offence_ids for d in statutes}
-        graph = build_graph(precs, {}, [])
-        auth = Authority.compute(graph, facets.metas, cfg, jurisdiction_subgraphs(graph, ["delhi", "maharashtra"]))
-        tiers = TieredIndex.build(pz, auth.global_scores, 0.5, 10)
-        yield SearchEngine.from_components(cfg, sz, pz, facets, terms, auth, tiers)
-    finally:
-        reference_index.uninstall()
+    statutes = [d for d in DOCS if d.doc_type == DocType.STATUTE]
+    precs = [d for d in DOCS if d.doc_type == DocType.PRECEDENT]
+    sz, pz, facets = ZoneIndex.build(statutes, analyze), ZoneIndex.build(precs, analyze), FacetIndex.build(DOCS)
+    terms = {d.doc_id: [f"sec:{d.meta['ref']}"] + d.offence_ids for d in statutes}
+    graph = build_graph(precs, {}, [])
+    auth = Authority.compute(graph, facets.metas, cfg, jurisdiction_subgraphs(graph, ["delhi", "maharashtra"]))
+    tiers = TieredIndex.build(pz, auth.global_scores, 0.5, 10)
+    yield SearchEngine.from_components(cfg, sz, pz, facets, terms, auth, tiers)
 
 
 @pytest.fixture(scope="module")
@@ -169,3 +162,42 @@ def test_evaluator_runs_core_and_agent(engine, docs):
     core = evaluate_set(engine, ts, SearchOptions(), "full", ev)
     agent = evaluate_set(engine, ts, SearchOptions(), "agent", ev, agent=ResearchAgent.load(engine, docs=docs))
     assert core["MAP"] > 0 and agent["MAP"] > 0
+
+
+def test_layer1_boolean_query_syntax(engine):
+    res = engine.search(Query('knife AND market', **Q))
+    assert [h.doc_id for h in res.precedents] == ["P3"]
+    res = engine.search(Query('"knife injuries" OR jewellery', **Q))
+    assert {h.doc_id for h in res.precedents} == {"P1", "P4"}
+    res = engine.search(Query("BNS 103 AND NOT Delhi", **Q))       # section = offence in either code
+    assert {h.doc_id for h in res.precedents} == {"P1", "P3"}
+    assert any(step == "boolean" for step, _ in res.query.trace)
+
+
+def test_layer1_hindi_and_hinglish_reach_the_same_statute(engine):
+    hi = engine.search(Query("चाकू से हत्या", **Q))
+    hinglish = engine.search(Query("chaku se hatya kar di", **Q))
+    assert hi.query.detected_lang == "hi" and hinglish.query.detected_lang == "hinglish"
+    assert hi.statutes[0].doc_id == hinglish.statutes[0].doc_id == "bns:103"
+    assert "murder" in hi.query.expanded_terms
+
+
+def test_layer1_dense_fusion_with_fake_encoder(engine, tmp_path):
+    import copy
+
+    import numpy as np
+
+    from kanoon_bridge.rank.dense import DenseRetriever
+    from kanoon_bridge.search import SearchOptions
+
+    class Fake:
+        def encode(self, texts, **kw):
+            return np.array([[t.count("knife") + 0.1, t.count("theft") + 0.1] for t in texts], dtype=np.float32)
+
+    dense = DenseRetriever(cfg=load_config(overrides={"paths": {"embeddings": str(tmp_path)}}), model=Fake())
+    dense.encode_corpus([d for d in DOCS if d.doc_type == DocType.PRECEDENT])
+    eng = copy.copy(engine)
+    eng.dense = dense
+    res = eng.search(Query("knife", **Q), SearchOptions(dense=True, qpp=True))
+    assert all("dense" in h.components for h in res.precedents)
+    assert any(step == "alpha" for step, _ in res.query.trace)

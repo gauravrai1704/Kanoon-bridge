@@ -140,14 +140,15 @@ make graph     # scripts/03_build_graph.py  → citation graph (train qrels only
 # optional, Kashvi: make dense  (then set dense.enabled: true in configs/default.yaml)
 ```
 
-> **Until Sharanya's index code is merged**, `make index` stops with `NotImplementedError: TODO(A)`.
-> To run everything anyway, use the temporary reference shim. It patches only the index methods that still raise NotImplementedError, and switches itself off method by method as her code lands:
->
-> ```bash
-> export KB_DEV_SHIM=1              # Windows PowerShell: $env:KB_DEV_SHIM="1"
-> ```
->
-> Keep it exported for every later command too: index, graph, eval, the CLI and the app. The pickled index objects need the same methods at load time. Each run prints a `[KB_DEV_SHIM] ...` line, so you always know it is on. Delete `src/kanoon_bridge/dev/` once her tests pass. **The graded index implementation is hers.**
+### Optional: the dense channel (multilingual embeddings, GPU recommended)
+
+```bash
+pip install -e ".[dense]"            # sentence-transformers + torch
+make dense                           # = python scripts/04_encode_dense.py → data/processed/embeddings/
+# then in configs/default.yaml:  dense.enabled: true
+```
+
+It encodes every zone paragraph once and scores a document by its best paragraph (MaxP). The model is `dense.model`, NLLB-E5. Check the exact Hugging Face id before a long run. If the model can't be loaded, the encoder falls back to `dense.fallback_model` (multilingual-e5-base) and says so. On a CPU, expect hours for ~3k long judgments; a free Colab GPU takes well under an hour. If `dense.enabled` is true but the embeddings are missing, search warns and runs without the dense channel.
 
 Sanity check:
 
@@ -155,7 +156,24 @@ Sanity check:
 python app/cli.py "BNS 103" --date 2025-01-03 --debug
 python app/cli.py "punishment under section 302" --date 2023-05-10 --debug      # bare 302 → IPC by date
 python app/cli.py "bail in dowry death" --state delhi --debug                  # jurisdiction-aware authority
+python app/cli.py "mere bhai ko chaku maara" --state delhi --date 2025-03-01 --debug   # Hinglish → lexicon
+python app/cli.py "मेरे भाई को चाकू मारा" --state delhi --date 2025-03-01 --debug      # Devanagari, same result
+python app/cli.py '"dowry death" AND NOT acquittal' --debug                      # Boolean: phrase, AND, NOT
+python app/cli.py 'bail /5 parity state:delhi' --debug                           # proximity + facet filter
+python app/cli.py 'BNS 103 AND knife' --debug                                    # section = offence in either code
 ```
+
+The query syntax is:
+
+| Syntax | Meaning |
+| --- | --- |
+| `AND` `OR` `NOT` | Boolean operators; they must be uppercase. Adjacent words mean AND. |
+| `"..."` | phrase |
+| `t1 /k t2` | the two terms within k words of each other |
+| `( )` | grouping |
+| `state:` `date:` `code:` `court:` | filters |
+
+Matching documents are ranked on the query's positive words. Section mentions such as "BNS 103" or "Section 302 IPC" stay one term and match the same offence under either code.
 
 ## 6. Run the evaluations
 
@@ -264,7 +282,6 @@ The app has a query box, a state picker and an incident date. It shows statutes 
 ## 10. No Hugging Face access yet? Run everything on the synthetic sample
 
 ```bash
-export KB_DEV_SHIM=1              # until the index code lands
 make sample                       # synthetic IL-PCSR-shaped data → corpus → index → graph
 make eval-sample                  # all evals + figures on the sample (extractive RAG)
 ```
@@ -277,8 +294,9 @@ The sample cases are fictional (`tests/data/ilpcsr_sample`), and sample results 
 | --- | --- |
 | `401` / `GatedRepoError` in `make fetch` | Accept the dataset terms on its HF page, then `huggingface-cli login` again with a **read** token. |
 | `pip install -e ".[data]" first` | `pip install -e ".[data]"` (needs `datasets`). |
-| `NotImplementedError: TODO(A) ...` in index/eval | Index code not merged yet. `export KB_DEV_SHIM=1` (see step 5). |
-| `NotImplementedError: TODO(C) ...` | Kashvi's step. The analyzer skips it and notes this in the `--debug` trace. Dense stays off until `dense.enabled: true`. |
+| `dense channel off: ... not found` warning | `dense.enabled` is true but `make dense` has not been run (step 5). |
+| `could not parse Boolean query ...` warning | Unbalanced parentheses or quotes; the query was ranked as plain text instead. |
+| Old index files fail to load after an update | Rebuild: `make index graph` (indexes are pickles of the current classes). |
 | `FileNotFoundError: ... index/...pkl` | Run `make data index graph` (in that order). |
 | `PDF not found` in `make compare` | Save the PDF at `data/raw/crosswalk/comparison_summary_BNS_to_IPC.pdf` or pass `--pdf`. |
 | `make compare` reads 0 PDF rows | Run with `--debug`. Check the header keywords in `extract_rows_from_pdf`. A scanned (image) PDF needs OCR first. |

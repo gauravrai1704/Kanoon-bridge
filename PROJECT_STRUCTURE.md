@@ -105,19 +105,19 @@ kanoon-bridge/
 | --- | --- | --- | --- | --- |
 | `pipeline.py` | all | ✅ | **The one text pipeline** for documents and queries (rule 2). Skips unfinished steps with a warning | `TextOptions`, `TextResources.load()`, `analyze_text(text, resources, lang, date, options) -> list[str]` |
 | `tokenize.py` | A | ✅ | Section-aware tokeniser: "u/s 498A IPC" → `sec:ipc:498a`; bare numbers → `sec:?:302` | `tokenize()`, `extract_sections() -> list[SectionMention]`, `is_section_token()`, `SECTION_PREFIX` |
-| `stem.py` | C | 🔧 | Porter (✅) and Hindi light stemmer (⬜); never stems `sec:`/`off:` tokens | `stem_tokens(tokens, lang, enabled)`, `stem_english()`, `stem_hindi()` |
+| `stem.py` | C | ✅ | Porter + Hindi light stemmer (Ramanathan & Rao suffix list, min stem 2); never stems `sec:`/`off:` tokens | `stem_tokens(tokens, lang, enabled)`, `stem_english()`, `stem_hindi()` |
 | `version_norm.py` | Gaurav | ✅ | **Core novelty.** Section tokens → canonical offence IDs, both codes | `VersionNormalizer.load()`, `to_offences(ref) -> [(off_id, weight)]`, `offences_for()`, `sections_of()`, `equivalents(ref)`, `normalize_tokens(tokens)`, `label()` |
 | `collision.py` | Gaurav | ✅ | Resolve bare/colliding numbers from date + context. **Hardest part** | `Reading`, `CollisionResolver.load()`, `code_for_date()`, `resolve(section, context, date)`, `resolve_tokens(tokens, date)`, `last_readings` (trace) |
-| `transliterate.py` | C | 🔧 | Language detection, Devanagari↔Roman, Hinglish spelling, legal lexicon | ✅`detect_lang()`, ⬜`devanagari_to_roman()`, ⬜`normalize_roman()`, ✅`LegalLexicon.load()`, ⬜`.lookup(word)` |
-| `phonetic.py` | C | 🔧 | Soundex for Roman Hindi (`hatya = hathya = hattya`) | ✅`soundex()` (baseline), ⬜`hindi_soundex()`, ⬜`PhoneticIndex.build()/matches()` |
+| `transliterate.py` | C | ✅ | Language detection, Devanagari→Roman (own character table, schwa deletion), Hinglish spelling rules, legal lexicon (exact → normalised → phonetic) | `detect_lang()`, `devanagari_to_roman()`, `normalize_roman()` + `NORMALISATION_RULES`, `LegalLexicon.load()`, `.lookup(word, use_phonetic)`, `FUNCTION_WORDS` |
+| `phonetic.py` | C | ✅ | Soundex for Roman Hindi (`hatya = hathya = hattya`) | `soundex()` (baseline), `hindi_soundex()`, `PhoneticIndex.build()/matches()` |
 
 ### `index/` — data structures (A; tiers D)
 
 | File | Owner | Status | Purpose | Must contain |
 | --- | --- | --- | --- | --- |
-| `positional.py` | A | 🔧 | Inverted index with positions | `PositionalIndex`: ⬜`add(doc_id, tokens)`, ⬜`phrase(terms)`; ✅ stats `df/idf/tf/postings_for/docs_with/n_docs/avg_doc_len/vocabulary` |
-| `zones.py` | A | 🔧 | One positional index per zone + whole-doc index; feeds BM25F | `ZoneIndex`: ⬜`build(docs, analyze)`; ✅`tf(term, doc, zone)`, `zone_len()`, `avg_zone_len()`, `df()`, `.whole` |
-| `facets.py` | A | ⬜ | Parametric index: type, court, states, date, code, sections cited | `DocMeta`, `FacetIndex.build(docs)`, `.filter(doc_type, court, states, date_from, date_to, code, cites_any) -> set`, `.meta(doc_id)`, `.by_section` |
+| `positional.py` | A | ✅ | Inverted index with positions | `PositionalIndex`: `add(doc_id, tokens)`, `phrase(terms)` (rarest-first positional intersection); stats `df/idf/tf/postings_for/docs_with/n_docs/avg_doc_len/vocabulary` |
+| `zones.py` | A | ✅ | One positional index per zone + whole-doc index; feeds BM25F | `ZoneIndex`: `build(docs, analyze)`, `tf(term, doc, zone)`, `zone_len()`, `avg_zone_len()`, `df()`, `.whole` |
+| `facets.py` | A | ✅ | Parametric index: type, court, states, date, code, sections cited | `DocMeta`, `FacetIndex.build(docs)`, `.filter(doc_type, court, states, date_from, date_to, code, cites_any) -> set` (smallest set first), `.date_range()` (bisect), `.meta(doc_id)`, `.by_section` |
 | `tiers.py` | Gaurav | ✅ | Tiered index + champion lists (efficiency experiment) | `TieredIndex.build(zidx, authority, quantile, champion_size)`, `.candidates(terms, min_results, use_champions, index)` |
 | `store.py` | A | ✅ | Save/load artefacts under `data/processed/index/` | `save(obj, name, fmt)`, `load(name, fmt)`, `exists()`, `index_dir()` |
 | `docstore.py` | all | ✅ | doc_id → `Document` text (agent, RAG, judging tool, app) | `DocStore.load()`, mapping access, `.snippet()` |
@@ -126,9 +126,9 @@ kanoon-bridge/
 
 | File | Owner | Status | Purpose | Must contain |
 | --- | --- | --- | --- | --- |
-| `parser.py` | A | 🔧 | Query syntax: phrases, AND/OR/NOT, `/k`, filters `state: date: code: court:` | ✅`extract_filters()`, ✅`has_operators()`, `parse() -> ParsedQuery`, `QueryNode`/`Op`; ⬜`_parse_tree()` |
-| `boolean.py` | A | ⬜ | Boolean retrieval; intersection in increasing-df order | `intersect(p1, p2)` (two-pointer), `intersect_many(lists)`, `evaluate(node, index, analyze, universe)` |
-| `proximity.py` | A | ⬜ | `t1 /k t2` with positions | `within(index, t1, t2, k) -> set` |
+| `parser.py` | A | ✅ | Query syntax: phrases, AND/OR/NOT, `/k`, filters `state: date: code: court:`; section mentions stay one word | `extract_filters()`, `has_operators()`, `parse() -> ParsedQuery(.tree, .text_for_ranking)`, `QueryNode`/`Op`, recursive-descent `_parse_tree()`, `ranking_text()`, `show()` |
+| `boolean.py` | A | ✅ | Boolean retrieval; intersection in increasing-df order; section terms match their offence in either code | `intersect(p1, p2)` (two-pointer), `intersect_many(lists)`, `evaluate(node, index, analyze, universe)` |
+| `proximity.py` | A | ✅ | `t1 /k t2` with positions (two-pointer) | `within(index, t1, t2, k) -> set`, `within_positions()`, `positions_within()` |
 | `analyzer.py` | C (+B) | ✅ wiring | Raw query → `AnalyzedQuery`, recording every rewrite in `.trace` | `QueryAnalyzer.load(cfg, vocabulary)`, `.analyze(query)`; steps: filters → language → translit → lexicon/phonetic → pipeline → code in force → cross-code |
 
 ### `rank/` — scoring (D; dense + fusion C)
@@ -137,7 +137,7 @@ kanoon-bridge/
 | --- | --- | --- | --- | --- |
 | `vsm.py` | Gaurav | ✅ | tf-idf, SMART lnc.ltc, cosine — classic baseline | `TfidfScorer(index).prepare()`, `.score(terms, candidates) -> {doc: score}` |
 | `bm25f.py` | Gaurav | ✅ | **Main lexical scorer**, zone-weighted BM25 | `BM25F.from_config(zidx, cfg, use_zones)`, `.idf(term)`, `.score(terms, candidates)` |
-| `dense.py` | C | ⬜ | NLLB-E5 paragraph embeddings, MaxP doc score | `DenseRetriever.load(cfg)`, `.encode_corpus(docs, name)`, `.score(text, candidates)` |
+| `dense.py` | C | ✅ | NLLB-E5 paragraph embeddings (fallback multilingual-e5-base), E5 prefixes, MaxP doc score | `DenseRetriever.load(cfg, name, model)`, `.encode_corpus(docs, name)`, `.score(text, candidates)` |
 | `statute_bridge.py` | Gaurav | ✅ | Top statutes → expand + boost precedents (replaces IL-PCSR's LLM step) | `BridgeOutput(expansion, boosts, statutes_used)`, `StatuteBridge(facets, statute_terms, top_n, boost, normalizer).run(statute_hits)` — reaches IPC-citing precedents from BNS statutes via offence ids |
 | `citation_graph.py` | Gaurav | ✅ | Citation graph from **train** qrels + precedent citations | `build_graph()` (leakage guard), `jurisdiction_subgraphs()`, `stats()`, `save_graph()/load_graph()` |
 | `authority.py` | Gaurav | ✅ | g(d) and g(d \| state) | `binding_status(meta, state)`, `pagerank()` (own power iteration), `Authority.compute()`, `.score(doc, state, jurisdiction)`, `.top()`, `to_dict/from_dict` |
@@ -184,12 +184,6 @@ All default to off, so plain searches are unchanged.
 | `agent_eval.py` | ✅ | Layer 2 vs core; layer 3 support rate, version flags, abstention | `compare_agent(set)`, `evaluate_rag(path)` |
 | `plots.py` | ✅ | Report/video charts from results/tables | `bar_chart()`, `make_all()` |
 
-### `dev/` — TEMPORARY
-
-| File | Status | Purpose |
-| --- | --- | --- |
-| `reference_index.py` | temporary | Only with `KB_DEV_SHIM=1`: stands in for index methods that still raise NotImplementedError so the team can run end to end. Never overrides finished code. Delete when Sharanya's index passes its tests. |
-
 ---
 
 ## `scripts/` — run in order
@@ -199,10 +193,10 @@ All default to off, so plain searches are unchanged.
 | `00_fetch_data.py` | Gaurav | ✅ | Clones the BNS source; exports IL-PCSR from Hugging Face to parquet (needs `huggingface-cli login`) |
 | `00_check_access.py` | all | ✅ | PASS/MISSING for config, data, packages; TODOs left per owner |
 | `01_build_corpus.py` | Gaurav | ✅ | IL-PCSR + BNS → zones + metadata → `docs.jsonl`; prints missing court/date counts |
-| `02_build_index.py` | A | 🔧 | Same text pipeline as queries → zone indexes, facets, statute terms |
+| `02_build_index.py` | A | ✅ | Same text pipeline as queries → zone indexes, facets, statute terms |
 | `03_build_graph.py` | Gaurav | ✅ | Train qrels → graph → authority + tiers |
-| `04_encode_dense.py` | C | 🔧 | Paragraph embeddings once (GPU) |
-| `05_run_all_evals.py` | D | 🔧 | All test sets (baseline vs full), ablations, efficiency, figures |
+| `04_encode_dense.py` | C | ✅ | Paragraph embeddings once (GPU) |
+| `05_run_all_evals.py` | D | ✅ | All test sets (baseline vs full), ablations, efficiency, figures |
 | `judge_queries.py` | all | ✅ | Terminal judging tool, resumable, per-judge TSV |
 
 ## `app/` — demo (frontend is not graded)
@@ -221,7 +215,7 @@ All default to off, so plain searches are unchanged.
 | `notebooks/03_results.ipynb` | Results walkthrough |
 | `tests/data/make_ilpcsr_sample.py` | Writes the synthetic IL-PCSR-schema sample used by `make sample` and the ingest tests (fictional cases) |
 | `tests/conftest.py` | `@todo` marks a test as a spec: skipped while the code raises `NotImplementedError`, runs for real once implemented; `toy_docs` fixture |
-| `tests/test_*.py` | One file per area: tokenize, version_norm, collision, phonetic, positional, boolean, bm25f, authority, metrics, agent, rag, eval, crosswalk_pdf, schema_and_pipeline; `test_layers_integration.py` runs layers 1-3 + the evaluator together on an in-memory corpus |
+| `tests/test_*.py` | One file per area: tokenize, version_norm, collision, phonetic, stem, dense, positional, boolean, bm25f, authority, metrics, agent, rag, eval, crosswalk_pdf, schema_and_pipeline; `test_layers_integration.py` runs layers 1-3 + the evaluator together on an in-memory corpus |
 | `results/` | `runs/` (TREC files), `tables/` (CSV), `figures/` (committed, used in report) |
 | `docs/architecture.svg/.png` | The architecture diagram; regenerate with `python docs/make_architecture.py` |
 | `docs/ai_use.md` | Running AI-use log → report declaration |

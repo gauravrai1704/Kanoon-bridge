@@ -176,6 +176,7 @@ class AnalyzedQuery:
     sections: list[str] = field(default_factory=list)        # section refs found in the query
     offence_ids: list[str] = field(default_factory=list)     # canonical offences after version normalisation
     code_in_force: Code = Code.UNKNOWN         # from incident_date
+    boolean: Any = None                        # query.parser.QueryNode when the query uses AND/OR/NOT/""/ /k
     trace: list[tuple[str, str]] = field(default_factory=list)  # (step name, output) for --debug
 
     def weighted_terms(self) -> dict[str, float]:

@@ -33,11 +33,27 @@ class ZoneIndex:
     def build(cls, docs: Iterable[Document], analyze: Analyzer) -> "ZoneIndex":
         """Index every paragraph under its zone, and the full text in `whole`.
 
-        TODO(A): for each doc, concatenate tokens of paragraphs in the same zone (keep
-        positions continuous within a zone), add to zones[zone]; add all tokens to `whole`.
-        Use tqdm for progress; the precedent corpus has ~3k long documents.
+        Tokens of paragraphs in the same zone are concatenated in document order, so positions
+        are continuous within a zone; `whole` gets every token in document order. Paragraphs
+        with an unknown zone go to "other".
         """
-        raise NotImplementedError("TODO(A): build zone index")
+        from tqdm import tqdm
+
+        zidx = cls()
+        docs = list(docs)
+        for doc in tqdm(docs, desc="zone index", unit="doc", disable=len(docs) < 500):
+            per_zone: dict[str, list[str]] = {}
+            all_tokens: list[str] = []
+            for para in doc.paragraphs:
+                tokens = analyze(para.text, doc)
+                zone = para.zone if para.zone in zidx.zones else "other"
+                per_zone.setdefault(zone, []).extend(tokens)
+                all_tokens.extend(tokens)
+            for zone, tokens in per_zone.items():
+                zidx.zones[zone].add(doc.doc_id, tokens)
+            zidx.whole.add(doc.doc_id, all_tokens)
+            zidx.doc_ids.append(doc.doc_id)
+        return zidx
 
     # ------------------------------------------------------------------ accessors (implement with build)
     def tf(self, term: str, doc_id: str, zone: str) -> int:
