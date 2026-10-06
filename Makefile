@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -46,6 +46,11 @@ eval-sample:
 plots:
 	$(PY) scripts/05_run_all_evals.py --only-plots
 
+# the main web app: http://localhost:8000
+web:
+	$(PY) app/web_server.py
+
+# the older Streamlit demo
 app:
 	streamlit run app/streamlit_app.py
 

@@ -184,7 +184,11 @@ class QueryAnalyzer:
         aq.trace.append(("expanded", str(aq.expanded_terms)))
 
         # 5. shared pipeline (tokenise, stop words, stem, collision, version norm)
-        aq.tokens = analyze_text(normalised, self.text_res, lang="en", date=query.incident_date)
+        index_text = normalised
+        if aq.detected_lang != "en":
+            # Hindi function words must not reach the English index ("mere" = "my", not "mere words")
+            index_text = re.sub(r"[A-Za-z]+", lambda m: "" if m.group(0).lower() in FUNCTION_WORDS else m.group(0), normalised)
+        aq.tokens = analyze_text(index_text, self.text_res, lang="en", date=query.incident_date)
 
         # 5b. spelling correction (IIR ch. 3): unseen words get their closest frequent index term
         # (skipped for long queries such as whole judgments in E1: nobody types those, and every

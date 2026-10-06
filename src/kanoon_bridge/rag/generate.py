@@ -149,10 +149,22 @@ def extractive(question: str, chunks: list[Chunk], max_sentences: int = 4) -> An
         return Answer(text="The retrieved sources do not answer this question.", generator="extractive")
     out = []
     for _, _, c, best in sorted(cands, key=lambda x: x[2].n):
-        s = best.strip().rstrip(".")
+        s = _shorten(best.strip()).rstrip(".")
         label = c.title or c.doc_id
         out.append(f"{label}: {s}. [{c.n}]" if c.zone == "statute" else f"In {label}, the court said: {s}. [{c.n}]")
     return parse_answer(" ".join(out), "extractive")
+
+
+def _shorten(sentence: str, limit: int = 240) -> str:
+    """Long statutory sentences are cut at the last clause break before `limit` characters."""
+    if len(sentence) <= limit:
+        return sentence
+    cut = sentence[:limit]
+    for mark in ("; ", ", or ", ", ", " or "):
+        i = cut.rfind(mark)
+        if i > limit * 0.5:
+            return cut[:i].rstrip(" ,;") + " …"
+    return cut.rsplit(" ", 1)[0] + " …"
 
 
 def generate(question: str, chunks: list[Chunk], incident_date: str = "unknown", state: str = "unknown",

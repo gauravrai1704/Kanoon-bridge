@@ -291,13 +291,24 @@ The RAG evaluation uses `data/queries/rag_questions.jsonl`: 16 answerable questi
 
 With a key, `make eval` also asks Claude **closed-book** (no sources) and checks those sentences against the same retrieved chunks. That gives the "supported-sentence rate, RAG vs no retrieval" comparison. With the extractive generator, the support rate is about 1 by construction, so report the Claude numbers. The API key stays in `.env`, which is git-ignored. Declare Claude use in `docs/ai_use.md`.
 
-## 9. Demo app
+## 9. The web app
 
 ```bash
-make app                          # streamlit run app/streamlit_app.py
+make web                          # = python app/web_server.py, then open http://localhost:8000
+python app/web_server.py --port 9000 --host 0.0.0.0     # another port, or reachable from your network
 ```
 
-The app has a query box, a state picker and an incident date. It shows "Did you mean" when it corrected a spelling. Statutes come with version notes; precedents come as cards with a highlighted snippet, a "why" line and a score breakdown. The sidebar has facet counts. Tick **relevant** on some cards and press **Refine** to apply relevance feedback. A **Similar cases** panel is at the bottom. A **Research agent (layer 2)** checkbox shows what the agent did and which sub-query found each precedent. A **Grounded answer (layer 3)** checkbox adds the RAG answer with its flags; it works on either result.
+It needs no extra packages (Python's standard library serves it). The fonts are bundled, so it also works offline.
+
+- **Search on the bridge.** Type a question in English, Hindi or Hinglish, or a section (`BNS 103`), Boolean syntax, wildcards, or filters (`after:2015`). Pick a state and an incident date. Two switches turn on the advocate's written answer (layer 3) and the research agent (layer 2).
+- **Your advocate.** Adv. Meera or Adv. Kabir (choose in the sidebar) delivers the answer in a speech bubble. Each sentence links to its source, and the checks appear as red-tape notes (weak support, wrong code for the date, an ambiguous bare number). If the system declines to answer, the advocate says why and gives a short brief built from the results.
+- **What was understood.** Chips show the language, the Hinglish reading, the code in force, crossings like `BNS 103 ⌒ IPC 302`, the Boolean query, and "Did you mean" for corrected spellings.
+- **Judgments.** Each one has a highlighted extract, a binding or persuasive badge for your state, "why this result" reasons, similar cases, score details, and "Mark relevant" (then **Refine with feedback**). Click a title to read the judgment by zone.
+- **The law.** Statute cards are marked "in force on your date", with their IPC↔BNS version notes.
+- **How this was found** (gold button). A step-by-step replay of the run: understanding the question, finding the law, finding cases, the agent's sub-searches and fusion, and writing and checking the answer. It shows what each step actually did and its time. **Show raw response** shows the JSON.
+- **History.** The sidebar keeps your questions in this browser. Click one to run it again. Every search also has a shareable URL (`#q=...&state=...&date=...`).
+
+The older Streamlit page is still there (`make app`).
 
 ## 10. No Hugging Face access yet? Run everything on the synthetic sample
 

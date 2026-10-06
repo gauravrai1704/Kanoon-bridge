@@ -275,3 +275,26 @@ def test_ltr_rerank_and_duplicate_collapse(engine):
     res = eng.search(Query("knife murder", **Q), SearchOptions(collapse_duplicates=True))
     ids = [h.doc_id for h in res.precedents]
     assert not ({"P1", "P2"} <= set(ids))
+
+
+def test_web_backend_payload(engine, docs):
+    import importlib.util
+    import json
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location("web_server", Path(__file__).parents[1] / "app" / "web_server.py")
+    web = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(web)
+    b = web.Backend(engine=engine, docs=docs)
+    out = b.search({"q": "BNS 103 knfe", "state": "delhi", "date": "2025-01-03", "agent": True, "answer": True,
+                    "generator": "extractive"})
+    json.dumps(out)                                              # everything is JSON-serialisable
+    u = out["understanding"]
+    assert u["crossings"][0] == {"from": "BNS 103", "to": "IPC 302", "offence": u["crossings"][0]["offence"]}
+    assert u["did_you_mean"] == "BNS 103 knife"
+    assert out["statutes"][0]["ref"] == "BNS 103" and out["statutes"][0]["in_force"]
+    assert out["precedents"] and "<mark>" in "".join(p["snippet"] for p in out["precedents"])
+    assert out["agent"]["searches"] >= 5 and out["answer"] is not None
+    groups = [s["group"] for s in out["pipeline"]]
+    assert groups[0] == "Understand" and "Research agent" in groups and groups[-1] == "Answer"
+    assert b.search({"q": ""})["error"]

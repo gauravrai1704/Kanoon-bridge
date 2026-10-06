@@ -37,7 +37,7 @@ kanoon-bridge/
 │   ├── rag/          (layer 3)   answer  chunker  generate  citation_check  version_check  abstain
 │   └── eval/                     metrics  qrels  run_eval  ablation  efficiency  agreement  agent_eval  typos  plots
 ├── scripts/                      00_check_access … 05_run_all_evals, 06_train_ltr, judge_queries
-├── app/                          cli.py  streamlit_app.py
+├── app/                          web_server.py  web/ (index.html styles.css app.js art.js fonts/)  cli.py  streamlit_app.py
 ├── notebooks/                    01_explore_ilpcsr  02_postings_demo  03_results
 ├── tests/                        conftest + one test file per area
 ├── results/                      runs/ tables/ (gitignored)  figures/ (committed)
@@ -212,6 +212,8 @@ All default to off, so plain searches are unchanged.
 | File | Status | Does |
 | --- | --- | --- |
 | `cli.py` | ✅ | `python app/cli.py "<query>" --state delhi --date 2025-03-01 [--agent [--fusion rrf|combsum] [--planner rules|llm|hybrid]] [--answer [--generator ...]] [--baseline] [--debug]` — `--debug` prints the full trace and score breakdowns for the video |
+| `web_server.py` | ✅ | **Main UI.** Standard-library JSON API (`/api/search`, `/api/similar`, `/api/doc`, `/api/health`) + static files; builds the step-by-step pipeline view from the traces | `Backend(engine, docs).search(body)`, `Handler`, `main()` |
+| `web/` | ✅ | Single-page app: bridge hero, advocate caricatures (`art.js`), history sidebar, results, "How this was found" drawer, reader; bundled OFL fonts | `index.html`, `styles.css`, `app.js`, `art.js`, `fonts/` |
 | `streamlit_app.py` | ✅ thin | Query box, state, date, results, trace; RAG panel to add after the gate |
 
 ## `notebooks/`, `tests/`, `results/`, `docs/`

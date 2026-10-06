@@ -48,8 +48,10 @@ def answer(result, docs, cfg: Config | None = None, idf=None, resolver=None, nor
 
     chunks = chunker.make_chunks(result, docs, max_chunks=rcfg.max_chunks, max_chars=rcfg.max_chunk_chars,
                                  query_terms=qterms)
-    if check_abstain and not closed_book and hasattr(analyzed, "tokens"):
-        content = [t for t in analyzed.tokens if not t.startswith(("sec:", "off:")) and not t.isdigit()]
+    # (a question that names a section or offence is in scope by construction: skip this test)
+    if check_abstain and not closed_book and hasattr(analyzed, "tokens") and not getattr(analyzed, "offence_ids", None):
+        fixes = {c.source: c.term for c in getattr(analyzed, "corrections", []) if c.applied}
+        content = [fixes.get(t, t) for t in analyzed.tokens if not t.startswith(("sec:", "off:")) and not t.isdigit()]
         if analyzed.detected_lang != "en":                 # Hindi/Hinglish: judge the English expansions
             content = [t for t in analyzed.expanded_terms if not t.startswith(("sec:", "off:"))] or content
         look = idf_lookup(abstain_idf or idf)
