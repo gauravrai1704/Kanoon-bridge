@@ -1,12 +1,20 @@
 PY ?= python
 
-.PHONY: fetch check data index graph dense eval app test all sample crosswalk
+.PHONY: fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
 
 crosswalk:
 	$(PY) -m kanoon_bridge.ingest.parse_crosswalk
+
+# cross-check the crosswalk against the government PDF (download it by hand first, see SETUP_AND_RUN.md)
+compare:
+	$(PY) -m kanoon_bridge.ingest.parse_crosswalk --compare
+
+# print IL-PCSR schema and one example row (after make fetch)
+inspect:
+	$(PY) -m kanoon_bridge.ingest.load_ilpcsr
 
 check:
 	$(PY) scripts/00_check_access.py
@@ -25,6 +33,15 @@ dense:
 
 eval:
 	$(PY) scripts/05_run_all_evals.py
+
+eval-quick:
+	$(PY) scripts/05_run_all_evals.py --limit 50
+
+eval-sample:
+	$(PY) scripts/05_run_all_evals.py --sample --rag-generator extractive
+
+plots:
+	$(PY) scripts/05_run_all_evals.py --only-plots
 
 app:
 	streamlit run app/streamlit_app.py

@@ -27,12 +27,16 @@ Three layers on one core: **(1) core retriever** (required) → **(2) research a
 | Positional / zone / facet indexes, Boolean + proximity query parser | Sharanya | stub |
 | Transliteration, phonetic matching, Hindi stemming, dense channel | Kashvi | stub |
 | Research agent, layer 2 (RRF fusion + loop working) | Shaurya | wiring works, rules stub |
-| Evaluation runs, ablations, plots | Gaurav | metrics working, runs stub |
-| RAG answer, layer 3 (orchestration working) | first free member | stub |
+| Evaluation: test sets E1-E7, ablation ladder, language ablation, efficiency, plots | Gaurav | **working** |
+| Agent vs core and RAG evaluation | Gaurav | **working** |
+| RAG answer, layer 3: abstain, chunks, Claude/extractive generation, citation + version checks | Gaurav | **working** |
 
 Update this table as components land. Stubs raise `NotImplementedError` with a TODO saying what to build.
 
 ---
+
+> **Step-by-step guide to download every dataset and run everything (including the PDF
+> cross-check and the RAG layer): [SETUP_AND_RUN.md](SETUP_AND_RUN.md).**
 
 ## Setup
 
@@ -88,8 +92,13 @@ make eval      # scripts/05_run_all_evals.py → results/tables, results/figures
 make app       # streamlit demo
 python app/cli.py "mere bhai ko chaku maara" --state delhi --date 2025-03-01 --debug
 python app/cli.py "..." --agent            # layer 2: several sub-queries, fused
-python app/cli.py "..." --answer           # layer 3: cited answer with checks
+python app/cli.py "..." --answer           # layer 3: cited answer with checks (Claude if a key is in .env)
+make compare   # crosswalk vs the government PDF (download it by hand first)
+make eval-quick / make eval-sample / make plots
 ```
+
+Until the index code (Sharanya) is merged, `export KB_DEV_SHIM=1` runs the pipeline with a clearly
+labelled temporary stand-in (`src/kanoon_bridge/dev/reference_index.py`); see SETUP_AND_RUN.md.
 
 ## Repo layout
 

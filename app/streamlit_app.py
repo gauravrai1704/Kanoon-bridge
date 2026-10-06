@@ -3,7 +3,7 @@
     make app        (or: streamlit run app/streamlit_app.py)
 
 Query box, state picker, incident date, statutes and precedents with score breakdowns,
-the query-analysis trace, and (later) the RAG answer panel.
+the query-analysis trace, and the layer-3 grounded answer panel (checkbox).
 """
 
 from __future__ import annotations
@@ -28,11 +28,20 @@ def engine() -> SearchEngine:
     return SearchEngine.load()
 
 
+@st.cache_resource
+def rag():
+    from kanoon_bridge.rag.answer import RagPipeline
+
+    return RagPipeline.load(engine())
+
+
 col1, col2, col3 = st.columns([4, 1, 1])
 text = col1.text_input("Describe the incident or search", "mere bhai ko chaku maara")
 state = col2.selectbox("Your state", STATES)
 date = col3.date_input("Incident date", dt.date.today())
-baseline = st.checkbox("Plain BM25 baseline")
+c1, c2 = st.columns(2)
+baseline = c1.checkbox("Plain BM25 baseline")
+want_answer = c2.checkbox("Grounded answer (layer 3)")
 
 if text:
     opt = SearchOptions.baseline() if baseline else SearchOptions()
@@ -49,4 +58,15 @@ if text:
     right.dataframe([{"rank": h.rank, "doc": h.doc_id, "score": round(h.score, 3),
                       **{k: round(v, 3) for k, v in h.components.items()}} for h in res.precedents])
 
-    # TODO(RAG, after the hour-26 gate): grounded answer panel with flags from rag/*_check.py
+    if want_answer:
+        st.subheader("Answer")
+        try:
+            ans = rag().answer(res)
+            st.write(ans.text)
+            for c in ans.chunks:
+                st.caption(c.header())
+            for f in ans.flags:
+                st.warning(f)
+            st.caption(f"generator: {ans.generator} - not legal advice")
+        except (RuntimeError, FileNotFoundError) as err:
+            st.error(str(err))

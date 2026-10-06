@@ -49,6 +49,8 @@ class SearchOptions:
     jurisdiction: bool = True      # g(d | state) instead of g(d)
     code_filter: bool = True       # statutes restricted to the code in force on the incident date
     top_k: int = 10
+    max_query_terms: int | None = None   # cap long queries (E1 uses 100); None = config bm25.max_query_terms
+    candidate_mode: str = "all"    # "all" | "tiers" | "champions" (efficiency experiment)
 
     @classmethod
     def from_dict(cls, d: dict) -> "SearchOptions":
@@ -71,6 +73,7 @@ class SearchEngine:
     authority: object | None = None        # rank.authority.Authority
     bridge: object | None = None           # rank.statute_bridge.StatuteBridge
     dense: object | None = None            # rank.dense.DenseRetriever
+    tiers: object | None = None            # index.tiers.TieredIndex
     _scorers: dict = field(default_factory=dict)
 
     # ------------------------------------------------------------------ loading
@@ -96,6 +99,8 @@ class SearchEngine:
             engine.bridge = StatuteBridge(facets=facets, statute_terms=store.load("statute_terms", "json"),
                                           top_n=cfg.statute_bridge.top_statutes, boost=cfg.statute_bridge.boost,
                                           normalizer=analyzer.text_res.normalizer)
+        if store.exists("tiers"):
+            engine.tiers = store.load("tiers")
         if cfg.dense.enabled:
             from kanoon_bridge.rank.dense import DenseRetriever
 
@@ -104,6 +109,12 @@ class SearchEngine:
 
     def _scorer(self, which: str, opt: SearchOptions):
         key = (which, opt.lexical, opt.zones)
+        scorer = self._make_scorer(which, opt, key)
+        if hasattr(scorer, "max_query_terms"):
+            scorer.max_query_terms = opt.max_query_terms or self.cfg.bm25.get("max_query_terms", 300)
+        return scorer
+
+    def _make_scorer(self, which: str, opt: SearchOptions, key):
         if key not in self._scorers:
             zidx = self.statute_index if which == "statute" else self.precedent_index
             if opt.lexical == "tfidf":
@@ -155,6 +166,11 @@ class SearchEngine:
         # --- precedents: lexical, dense, fusion -----------------------------------
         t0 = clock()
         prec_cands = self._precedent_filter(query)
+        if opt.candidate_mode != "all" and self.tiers is not None:
+            sel = self.tiers.candidates(list(terms), self.cfg.tiers.min_results_before_tier2,
+                                        use_champions=opt.candidate_mode == "champions",
+                                        index=self.precedent_index.whole)
+            prec_cands = sel if prec_cands is None else prec_cands & sel
         scorer = self._scorer("precedent", opt)
         lexical = scorer.score(terms, prec_cands)
         components = {d: {"lexical": s} for d, s in lexical.items()}

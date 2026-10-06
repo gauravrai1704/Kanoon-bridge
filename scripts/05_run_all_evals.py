@@ -1,47 +1,98 @@
-"""Run every test set, the ablations and the efficiency check; write tables and figures.  [owner: D]
+"""Run every test set, the ablations, efficiency, agent and RAG evals; write tables and figures.
+[owner: Gaurav — working]
 
-    python scripts/05_run_all_evals.py              # everything in configs/eval.yaml
-    python scripts/05_run_all_evals.py e2_collision # one set
+    python scripts/05_run_all_evals.py                       # everything in configs/eval.yaml
+    python scripts/05_run_all_evals.py --sets e2_collision e7_temporal
+    python scripts/05_run_all_evals.py --limit 50            # quick pass: first 50 queries per set
+    python scripts/05_run_all_evals.py --skip-ablation --skip-efficiency --skip-agent --skip-rag
+    python scripts/05_run_all_evals.py --only-plots          # redraw figures from existing tables
+    python scripts/05_run_all_evals.py --sample              # pipeline check on the synthetic sample
+
+E1/E1s queries are whole judgments, capped to their 100 highest-idf terms (eval.yaml
+e1_max_query_terms); expect a few minutes per system on the full 627-query test split.
+Hand-built sets with no queries file / no qrels yet are skipped with a note.
 """
 
 from __future__ import annotations
 
-import csv
-import sys
+import argparse
+import time
 
 from kanoon_bridge.config import load_config, project_path
-from kanoon_bridge.eval import ablation, efficiency, plots
-from kanoon_bridge.eval.metrics import evaluate
-from kanoon_bridge.eval.run_eval import load_test_set, ranked_ids, run_queries, write_run
+from kanoon_bridge.eval import ablation, agent_eval, efficiency, plots
+from kanoon_bridge.eval.run_eval import evaluate_set, load_test_set
 from kanoon_bridge.search import SearchEngine, SearchOptions
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--sets", nargs="*", help="test sets (default: all in configs/eval.yaml)")
+    ap.add_argument("--limit", type=int, help="first N queries per set")
+    ap.add_argument("--skip-ablation", action="store_true")
+    ap.add_argument("--skip-efficiency", action="store_true")
+    ap.add_argument("--skip-agent", action="store_true")
+    ap.add_argument("--skip-rag", action="store_true")
+    ap.add_argument("--rag-generator", help="auto | claude | extractive")
+    ap.add_argument("--only-plots", action="store_true")
+    ap.add_argument("--sample", action="store_true", help="evaluate on the synthetic sample (after make sample)")
+    args = ap.parse_args()
+    if args.sample:
+        import os
+
+        os.environ["KB_ILPCSR_DIR"] = "tests/data/ilpcsr_sample"
+
     ev = load_config("eval.yaml")
-    sets = sys.argv[1:] or list(ev.test_sets)
+    if args.only_plots:
+        plots.make_all()
+        return
+    sets = args.sets or list(ev.test_sets)
     engine = SearchEngine.load()
-    tables = project_path(ev.outputs.tables)
-    tables.mkdir(parents=True, exist_ok=True)
+    runs = project_path(ev.outputs.runs)
 
     rows = []
     for name in sets:
-        queries, qrels, target = load_test_set(name)
+        t0 = time.time()
+        try:
+            ts = load_test_set(name, ev=ev, limit=args.limit)
+        except FileNotFoundError as err:
+            print(f"{name}: skipped ({err})")
+            continue
+        if not ts.queries or not (ts.judged or name.startswith(("e2", "e7"))):
+            print(f"{name}: skipped ({len(ts.queries)} queries, {ts.judged} judged - fill the qrels first)")
+            continue
+        print(f"{name}: {len(ts.queries)} queries, {ts.judged} judged"
+              + ("" if ts.judged else " (qrels empty: only the qrels-free metric is meaningful)"))
         for system, opt in (("baseline", SearchOptions.baseline()), ("full", SearchOptions())):
-            run = run_queries(engine, queries, opt, target)
-            write_run(run, project_path(ev.outputs.runs) / f"{name}.{system}.run", system)
-            rows.append({"set": name, "system": system, **evaluate(ranked_ids(run), qrels, ev.k_values)})
-            print(name, system, {k: round(v, 3) for k, v in rows[-1].items() if isinstance(v, float)})
+            scores = evaluate_set(engine, ts, opt, system, ev, runs)
+            rows.append({"set": name, "system": system, "queries": len(ts.queries),
+                         **{k: round(v, 4) for k, v in scores.items()}})
+            shown = {k: v for k, v in rows[-1].items() if k in ("MAP", "MRR", "F1@k_val", "nDCG@10", "P@5")
+                     or k.startswith(("wrong", "binding", "code_acc", "P@5_"))}
+            print(f"  {system:9s} {shown}")
+        print(f"  ({time.time() - t0:.1f}s)")
+    if rows:
+        ablation.write_table(rows, project_path(ev.outputs.tables) / "main_results.csv")
 
-    with open(tables / "main_results.csv", "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0]))
-        w.writeheader()
-        w.writerows(rows)
-
-    if not sys.argv[1:]:
-        ablation.run_ladder("e1_ilpcsr")
-        ablation.run_language_ablation()
-        efficiency.compare_modes()
-        plots.make_all()
+    if not args.skip_ablation:
+        for name in ("e1_ilpcsr", "e2_collision"):
+            if name in sets:
+                ts = load_test_set(name, ev=ev, limit=args.limit)
+                if ts.judged:
+                    ablation.run_ladder(name, engine, args.limit, ev)
+        ablation.run_language_ablation(engine=engine, ev=ev)
+    if not args.skip_efficiency and "e1_ilpcsr" in sets:
+        efficiency.compare_modes(min(args.limit or 10**9, ev.efficiency.n_queries), engine, ev)
+    if not args.skip_agent and "e1_ilpcsr" in sets:
+        try:
+            agent_eval.compare_agent("e1_ilpcsr", engine, args.limit, ev)
+        except NotImplementedError as err:
+            print(f"agent: skipped ({err})")
+    if not args.skip_rag:
+        try:
+            agent_eval.evaluate_rag(engine=engine, generator=args.rag_generator, ev=ev, limit=args.limit)
+        except RuntimeError as err:
+            print(f"rag: skipped ({err})")
+    plots.make_all()
 
 
 if __name__ == "__main__":

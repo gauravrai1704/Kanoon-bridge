@@ -3,6 +3,8 @@
     python app/cli.py "mere bhai ko chaku maara" --state delhi --date 2025-03-01 --debug
     python app/cli.py "section 302" --date 2023-05-10
     python app/cli.py "murder knife" --baseline          # plain BM25 for comparison
+    python app/cli.py "punishment for murder" --date 2025-01-03 --answer                 # layer 3
+    python app/cli.py "punishment for murder" --date 2025-01-03 --answer --generator extractive
 
 --debug prints each query rewrite (language, normalised text, tokens, code in force,
 cross-code sections), the statutes used by the bridge, and every result's score breakdown.
@@ -26,7 +28,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--baseline", action="store_true", help="plain BM25 only")
     ap.add_argument("--no-jurisdiction", action="store_true")
     ap.add_argument("--agent", action="store_true", help="layer 2: research agent (several sub-queries, fused)")
-    ap.add_argument("--answer", action="store_true", help="layer 3: cited answer on top (implies --agent)")
+    ap.add_argument("--answer", action="store_true", help="layer 3: cited answer on top of the results")
+    ap.add_argument("--generator", default=None, help="auto | claude | extractive (default: configs rag.generator)")
     ap.add_argument("--debug", action="store_true")
     args = ap.parse_args(argv)
 
@@ -40,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     opt.top_k = args.k
     query = Query(args.query, state=args.state, incident_date=args.date)
 
-    if args.agent or args.answer:
+    if args.agent:
         from kanoon_bridge.agent.research import ResearchAgent
 
         agent = ResearchAgent.load(engine)
@@ -64,15 +67,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {h.rank:2d}. {h.doc_id:20s} {h.score:8.3f}{extra}")
 
     if args.answer:
-        from kanoon_bridge.rag.answer import answer
+        from kanoon_bridge.rag.answer import RagPipeline, render
 
         try:
-            ans = answer(res, agent.docs or {})
-            print("\n-- answer --\n" + ans.text)
-            for flag in ans.flags:
-                print("  FLAG:", flag)
-        except NotImplementedError as err:
-            print(f"\n-- answer -- not available yet ({err})")
+            rag = RagPipeline.load(engine, docs=getattr(locals().get("agent"), "docs", None))
+            print("\n-- answer --\n" + render(rag.answer(res, generator=args.generator)))
+        except (NotImplementedError, RuntimeError, FileNotFoundError) as err:
+            print(f"\n-- answer -- not available ({err})")
 
     if args.debug and hasattr(res, "timings_ms"):
         print("\n-- timings (ms) --  " + "  ".join(f"{k}={v:.1f}" for k, v in res.timings_ms.items()))

@@ -65,7 +65,9 @@ def parse_ipc_reference(text: str) -> tuple[list[str], str]:
         return [], status
     status = "not retained" if "not retained" in low else "explanation" if "explanation" in low else ""
     low = re.sub(r"\((?!\s*\d+\s*\))[^)]*\)", " ", low)           # drop notes like (explanation), keep (1)
-    low = re.sub(r"\bipc\b|\bchapter\s+[ivxl]+\b|\bss?\.", " ", low)
+    if re.fullmatch(r"\s*new(\s+(section|provision|offence))?\s*\.?\s*", low) or low.startswith("new section"):
+        return [], "new"
+    low = re.sub(r"\bipc\b|\bchapter\s+[ivxl]+\b|\bss?\.|\bsections?\b|\bsecs?\.?", " ", low)
     out: list[str] = []
     base = None
     for part in re.split(r",|\band\b|&", low):
@@ -131,37 +133,78 @@ def _base(section: str) -> str:
 # --------------------------------------------------------------------------- PDF source (cross-check)
 
 
-def extract_rows_from_pdf(pdf_path: str | Path) -> list[dict]:
-    """Best-effort rows from the government comparison PDF.
+_BNS_HEAD = ("bns", "nyaya sanhita", "bharatiya")
+_IPC_HEAD = ("ipc", "penal code", "i.p.c")
+_BNS_CELL = re.compile(rf"^(?:section\s*|sec\.?\s*|s\.\s*)?({_NUM}(?:\(\d+\))?)", re.I)
 
-    Looks for table rows holding a BNS number and an IPC number; the header row decides which
-    column is which. Validate with compare_sources() before trusting it.
+
+def _find_columns(cells: list[str]) -> tuple[int | None, int | None]:
+    """Header row -> (BNS column, IPC column). A 'section(s)' column wins over a 'subject' one."""
+    bns_col = ipc_col = None
+    for i, c in enumerate(cells):
+        c = " ".join(c.split())
+        if bns_col is None and any(h in c for h in _BNS_HEAD) and "summary" not in c:
+            bns_col = i
+        elif ipc_col is None and any(h in c for h in _IPC_HEAD) and "summary" not in c:
+            ipc_col = i
+    return bns_col, ipc_col
+
+
+def extract_rows_from_pdf(pdf_path: str | Path, debug: bool = False) -> list[dict]:
+    """Best-effort rows from the government comparison PDF (BPR&D / MHA comparison summary).
+
+    Table mode (pdfplumber.extract_tables): a header row naming the BNS and IPC columns
+    ("BNS", "Bharatiya Nyaya Sanhita", "IPC", "Indian Penal Code") fixes the columns; they carry
+    over to continuation pages without a header. Cells may hold several lines ("103\n(1)").
+    Text mode (no ruled tables found): a line starting with a BNS number whose remainder
+    contains an IPC reference ("... 302 IPC" / "Section 302").
+    Validate with compare_sources() before trusting it; `debug=True` prints what was seen.
     """
     import pdfplumber
 
     rows: list[dict] = []
+    stats = {"pages": 0, "tables": 0, "table_rows": 0, "text_rows": 0}
+    bns_col = ipc_col = None
     with pdfplumber.open(str(pdf_path)) as pdf:
+        texts = []
         for page in pdf.pages:
-            for table in page.extract_tables() or []:
-                bns_col = ipc_col = None
+            stats["pages"] += 1
+            tables = page.extract_tables() or []
+            stats["tables"] += len(tables)
+            for table in tables:
+                if debug and stats["tables"] <= 2:
+                    print("table sample:", table[:4])
                 for raw in table:
-                    cells = [(c or "").strip().lower() for c in raw]
-                    if bns_col is None:
-                        for i, c in enumerate(cells):
-                            if "bns" in c and bns_col is None:
-                                bns_col = i
-                            elif "ipc" in c and ipc_col is None:
-                                ipc_col = i
-                        if bns_col is None or ipc_col is None:
-                            bns_col = ipc_col = None
+                    cells = [" ".join((c or "").split()).lower() for c in raw]
+                    b, i = _find_columns(cells)
+                    if b is not None and i is not None:
+                        bns_col, ipc_col = b, i
                         continue
-                    if max(bns_col, ipc_col) >= len(cells):
+                    if bns_col is None or max(bns_col, ipc_col) >= len(cells):
                         continue
-                    bns = re.match(rf"^({_NUM}(?:\(\d+\))?)", cells[bns_col].replace(" ", ""))
+                    m = _BNS_CELL.match(cells[bns_col].replace(" (", "("))
                     ipcs, _ = parse_ipc_reference(cells[ipc_col])
-                    if bns:
+                    if m:
+                        stats["table_rows"] += 1
                         for ipc in ipcs:
-                            rows.append({"ipc_section": ipc, "bns_section": bns.group(1), "relation": "", "note": "pdf"})
+                            rows.append({"ipc_section": ipc, "bns_section": m.group(1), "relation": "", "note": "pdf"})
+            if not tables:
+                texts.append(page.extract_text() or "")
+        if not rows:                                   # text-mode fallback
+            line_re = re.compile(rf"^\s*(?:\d+\.\s+)?({_NUM}(?:\(\d+\))?)\s+(.+?(?:ipc|section)[^\n]*)$", re.I)
+            for line in "\n".join(texts).splitlines():
+                m = line_re.match(line)
+                if not m:
+                    continue
+                ref = re.findall(rf"(?:section|sec\.?|s\.)\s*({_NUM}(?:\(\d+\))?(?:\s*(?:,|and|to|-)\s*{_NUM})*)|"
+                                 rf"({_NUM}(?:\(\d+\))?(?:\s*(?:,|and|to|-)\s*{_NUM})*)\s*(?:of\s+the\s+)?ipc", m.group(2), re.I)
+                for a, b in ref:
+                    ipcs, _ = parse_ipc_reference(a or b)
+                    stats["text_rows"] += 1
+                    for ipc in ipcs:
+                        rows.append({"ipc_section": ipc, "bns_section": m.group(1).lower(), "relation": "", "note": "pdf-text"})
+    if debug:
+        print("pdf:", stats, "pairs:", len(rows), "columns (bns, ipc):", (bns_col, ipc_col))
     _set_relations(rows)
     return rows
 
@@ -280,6 +323,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", help="bns-study-platform dir (default from config) or a PDF")
     ap.add_argument("--compare", action="store_true", help="cross-check against the government PDF")
+    ap.add_argument("--pdf", help="PDF path for --compare (default: paths.crosswalk_pdf)")
+    ap.add_argument("--debug", action="store_true", help="print what the PDF parser sees")
     args = ap.parse_args()
     cfg = load_config()
     rows = extract_rows(args.source or project_path(cfg.paths.bns_dir))
@@ -288,11 +333,26 @@ def main() -> None:
     n_pairs = sum(1 for r in rows if r["ipc_section"])
     print(f"crosswalk: {n_pairs} IPC-BNS pairs, {sum(1 for r in rows if not r['ipc_section'])} new BNS sections")
     if args.compare:
-        pdf = project_path(cfg.paths.crosswalk_pdf)
-        diff = compare_sources(rows, extract_rows_from_pdf(pdf))
-        print(f"only in JSON: {len(diff['only_json'])}  only in PDF: {len(diff['only_pdf'])}")
-        for k, v in diff.items():
-            print(k, v[:40])
+        pdf = Path(args.pdf) if args.pdf else project_path(cfg.paths.crosswalk_pdf)
+        if not pdf.exists():
+            raise SystemExit(f"PDF not found: {pdf}\nDownload it by hand (see SETUP_AND_RUN.md, step 4).")
+        pdf_rows = extract_rows_from_pdf(pdf, debug=args.debug)
+        diff = compare_sources(rows, pdf_rows)
+        both = {(_base(r["ipc_section"]), _base(r["bns_section"])) for r in rows if r["ipc_section"]}
+        agree = len(both) - len(diff["only_json"])
+        print(f"PDF pairs: {len({(_base(r['ipc_section']), _base(r['bns_section'])) for r in pdf_rows})}  "
+              f"agree: {agree}/{len(both)} JSON pairs  only in JSON: {len(diff['only_json'])}  "
+              f"only in PDF: {len(diff['only_pdf'])}")
+        out = project_path("data/processed/crosswalk_compare.csv")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["source", "ipc_section", "bns_section"])
+            for k, v in diff.items():
+                w.writerows([k, a, b] for a, b in v)
+        print(f"disagreements written to {out} (hand-check each; fix the JSON-derived row in ipc_bns.csv if the PDF is right)")
+        if not pdf_rows:
+            print("No rows read from the PDF: rerun with --debug to see what pdfplumber found.")
 
 
 if __name__ == "__main__":

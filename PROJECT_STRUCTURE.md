@@ -155,29 +155,36 @@ kanoon-bridge/
 | `reflect.py` | 🔧 | Retry decision + pseudo-relevance feedback | ✅ round guard, ⬜ QPP test in `should_reformulate()`, ⬜`reformulate()` |
 | `research.py` | ✅ | The loop: plan → execute → fuse → reflect | `ResearchAgent.load(engine)`, `.run(query, options) -> AgentResult`, `AgentResult(statutes, precedents, plans, subresults, trace, n_searches)` |
 
-### `rag/` — layer 3 grounded answer (R)
+### `rag/` — layer 3 grounded answer (Gaurav)
 
 | File | Status | Purpose | Must contain |
 | --- | --- | --- | --- |
-| `answer.py` | ✅ wiring | Order of steps: abstain → chunk → generate → citation check → version check | `answer(result, docs, cfg, idf, resolver, normalizer) -> Answer` |
-| `chunker.py` | ⬜ | Top statutes + ratio/decision paragraphs → numbered chunks | `Chunk`, `make_chunks(result, docs, max_chunks, max_chars)` |
-| `generate.py` | ⬜ | LLM call with the citation-per-sentence prompt | `PROMPT`, `Answer(text, sentences, flags, abstained)`, `generate(question, chunks, incident_date, state)` |
-| `citation_check.py` | ⬜ | tf-idf cosine of each sentence vs its cited chunk | `check(answer, chunks, idf, threshold)` |
-| `version_check.py` | ⬜ | Wrong code for the incident date; bare colliding numbers | `check(answer, incident_date, resolver, normalizer)` |
-| `abstain.py` | ⬜ | Refuse before generating when QPP says weak | `decide(result, idf) -> (bool, reason)` |
+| `answer.py` | ✅ | Order of steps: abstain → chunk → generate → citation check → version check | `answer(result, docs, cfg, idf, resolver, normalizer, generator, closed_book) -> Answer`, `RagPipeline.load(engine).answer(result)`, `render(ans)` |
+| `chunker.py` | ✅ | Top statutes ("BNS Section 103 - ...") + best ratio/decision paragraph per top precedent → numbered chunks | `Chunk`, `make_chunks(result, docs, max_chunks, max_chars, query_terms)`, `truncate()` |
+| `generate.py` | ✅ | Claude (temperature 0, one `[n]` per sentence) or offline extractive; closed-book baseline | `PROMPT`, `Answer`, `generate(question, chunks, incident_date, state, generator, model, closed_book)`, `load_env()` |
+| `citation_check.py` | ✅ | tf-idf cosine of each sentence vs its cited chunk (any chunk for closed-book) | `check(answer, chunks, idf, threshold, any_chunk)` |
+| `version_check.py` | ✅ | Wrong code for the incident date (+ equivalent); bare colliding numbers (+ readings) | `check(answer, incident_date, resolver, normalizer)` |
+| `abstain.py` | ✅ | Refuse before generating when QPP says weak | `decide(result, idf, query_terms) -> (bool, reason)` |
+| `_util.py` | ✅ | Sentence split (abbreviation-safe), citations, tf-idf/cosine helpers | |
 
-### `eval/` — measuring everything (D; agent_eval AG + R)
+### `eval/` — measuring everything (Gaurav; agent internals Shaurya)
 
 | File | Status | Purpose | Must contain |
 | --- | --- | --- | --- |
 | `metrics.py` | ✅ | P@k, R@k, F1@k, AP, MRR, nDCG; IL-PCSR macro-F1@k protocol | `evaluate(run, qrels, ks)`, `best_k()` (on **val**), per-query metric functions |
 | `qrels.py` | ✅ | Load/save judgments; E6 binding/persuasive grades | `load_tsv()`, `load_by_judge()`, `save_tsv()`, `merge_judges()`, `jurisdiction_grades()` |
-| `run_eval.py` | 🔧 | Run a system on a test set; TREC run files | ✅`write_run()/read_run()/run_queries()/main()`, ⬜`load_test_set(name)` |
-| `ablation.py` | ⬜ | Ablation ladder + language ablation → CSV | `run_ladder(set)`, `run_language_ablation()` |
-| `efficiency.py` | ⬜ | Exhaustive vs tiered vs champion lists | `compare_modes(n_queries)` |
+| `run_eval.py` | ✅ | Load test sets (E1 judgments as queries, 100-term cap, k from val), run, score, set-specific metrics | `load_test_set(name) -> TestSet`, `evaluate_set()`, `extra_metrics()` (wrong_hit@10, P@5 per language, binding_share@5, code_accuracy@1), TREC run files |
+| `ablation.py` | ✅ | Ablation ladder + language ablation → CSV | `run_ladder(set)`, `run_language_ablation()`, `write_table()` |
+| `efficiency.py` | ✅ | Exhaustive vs tiered vs champion lists: latency + Recall@20 vs exhaustive | `compare_modes(n_queries)` |
 | `agreement.py` | ✅ | Inter-judge agreement | `percent_agreement()`, `cohens_kappa()` |
-| `agent_eval.py` | ⬜ | Layer 2 vs core; layer 3 checks | `compare_agent(set)`, `evaluate_rag(path)` |
-| `plots.py` | ⬜ | Report/video charts | `bar_chart()`, `make_all()` |
+| `agent_eval.py` | ✅ | Layer 2 vs core; layer 3 support rate, version flags, abstention | `compare_agent(set)`, `evaluate_rag(path)` |
+| `plots.py` | ✅ | Report/video charts from results/tables | `bar_chart()`, `make_all()` |
+
+### `dev/` — TEMPORARY
+
+| File | Status | Purpose |
+| --- | --- | --- |
+| `reference_index.py` | temporary | Only with `KB_DEV_SHIM=1`: stands in for index methods that still raise NotImplementedError so the team can run end to end. Never overrides finished code. Delete when Sharanya's index passes its tests. |
 
 ---
 

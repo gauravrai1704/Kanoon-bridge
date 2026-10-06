@@ -16,7 +16,7 @@ Unfinished steps are skipped and noted in the trace, so the pipeline runs end to
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from kanoon_bridge.config import Config, load_config
 from kanoon_bridge.query.parser import parse
@@ -31,6 +31,8 @@ class QueryAnalyzer:
     text_res: TextResources
     lexicon: object | None = None          # text.transliterate.LegalLexicon
     phonetic: object | None = None         # text.phonetic.PhoneticIndex (built from index vocabulary)
+    steps: dict = field(default_factory=lambda: {"transliterate": True, "lexicon": True, "phonetic": True})
+    # ^ switches for the E4 language ablation (eval/ablation.py); all on in normal use
 
     @classmethod
     def load(cls, cfg: Config | None = None, vocabulary: list[str] | None = None) -> "QueryAnalyzer":
@@ -74,7 +76,7 @@ class QueryAnalyzer:
 
         # 3. transliteration / spelling normalisation (C)
         normalised = text
-        if aq.detected_lang in ("hi", "hinglish"):
+        if aq.detected_lang in ("hi", "hinglish") and self.steps.get("transliterate", True):
             try:
                 roman = devanagari_to_roman(text) if aq.detected_lang == "hi" else text
                 normalised = " ".join(normalize_roman(w) for w in roman.split())
@@ -84,7 +86,7 @@ class QueryAnalyzer:
         aq.trace.append(("normalised", normalised))
 
         # 4. lexicon + phonetic expansion (C)
-        if aq.detected_lang in ("hi", "hinglish") and self.lexicon is not None:
+        if aq.detected_lang in ("hi", "hinglish") and self.lexicon is not None and self.steps.get("lexicon", True):
             try:
                 for word in normalised.split():
                     for term, weight in self.lexicon.lookup(word):

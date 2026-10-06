@@ -91,7 +91,8 @@ agent:
 # Layer 3: grounded answers (rag/)
 rag:
   enabled: false                  # switch on only if the agent is done by ~hour 30
-  model: ""                       # LLM name; key in .env, never in git
+  model: ""                       # "" = claude-haiku-4-5-20251001 (or env KB_RAG_MODEL); key in .env, never in git
+  generator: auto                 # auto (Claude if ANTHROPIC_API_KEY is set, else extractive) | claude | extractive
   max_chunks: 8
   max_chunk_chars: 1200
   support_threshold: 0.2          # tf-idf cosine below this = unsupported sentence

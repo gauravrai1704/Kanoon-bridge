@@ -27,6 +27,7 @@ def _log_tf(tf: float) -> float:
 class TfidfScorer:
     index: PositionalIndex
     doc_norms: dict[str, float] = field(default_factory=dict)   # precomputed |d| for lnc
+    max_query_terms: int = 300                                   # same cap as BM25F for long queries
 
     def prepare(self) -> "TfidfScorer":
         """Precompute each document's lnc vector length: sqrt(sum over terms (1 + log10 tf)^2)."""
@@ -43,7 +44,7 @@ class TfidfScorer:
         if not self.doc_norms:
             self.prepare()
         q = {t: _log_tf(w) * self.index.idf(t) for t, w in terms.items()}
-        q = {t: w for t, w in q.items() if w > 0}
+        q = dict(sorted(((t, w) for t, w in q.items() if w > 0), key=lambda kv: -kv[1])[: self.max_query_terms])
         q_norm = math.sqrt(sum(w * w for w in q.values())) or 1.0
         acc: dict[str, float] = {}
         for term, wq in q.items():

@@ -1,2 +1,2 @@
-{"id": "E2-EX1", "text": "punishment under section 302", "lang": "en", "state": null, "incident_date": "2023-05-10", "notes": "EXAMPLE - pre-BNS date, bare 302 should mean IPC murder"}
-{"id": "E2-EX2", "text": "section 302 hurting religious sentiments in a speech", "lang": "en", "state": null, "incident_date": "2025-02-01", "notes": "EXAMPLE - BNS 302 (old IPC 298)"}
+{"id": "E2-EX1", "text": "punishment under section 302", "lang": "en", "state": null, "incident_date": "2023-05-10", "notes": "EXAMPLE - pre-BNS date, bare 302 should mean IPC murder", "wrong_refs": ["bns:302"]}
+{"id": "E2-EX2", "text": "section 302 hurting religious sentiments in a speech", "lang": "en", "state": null, "incident_date": "2025-02-01", "notes": "EXAMPLE - BNS 302 (old IPC 298)", "wrong_refs": ["ipc:302"]}
