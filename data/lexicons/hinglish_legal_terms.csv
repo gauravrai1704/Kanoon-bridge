@@ -1,0 +1,17 @@
+# Owner C. Roman Hindi / Devanagari legal terms -> English terms used in judgments and statutes.
+# Seed rows only; extend to ~150 terms. weight < 1.0 for looser translations.
+roman,devanagari,english,weight
+hatya,हत्या,murder,1.0
+qatl,क़त्ल,murder,1.0
+chori,चोरी,theft,1.0
+dhokha,धोखा,cheating,1.0
+dhokhadhadi,धोखाधड़ी,cheating,1.0
+chaku,चाकू,knife,0.8
+maara,मारा,hurt,0.6
+maarpeet,मारपीट,hurt,1.0
+dhamki,धमकी,criminal intimidation,1.0
+dahej,दहेज,dowry,1.0
+balatkar,बलात्कार,rape,1.0
+zamanat,ज़मानत,bail,1.0
+giraftari,गिरफ़्तारी,arrest,1.0
+lapravahi,लापरवाही,negligence,1.0

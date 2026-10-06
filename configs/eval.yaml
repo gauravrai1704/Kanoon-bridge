@@ -1,0 +1,50 @@
+# Which experiments scripts/05_run_all_evals.py runs.
+
+k_values: [1, 5, 10, 20]
+
+test_sets:
+  e1_ilpcsr:
+    queries: ilpcsr_test        # loaded via ingest.load_ilpcsr
+    qrels: ilpcsr_test
+    target: precedent
+  e2_collision:
+    queries: data/queries/e2_collision.jsonl
+    qrels: data/queries/qrels/e2_collision.tsv
+    target: statute
+  e3_cross_version:
+    queries: data/queries/e3_cross_version.jsonl
+    qrels: ilpcsr_test
+    target: precedent
+  e4_multilingual:
+    queries: data/queries/e4_multilingual.jsonl
+    qrels: data/queries/qrels/e4_multilingual.tsv
+    target: statute
+  e6_jurisdiction:
+    queries: data/queries/e6_jurisdiction.jsonl
+    qrels: data/queries/qrels/e6_jurisdiction.tsv
+    target: precedent
+  e7_temporal:
+    queries: data/queries/e7_temporal.jsonl
+    qrels: data/queries/qrels/e7_temporal.tsv
+    target: statute
+
+# Ablation ladder: each step switches on one more component (names match search.SearchOptions).
+ablation_ladder:
+  - {name: bm25,           zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false}
+  - {name: +zones,         zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false}
+  - {name: +bridge,        zones: true,  bridge: true,  authority: false, dense: false, qpp: false, jurisdiction: false}
+  - {name: +authority,     zones: true,  bridge: true,  authority: true,  dense: false, qpp: false, jurisdiction: false}
+  - {name: +dense,         zones: true,  bridge: true,  authority: true,  dense: true,  qpp: false, jurisdiction: false}
+  - {name: +qpp,           zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: false}
+  - {name: +jurisdiction,  zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true}
+
+language_ablation:
+  - {name: none,           transliterate: false, phonetic: false, dense: false}
+  - {name: +translit,      transliterate: true,  phonetic: false, dense: false}
+  - {name: +phonetic,      transliterate: true,  phonetic: true,  dense: false}
+  - {name: +dense,         transliterate: true,  phonetic: true,  dense: true}
+
+outputs:
+  runs: results/runs
+  tables: results/tables
+  figures: results/figures

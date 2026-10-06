@@ -1,0 +1,2 @@
+{"id": "E7-EX1-before", "text": "neighbour threatened to kill my family", "lang": "en", "state": null, "incident_date": "2024-03-01", "notes": "EXAMPLE - expect IPC 506"}
+{"id": "E7-EX1-after", "text": "neighbour threatened to kill my family", "lang": "en", "state": null, "incident_date": "2024-09-01", "notes": "EXAMPLE - expect BNS 351"}

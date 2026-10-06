@@ -1,0 +1,13 @@
+# Owner A. Court -> states/UTs whose courts it binds. level: supreme_court | high_court.
+# Seed rows only: complete all High Courts and verify territorial jurisdiction. "*" = everywhere.
+court_name,name_pattern,level,states
+Supreme Court of India,supreme court of india|in the supreme court,supreme_court,*
+Delhi High Court,high court of delhi|delhi high court,high_court,delhi
+Bombay High Court,bombay high court|high court of (judicature at )?bombay,high_court,maharashtra;goa;dadra-nagar-haveli-daman-diu
+Allahabad High Court,allahabad high court|high court of (judicature at )?allahabad,high_court,uttar-pradesh
+Punjab and Haryana High Court,punjab (and|&) haryana high court|high court of punjab (and|&) haryana,high_court,punjab;haryana;chandigarh
+Madras High Court,madras high court|high court of (judicature at )?madras,high_court,tamil-nadu;puducherry
+Calcutta High Court,calcutta high court|high court at calcutta,high_court,west-bengal;andaman-nicobar
+Karnataka High Court,karnataka high court|high court of karnataka,high_court,karnataka
+Kerala High Court,kerala high court|high court of kerala,high_court,kerala;lakshadweep
+Gauhati High Court,gauhati high court|high court at guwahati,high_court,assam;nagaland;mizoram;arunachal-pradesh
