@@ -7,6 +7,7 @@ Supported syntax (Westlaw-style, plus facets):
     bail AND parity NOT dowry         Boolean (AND, OR, NOT; parentheses)
     bail /5 parity                    proximity: within 5 tokens
     state:delhi  date:2025-03-01  code:bns  court:supreme_court   facet filters
+    after:2015  before:2020-06-30     precedents decided in a date range (year or ISO date)
 
 parse() splits filters off, builds a tree for the Boolean/phrase/proximity part, and keeps
 the free text for ranking. Terms in the tree must go through text.pipeline.analyze_text
@@ -19,7 +20,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
-FILTER_KEYS = ("state", "date", "code", "court", "type")
+FILTER_KEYS = ("state", "date", "code", "court", "type", "after", "before")   # after:/before: = decision-year range
 _FILTER_RE = re.compile(rf"\b({'|'.join(FILTER_KEYS)}):(\S+)", re.IGNORECASE)
 
 

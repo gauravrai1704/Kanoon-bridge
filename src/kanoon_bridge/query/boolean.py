@@ -66,9 +66,10 @@ def _positions(node: QueryNode, index: PositionalIndex, analyze) -> dict[str, li
 
 
 def evaluate(node: QueryNode, index: PositionalIndex, analyze: Callable[[str], list[str]],
-             universe: set[str] | None = None) -> set[str]:
+             universe: set[str] | None = None, expand: Callable[[str], list[str]] | None = None) -> set[str]:
     """Evaluate the tree; `analyze` turns a term/phrase into index terms (same pipeline as docs).
 
+    TERM   with '*': wildcard, OR over `expand(pattern)` (text/spell.py k-gram index)
     TERM   docs containing its analysed token; a section reference ("BNS 103") matches any doc
            with its offence id, so Boolean search is version-aware like ranking
            (several plain tokens, e.g. "breach-of-trust", act as a phrase)
@@ -81,6 +82,12 @@ def evaluate(node: QueryNode, index: PositionalIndex, analyze: Callable[[str], l
     """
     universe = set(index.doc_len) if universe is None else universe
     op = node.op
+    if op == Op.TERM and "*" in node.value:
+        # wildcard: OR over the index terms the k-gram index expands it to (IIR §3.2)
+        out: set[str] = set()
+        for t in (expand(node.value) if expand is not None else []):
+            out |= set(index.postings.get(t, {}))
+        return out & universe
     if op in (Op.TERM, Op.PHRASE):
         tokens = analyze(node.value)
         if not tokens:
@@ -98,26 +105,26 @@ def evaluate(node: QueryNode, index: PositionalIndex, analyze: Callable[[str], l
     if op == Op.OR:
         out: set[str] = set()
         for child in node.children:
-            out |= evaluate(child, index, analyze, universe)
+            out |= evaluate(child, index, analyze, universe, expand)
         return out
     if op == Op.NOT:
-        return universe - evaluate(node.children[0], index, analyze, universe)
+        return universe - evaluate(node.children[0], index, analyze, universe, expand)
     if op == Op.AND:
         positive = [c for c in node.children if c.op != Op.NOT]
         negative = [c for c in node.children if c.op == Op.NOT]
-        lists = [sorted(evaluate(c, index, analyze, universe)) for c in positive]
+        lists = [sorted(evaluate(c, index, analyze, universe, expand)) for c in positive]
         result = set(intersect_many(lists)) if lists else set(universe)
         for c in negative:                                   # a AND NOT b  =  a - b
             if not result:
                 break
-            result -= evaluate(c.children[0], index, analyze, universe)
+            result -= evaluate(c.children[0], index, analyze, universe, expand)
         return result
     if op == Op.PROX:
         left, right = node.children
-        if all(c.op in (Op.TERM, Op.PHRASE) for c in (left, right)):
+        if all(c.op in (Op.TERM, Op.PHRASE) and "*" not in c.value for c in (left, right)):
             p1, p2 = _positions(left, index, analyze), _positions(right, index, analyze)
             if p1 is None or p2 is None:                     # a stop-word side: just the other side
-                return evaluate(right if p1 is None else left, index, analyze, universe)
+                return evaluate(right if p1 is None else left, index, analyze, universe, expand)
             return within_positions(p1, p2, node.k) & universe
-        return evaluate(QueryNode(Op.AND, children=[left, right]), index, analyze, universe)
+        return evaluate(QueryNode(Op.AND, children=[left, right]), index, analyze, universe, expand)
     raise ValueError(f"unknown operator {op}")

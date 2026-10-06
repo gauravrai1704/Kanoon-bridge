@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -31,6 +31,9 @@ graph:
 dense:
 	$(PY) scripts/04_encode_dense.py
 
+ltr:
+	$(PY) scripts/06_train_ltr.py
+
 eval:
 	$(PY) scripts/05_run_all_evals.py
 
@@ -49,7 +52,7 @@ app:
 test:
 	$(PY) -m pytest -q
 
-all: data index graph eval
+all: data index graph ltr eval
 
 # synthetic end-to-end run (no Hugging Face access needed; BNS source still required)
 sample:
@@ -57,3 +60,4 @@ sample:
 	$(PY) scripts/01_build_corpus.py --sample
 	$(PY) scripts/02_build_index.py
 	$(PY) scripts/03_build_graph.py --sample
+	$(PY) scripts/06_train_ltr.py --sample --folds 2

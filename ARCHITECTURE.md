@@ -84,6 +84,19 @@ Worked example (values are illustrative):
 | Authority + top-K | `rank/authority.py`, `rank/topk.py` | net = relevance + λ·g(d \| delhi): SC and Delhi HC cases get full weight, other HCs 0.4 |
 | Output | `schema.SearchResult` | statutes, precedents, per-document score breakdown, trace, timings |
 
+### Around layer 1: tolerant input, learned ranking, readable output
+
+| Step | Module | What happens |
+| --- | --- | --- |
+| Wildcards | `text/spell.py` | `extort*` expands through a k-gram index to the index terms it matches |
+| Spelling | `text/spell.py` | words unseen in the index get their closest frequent term (k-gram candidates, Damerau–Levenshtein ≤ 1–2 edits), shown as "Did you mean" |
+| Learned re-ranking | `rank/ltr.py` | 13 features (zones, bridge, authority, dense, offence match, binding, recency …) combined by weights learned on val (coordinate ascent on MAP) |
+| Duplicates | `index/dedup.py` | MinHash near-duplicate groups; one judgment per group is shown |
+| Presentation | `present.py` | query-biased snippets with highlights, "why this result", statute version notes, facet counts |
+| Interaction | `rank/feedback.py`, `rank/similar.py` | Rocchio relevance feedback; similar cases by text + version-aware coupling + co-citation |
+
+Sources for each technique are in [docs/RESEARCH.md](docs/RESEARCH.md).
+
 ### Layer 2 — research agent (`ResearchAgent.run`)
 
 | Step | Module | What happens |

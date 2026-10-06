@@ -56,10 +56,23 @@ class SearchOptions:
     require_terms: list[list[str]] | None = None    # Boolean CNF over analysed terms: AND of ORs (postings)
     extra_terms: dict[str, float] | None = None     # added query terms -> weight (pseudo-relevance feedback)
     drop_terms: list[str] | None = None             # analysed terms removed from the query
+    # --- result-list options -----------------------------------------------------------
+    ltr: bool = False                  # re-rank with the learned linear model (rank/ltr.py), if trained
+    collapse_duplicates: bool = False  # show one judgment per near-duplicate group (index/dedup.py)
 
     @classmethod
     def from_dict(cls, d: dict) -> "SearchOptions":
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+    @classmethod
+    def full(cls) -> "SearchOptions":
+        """Everything on, including the learned re-ranker when one has been trained."""
+        return cls(ltr=True)
+
+    @classmethod
+    def interactive(cls) -> "SearchOptions":
+        """What the CLI and app use: full system, near-duplicates collapsed."""
+        return cls(ltr=True, collapse_duplicates=True)
 
     @classmethod
     def baseline(cls) -> "SearchOptions":
@@ -79,6 +92,8 @@ class SearchEngine:
     bridge: object | None = None           # rank.statute_bridge.StatuteBridge
     dense: object | None = None            # rank.dense.DenseRetriever
     tiers: object | None = None            # index.tiers.TieredIndex
+    ltr: object | None = None              # rank.ltr.LinearRanker (scripts/06_train_ltr.py)
+    near_dups: dict | None = None          # doc_id -> group representative (index/dedup.py)
     _scorers: dict = field(default_factory=dict)
 
     # ------------------------------------------------------------------ loading
@@ -89,17 +104,38 @@ class SearchEngine:
         authority = store.load("authority", "json") if store.exists("authority", "json") else None
         statute_terms = store.load("statute_terms", "json") if store.exists("statute_terms", "json") else None
         tiers = store.load("tiers") if store.exists("tiers") else None
-        return cls.from_components(cfg, store.load("statutes_zone"), store.load("precedents_zone"),
-                                   store.load("facets"), statute_terms, authority, tiers)
+        surface = store.load("surface_forms", "json") if store.exists("surface_forms", "json") else None
+        engine = cls.from_components(cfg, store.load("statutes_zone"), store.load("precedents_zone"),
+                                     store.load("facets"), statute_terms, authority, tiers, surface)
+        if store.exists("ltr", "json"):
+            from kanoon_bridge.rank.ltr import LinearRanker
+
+            try:
+                engine.ltr = LinearRanker.from_dict(store.load("ltr", "json"))
+            except ValueError as err:
+                import warnings
+
+                warnings.warn(f"learning-to-rank model ignored: {err}")
+        if store.exists("near_duplicates", "json"):
+            engine.near_dups = store.load("near_duplicates", "json")
+        return engine
 
     @classmethod
     def from_components(cls, cfg: Config, statute_index, precedent_index, facets, statute_terms=None,
-                        authority=None, tiers=None) -> "SearchEngine":
+                        authority=None, tiers=None, surface: dict | None = None) -> "SearchEngine":
         """Assemble an engine from in-memory parts (load() and the end-to-end tests use this).
         `authority`: an Authority or its to_dict() form."""
         from kanoon_bridge.query.analyzer import QueryAnalyzer
 
         analyzer = QueryAnalyzer.load(cfg, vocabulary=precedent_index.whole.vocabulary())
+        if cfg.text.get("spelling", True):
+            from kanoon_bridge.text.spell import Speller
+
+            df: dict[str, int] = {}
+            for idx in (statute_index.whole, precedent_index.whole):
+                for term, plist in idx.postings.items():
+                    df[term] = df.get(term, 0) + len(plist)
+            analyzer.speller = Speller.build(df, surface or {}, min_df=cfg.text.get("spelling_min_df", 2))
         engine = cls(cfg=cfg, analyzer=analyzer, statute_index=statute_index,
                      precedent_index=precedent_index, facets=facets, tiers=tiers)
         if authority is not None:
@@ -200,8 +236,15 @@ class SearchEngine:
             from kanoon_bridge.text.pipeline import analyze_text
 
             res = self.analyzer.text_res
-            sel = evaluate(aq.boolean, self.precedent_index.whole,
-                           lambda t: analyze_text(t, res, date=query.incident_date))
+            fixes = {c.source: c.term for c in aq.corrections if c.applied}
+            speller = getattr(self.analyzer, "speller", None)
+
+            def analyze(t: str) -> list[str]:
+                return [fixes.get(x, x) for x in analyze_text(t, res, date=query.incident_date)]
+
+            sel = evaluate(aq.boolean, self.precedent_index.whole, analyze,
+                           expand=(lambda p: aq.wildcards.get(p.lower()) or speller.expand_wildcard(p.lower()))
+                           if speller is not None else None)
             prec_cands = sel if prec_cands is None else prec_cands & sel
             aq.trace.append(("boolean_match", f"{len(sel)} precedents match the Boolean query"))
         if opt.require_terms:
@@ -258,7 +301,32 @@ class SearchEngine:
                 g = self.authority.score(d, state=state, jurisdiction=opt.jurisdiction)
                 final[d] = net_score(rel, g, lam)
                 components.setdefault(d, {})["authority"] = g
-        precedents = to_scored(top_k(final, opt.top_k), DocType.PRECEDENT, components)
+        # --- learning-to-rank re-ranking of the head (rank/ltr.py) -------------------
+        if opt.ltr and self.ltr is not None and final:
+            head = to_scored(top_k(final, max(self.ltr.depth, opt.top_k)), DocType.PRECEDENT, components)
+            learned = self.ltr.score(head, aq, self)
+            final = {h.doc_id: float(v) for h, v in zip(head, learned)}
+            for d, v in final.items():
+                components.setdefault(d, {})["ltr"] = v
+            aq.trace.append(("ltr", f"re-ranked the top {len(head)} with learned weights"))
+
+        # --- near-duplicate collapse (index/dedup.py) ----------------------------------
+        ranked = top_k(final, opt.top_k)
+        if opt.collapse_duplicates and self.near_dups:
+            kept, seen, hidden = [], set(), 0
+            for d, sc in top_k(final, opt.top_k * 3):
+                group = self.near_dups.get(d, d)
+                if group in seen:
+                    hidden += 1
+                    continue
+                seen.add(group)
+                kept.append((d, sc))
+                if len(kept) == opt.top_k:
+                    break
+            ranked = kept
+            if hidden:
+                aq.trace.append(("duplicates", f"collapsed {hidden} near-duplicate judgment(s)"))
+        precedents = to_scored(ranked, DocType.PRECEDENT, components)
         t["precedents"] = clock() - t0
 
         return SearchResult(query=aq, statutes=statutes, precedents=precedents,

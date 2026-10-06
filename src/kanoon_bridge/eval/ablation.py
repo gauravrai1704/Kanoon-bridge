@@ -40,6 +40,8 @@ def _note(engine, step: dict) -> str:
         missing.append("no authority file")
     if step.get("bridge") and engine.bridge is None:
         missing.append("no statute terms")
+    if step.get("ltr") and getattr(engine, "ltr", None) is None:
+        missing.append("no ltr model (run scripts/06_train_ltr.py)")
     return "; ".join(missing)
 
 

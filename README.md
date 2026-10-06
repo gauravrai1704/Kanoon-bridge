@@ -30,6 +30,9 @@ Three layers on one core: **(1) core retriever** (required) → **(2) research a
 | Evaluation: test sets E1-E7, ablation ladder, language ablation, efficiency, plots | Gaurav | **working** |
 | Agent vs core and RAG evaluation | Gaurav | **working** |
 | RAG answer, layer 3: abstain, chunks, Claude/extractive generation, citation + version checks | Gaurav | **working** |
+| Tolerant retrieval: spelling correction + did-you-mean, wildcards; snippets, highlighting, "why this result"; similar cases; relevance feedback; learning to rank; near-duplicate collapse; typo experiment | Gaurav | **working** |
+
+Every feature, the paper or textbook section it builds on, and what is new: **[docs/RESEARCH.md](docs/RESEARCH.md)**.
 
 Update this table as components land. Stubs raise `NotImplementedError` with a TODO saying what to build.
 
@@ -88,6 +91,7 @@ make data      # scripts/01_build_corpus.py  → crosswalk CSVs + data/processed
 make index     # scripts/02_build_index.py   → data/processed/index/
 make graph     # scripts/03_build_graph.py   → citation graph + authority scores
 make dense     # scripts/04_encode_dense.py  → paragraph embeddings (GPU recommended)
+make ltr       # scripts/06_train_ltr.py     → learned re-ranker (trained on val)
 make eval      # scripts/05_run_all_evals.py → results/tables, results/figures
 make app       # streamlit demo
 python app/cli.py "mere bhai ko chaku maara" --state delhi --date 2025-03-01 --debug

@@ -27,16 +27,16 @@ kanoon-bridge/
 │   ├── lexicons/                 hinglish_legal_terms.csv  hindi_stopwords.txt  legal_stopwords.txt  court_to_states.csv
 │   └── queries/                  e2…e7 *.jsonl  +  qrels/*.tsv
 ├── src/kanoon_bridge/
-│   ├── schema.py  config.py  search.py
+│   ├── schema.py  config.py  search.py  present.py
 │   ├── ingest/                   load_ilpcsr  load_statutes  parse_crosswalk  segment  metadata
-│   ├── text/                     pipeline  tokenize  stem  collision  version_norm  transliterate  phonetic
-│   ├── index/                    positional  zones  facets  tiers  store  docstore
+│   ├── text/                     pipeline  tokenize  stem  collision  version_norm  transliterate  phonetic  spell
+│   ├── index/                    positional  zones  facets  tiers  store  docstore  dedup
 │   ├── query/                    parser  boolean  proximity  analyzer
-│   ├── rank/                     vsm  bm25f  dense  statute_bridge  citation_graph  authority  qpp  fusion  topk
+│   ├── rank/                     vsm  bm25f  dense  statute_bridge  citation_graph  authority  qpp  fusion  topk  ltr  similar  feedback
 │   ├── agent/        (layer 2)   plan  executor  fuse  reflect  research
 │   ├── rag/          (layer 3)   answer  chunker  generate  citation_check  version_check  abstain
-│   └── eval/                     metrics  qrels  run_eval  ablation  efficiency  agreement  agent_eval  plots
-├── scripts/                      00_check_access … 05_run_all_evals, judge_queries
+│   └── eval/                     metrics  qrels  run_eval  ablation  efficiency  agreement  agent_eval  typos  plots
+├── scripts/                      00_check_access … 05_run_all_evals, 06_train_ltr, judge_queries
 ├── app/                          cli.py  streamlit_app.py
 ├── notebooks/                    01_explore_ilpcsr  02_postings_demo  03_results
 ├── tests/                        conftest + one test file per area
@@ -87,7 +87,8 @@ kanoon-bridge/
 | --- | --- | --- | --- | --- |
 | `schema.py` | all | ✅ | The data classes every module passes. Agree in hour 1; add fields with defaults, never ad-hoc dicts | `Document` (doc_id, doc_type, paragraphs, court, states, decision_date, code, statutes_cited, …; `.text`, `.zone_text()`), `Paragraph`, `Query`, `AnalyzedQuery` (`.weighted_terms()`), `Posting`, `ScoredDoc`, `SearchResult`, enums `DocType`/`Code`/`Court`, `ZONES`, `section_ref()`, `read_documents()`/`write_documents()`/`read_queries()` |
 | `config.py` | D | ✅ | Loads YAML into attribute-style objects | `load_config(name, overrides)`, `project_path()`, `PROJECT_ROOT` |
-| `search.py` | D | ✅ wiring | **Layer 1 entry point.** The CLI, app, agent and evaluator all call it (rule 4) | `SearchOptions` (one switch per component; `.baseline()`, `.from_dict()`), `SearchEngine.load()`, `SearchEngine.search(query, options) -> SearchResult`, module-level `search()` |
+| `search.py` | D | ✅ | **Layer 1 entry point.** The CLI, app, agent and evaluator all call it (rule 4) | `SearchOptions` (one switch per component; `.full()`, `.interactive()`, `.baseline()`, `.from_dict()`; agent hooks `restrict_states/require_terms/extra_terms/drop_terms`; `ltr`, `collapse_duplicates`), `SearchEngine.load()/from_components()`, `.search(query, options) -> SearchResult`, `.boolean_candidates()`, module-level `search()` |
+| `present.py` | Gaurav | ✅ | Query-biased snippets + highlighting, "why this result", statute version notes, facet counts (CLI/app only; never affects ranking) | `snippet(doc, aq, res)`, `highlight()`, `explain(hit, aq, engine)`, `version_note(ref, normalizer)`, `facet_counts()`, `title_of()` |
 
 ### `ingest/` — raw data → `Document`s (A; crosswalk B)
 
@@ -110,6 +111,7 @@ kanoon-bridge/
 | `collision.py` | Gaurav | ✅ | Resolve bare/colliding numbers from date + context. **Hardest part** | `Reading`, `CollisionResolver.load()`, `code_for_date()`, `resolve(section, context, date)`, `resolve_tokens(tokens, date)`, `last_readings` (trace) |
 | `transliterate.py` | C | ✅ | Language detection, Devanagari→Roman (own character table, schwa deletion), Hinglish spelling rules, legal lexicon (exact → normalised → phonetic) | `detect_lang()`, `devanagari_to_roman()`, `normalize_roman()` + `NORMALISATION_RULES`, `LegalLexicon.load()`, `.lookup(word, use_phonetic)`, `FUNCTION_WORDS` |
 | `phonetic.py` | C | ✅ | Soundex for Roman Hindi (`hatya = hathya = hattya`) | `soundex()` (baseline), `hindi_soundex()`, `PhoneticIndex.build()/matches()` |
+| `spell.py` | Gaurav | ✅ | Tolerant retrieval: k-gram index, Damerau–Levenshtein spelling correction, did-you-mean, wildcards (IIR ch. 3) | `KGramIndex(.candidates, .wildcard)`, `damerau_levenshtein()`, `Speller.build(df, surface).check(word, term) -> Correction`, `.expand_wildcard()`, `surface_forms(docs)` |
 
 ### `index/` — data structures (A; tiers D)
 
@@ -121,6 +123,7 @@ kanoon-bridge/
 | `tiers.py` | Gaurav | ✅ | Tiered index + champion lists (efficiency experiment) | `TieredIndex.build(zidx, authority, quantile, champion_size)`, `.candidates(terms, min_results, use_champions, index)` |
 | `store.py` | A | ✅ | Save/load artefacts under `data/processed/index/` | `save(obj, name, fmt)`, `load(name, fmt)`, `exists()`, `index_dir()` |
 | `docstore.py` | all | ✅ | doc_id → `Document` text (agent, RAG, judging tool, app) | `DocStore.load()`, mapping access, `.snippet()` |
+| `dedup.py` | Gaurav | ✅ | Near-duplicate judgments: 5-word shingles, MinHash, LSH bands, union-find groups | `shingles()`, `minhash()`, `near_duplicate_groups(docs) -> {doc: group}` |
 
 ### `query/` — understanding input (A; analyzer C)
 
@@ -129,7 +132,7 @@ kanoon-bridge/
 | `parser.py` | A | ✅ | Query syntax: phrases, AND/OR/NOT, `/k`, filters `state: date: code: court:`; section mentions stay one word | `extract_filters()`, `has_operators()`, `parse() -> ParsedQuery(.tree, .text_for_ranking)`, `QueryNode`/`Op`, recursive-descent `_parse_tree()`, `ranking_text()`, `show()` |
 | `boolean.py` | A | ✅ | Boolean retrieval; intersection in increasing-df order; section terms match their offence in either code | `intersect(p1, p2)` (two-pointer), `intersect_many(lists)`, `evaluate(node, index, analyze, universe)` |
 | `proximity.py` | A | ✅ | `t1 /k t2` with positions (two-pointer) | `within(index, t1, t2, k) -> set`, `within_positions()`, `positions_within()` |
-| `analyzer.py` | C (+B) | ✅ wiring | Raw query → `AnalyzedQuery`, recording every rewrite in `.trace` | `QueryAnalyzer.load(cfg, vocabulary)`, `.analyze(query)`; steps: filters → language → translit → lexicon/phonetic → pipeline → code in force → cross-code |
+| `analyzer.py` | C (+B) | ✅ | Raw query → `AnalyzedQuery`, recording every rewrite in `.trace` | `QueryAnalyzer.load(cfg, vocabulary)`, `.analyze(query)`; steps: filters (incl. `after:`/`before:`) → wildcards → language → translit → lexicon/phonetic → pipeline → spelling → code in force → cross-code; `.steps` switches for ablations |
 
 ### `rank/` — scoring (D; dense + fusion C)
 
@@ -144,6 +147,9 @@ kanoon-bridge/
 | `qpp.py` | Gaurav | ✅ | Query performance prediction (no labels) | `QPPFeatures`, `pre_retrieval()`, `post_retrieval()`, `confidence()`, `alpha_from_qpp()`, `should_abstain()` |
 | `fusion.py` | C | ✅ | Score normalisation + lexical/dense fusion | `minmax()`, `zscore()`, `fuse(lexical, dense, alpha, method)` |
 | `topk.py` | D | ✅ | Heap top-K and net score | `top_k(scores, k)`, `net_score()`, `to_scored()` |
+| `ltr.py` | Gaurav | ✅ | Learning to rank: 13 features, linear model, coordinate ascent on MAP (Metzler & Croft 2007), trained on val | `FEATURES`, `feature_rows(hits, aq, engine)`, `coordinate_ascent()`, `cross_validate()`, `LinearRanker` |
+| `similar.py` | Gaurav | ✅ | "More like this": text profile + version-aware bibliographic coupling + co-citation | `SimilarCases.load(engine, docs).find(doc_id, k)` |
+| `feedback.py` | Gaurav | ✅ | Explicit relevance feedback (Rocchio) → `SearchOptions.extra_terms/drop_terms` | `rocchio_options(engine, aq, docs, relevant, non_relevant)` |
 
 ### `agent/` — layer 2 research agent (AG: Shaurya)
 
@@ -182,6 +188,7 @@ All default to off, so plain searches are unchanged.
 | `efficiency.py` | ✅ | Exhaustive vs tiered vs champion lists: latency + Recall@20 vs exhaustive | `compare_modes(n_queries)` |
 | `agreement.py` | ✅ | Inter-judge agreement | `percent_agreement()`, `cohens_kappa()` |
 | `agent_eval.py` | ✅ | Layer 2 vs core; layer 3 support rate, version flags, abstention | `compare_agent(set)`, `evaluate_rag(path)` |
+| `typos.py` | ✅ | Typo robustness: simulated known-item statute queries with Damerau errors; spelling off vs on | `corrupt()`, `run()` → `typos.csv`, `typo_queries.jsonl` |
 | `plots.py` | ✅ | Report/video charts from results/tables | `bar_chart()`, `make_all()` |
 
 ---
@@ -196,7 +203,8 @@ All default to off, so plain searches are unchanged.
 | `02_build_index.py` | A | ✅ | Same text pipeline as queries → zone indexes, facets, statute terms |
 | `03_build_graph.py` | Gaurav | ✅ | Train qrels → graph → authority + tiers |
 | `04_encode_dense.py` | C | ✅ | Paragraph embeddings once (GPU) |
-| `05_run_all_evals.py` | D | ✅ | All test sets (baseline vs full), ablations, efficiency, figures |
+| `05_run_all_evals.py` | D | ✅ | All test sets (baseline vs full), ablations, efficiency, typos, agent, RAG, figures |
+| `06_train_ltr.py` | Gaurav | ✅ | Train the learning-to-rank model on IL-PCSR val (5-fold CV report) → `index/ltr.json` |
 | `judge_queries.py` | all | ✅ | Terminal judging tool, resumable, per-judge TSV |
 
 ## `app/` — demo (frontend is not graded)

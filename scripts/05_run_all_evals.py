@@ -4,7 +4,7 @@
     python scripts/05_run_all_evals.py                       # everything in configs/eval.yaml
     python scripts/05_run_all_evals.py --sets e2_collision e7_temporal
     python scripts/05_run_all_evals.py --limit 50            # quick pass: first 50 queries per set
-    python scripts/05_run_all_evals.py --skip-ablation --skip-efficiency --skip-agent --skip-rag
+    python scripts/05_run_all_evals.py --skip-ablation --skip-efficiency --skip-agent --skip-rag --skip-typos
     python scripts/05_run_all_evals.py --only-plots          # redraw figures from existing tables
     python scripts/05_run_all_evals.py --sample              # pipeline check on the synthetic sample
 
@@ -32,6 +32,7 @@ def main() -> None:
     ap.add_argument("--skip-efficiency", action="store_true")
     ap.add_argument("--skip-agent", action="store_true")
     ap.add_argument("--skip-rag", action="store_true")
+    ap.add_argument("--skip-typos", action="store_true")
     ap.add_argument("--rag-generator", help="auto | claude | extractive")
     ap.add_argument("--only-plots", action="store_true")
     ap.add_argument("--sample", action="store_true", help="evaluate on the synthetic sample (after make sample)")
@@ -65,7 +66,7 @@ def main() -> None:
             continue
         print(f"{name}: {len(ts.queries)} queries, {ts.judged} judged"
               + ("" if ts.judged else " (qrels empty: only the qrels-free metric is meaningful)"))
-        for system, opt in (("baseline", SearchOptions.baseline()), ("full", SearchOptions())):
+        for system, opt in (("baseline", SearchOptions.baseline()), ("full", SearchOptions.full())):
             scores = evaluate_set(engine, ts, opt, system, ev, runs)
             rows.append({"set": name, "system": system, "queries": len(ts.queries),
                          **{k: round(v, 4) for k, v in scores.items()}})
@@ -85,6 +86,13 @@ def main() -> None:
         ablation.run_language_ablation(engine=engine, ev=ev)
     if not args.skip_efficiency and "e1_ilpcsr" in sets:
         efficiency.compare_modes(min(args.limit or 10**9, ev.efficiency.n_queries), engine, ev)
+    if not args.skip_typos:
+        from kanoon_bridge.eval import typos
+
+        try:
+            typos.run(engine=engine, ev=ev, n_items=min(args.limit or 10**9, ev.typos.n_items) if args.limit else None)
+        except FileNotFoundError as err:
+            print(f"typos: skipped ({err})")
     if not args.skip_agent:
         for name in ("e1_ilpcsr", "e6_jurisdiction"):
             if name in sets and load_test_set(name, ev=ev, limit=args.limit).judged:

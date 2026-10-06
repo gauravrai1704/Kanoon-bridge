@@ -7,6 +7,8 @@ Reads data/processed/docs.jsonl, runs every document through text.pipeline.analy
     data/processed/index/precedents_zone.pkl
     data/processed/index/facets.pkl
     data/processed/index/statute_terms.json     statute doc_id -> its section + offence tokens
+    data/processed/index/surface_forms.json     spellings seen in the corpus (did-you-mean display)
+    data/processed/index/near_duplicates.json   precedent -> near-duplicate group (MinHash + LSH)
 
 Query cases (IL-PCSR queries) are NOT indexed: they are only used as queries.
 
@@ -44,6 +46,18 @@ def main() -> None:
         ref = d.meta.get("ref", "")
         statute_terms[d.doc_id] = ([f"sec:{ref}"] if ref else []) + list(dict.fromkeys(d.offence_ids))
     store.save(statute_terms, "statute_terms", "json")
+
+    # stem -> most frequent spelling, so spelling suggestions read "dowry", not "dowri"
+    from kanoon_bridge.text.spell import surface_forms
+
+    store.save(surface_forms(statutes + precedents), "surface_forms", "json")
+
+    # near-duplicate judgments (MinHash + LSH), collapsed in interactive results
+    from kanoon_bridge.index.dedup import near_duplicate_groups
+
+    dups = near_duplicate_groups(precedents)
+    store.save(dups, "near_duplicates", "json")
+    print(f"near-duplicates: {len(dups)} precedents in {len(set(dups.values()))} groups")
     print("saved indexes to", store.index_dir())
 
 

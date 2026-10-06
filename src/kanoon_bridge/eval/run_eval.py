@@ -259,7 +259,7 @@ def options_for(system: str, ev: Config | None = None):
     if system == "baseline":
         return SearchOptions.baseline()
     if system == "full":
-        return SearchOptions()
+        return SearchOptions.full()
     ev = ev or load_config("eval.yaml")
     step = next(s for s in ev.ablation_ladder if s["name"] == system)
     return SearchOptions.from_dict(step)

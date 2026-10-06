@@ -50,6 +50,7 @@ ablation_ladder:
   - {name: +dense,        zones: true,  bridge: true,  authority: true,  dense: true,  qpp: false, jurisdiction: false, code_filter: true}
   - {name: +qpp,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: false, code_filter: true}
   - {name: +jurisdiction, zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true}
+  - {name: +ltr,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ltr: true}
 
 # E4: analyzer steps switched on one at a time (stemming needs a re-index, so it is not ablated here)
 language_ablation:
@@ -58,6 +59,13 @@ language_ablation:
   - {name: +lexicon,  transliterate: true,  lexicon: true,  phonetic: false, dense: false}
   - {name: +phonetic, transliterate: true,  lexicon: true,  phonetic: true,  dense: false}
   - {name: +dense,    transliterate: true,  lexicon: true,  phonetic: true,  dense: true}
+
+# Typo robustness (eval/typos.py): known-item search for statutes. Query = a statute's title
+# with simulated typos; target = that statute. Spelling correction off vs on vs clean titles.
+typos:
+  n_items: 300                  # statutes sampled (with a title of 2+ content words)
+  seed: 13
+  rate: 1.0                     # expected typos per query (at least one)
 
 efficiency:
   n_queries: 200                # E1 test queries timed per mode

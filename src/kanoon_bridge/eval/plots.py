@@ -8,6 +8,7 @@ regenerated without re-running retrieval:
     agent_<set>.png       core vs agent (RRF) vs agent (CombSUM)
     language_e4.png       P@5 by query language, per language-ablation step
     efficiency.png        latency (left) and Recall@20 vs exhaustive (right) per scoring mode
+    typos.png             known-item MRR: clean vs misspelled vs misspelled + spelling correction
     rag.png               supported-sentence rate: RAG vs closed-book
 
     python -m kanoon_bridge.eval.plots
@@ -88,7 +89,7 @@ def bar_chart(rows: list[dict], x: str, y: str | list[str], title: str, out: str
     if not rows or not ys:
         return None
     plt = _plt()
-    fig, ax = plt.subplots(figsize=(max(5.0, 0.9 * len(rows) + 2), 3.6))
+    fig, ax = plt.subplots(figsize=(max(7.0, 0.9 * len(rows) + 2), 3.6))
     _bars(ax, [r[x] for r in rows], {m: [_num(r.get(m)) for r in rows] for m in ys})
     ax.set_title(title, loc="left", fontsize=11, color=INK, pad=22 if len(ys) > 1 else 8)
     ax.set_ylabel(ylabel or (ys[0] if len(ys) == 1 else "score"))
@@ -158,6 +159,13 @@ def make_all(tables: str | Path | None = None, figures: str | Path | None = None
                                   _delta_title(rows, "MAP", rows[0]["system"], rows[-1]["system"],
                                                f"Layer 2 on {path.stem.removeprefix('agent_')}"),
                                   figures / f"{path.stem}.png"))
+
+    ty = read_table(tables / "typos.csv")
+    if ty:
+        a, b = (_num(r.get("MRR@10")) for r in (ty[1], ty[2])) if len(ty) > 2 else (None, None)
+        title = ("Typo robustness (known-item statute search)" if a is None else
+                 f"Spelling correction: MRR@10 {a:.2f} -> {b:.2f} on misspelled queries")
+        made.append(bar_chart(ty, "condition", ["MRR@10", "Success@1", "Success@10"], title, figures / "typos.png"))
 
     lang = read_table(tables / "language_e4.csv")
     if lang:

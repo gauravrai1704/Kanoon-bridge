@@ -201,3 +201,77 @@ def test_layer1_dense_fusion_with_fake_encoder(engine, tmp_path):
     res = eng.search(Query("knife", **Q), SearchOptions(dense=True, qpp=True))
     assert all("dense" in h.components for h in res.precedents)
     assert any(step == "alpha" for step, _ in res.query.trace)
+
+
+# ---------------------------------------------------------------- tolerant retrieval + presentation
+def test_spelling_correction_and_did_you_mean(engine):
+    res = engine.search(Query("murdr with a knfe", **Q))
+    fixed = {c.word: c.display for c in res.query.corrections}
+    assert fixed == {"murdr": "murder", "knfe": "knife"}
+    assert res.query.suggestion == "murder with a knife"
+    assert res.precedents and res.precedents[0].doc_id in {"P1", "P2", "P3"}
+
+
+def test_wildcards_in_free_text_and_boolean(engine):
+    res = engine.search(Query("stab* knife", **Q))
+    assert "stab" in res.query.wildcards["stab*"]
+    res = engine.search(Query("jewel* AND theft", **Q))
+    assert [h.doc_id for h in res.precedents] == ["P4"]
+
+
+def test_snippet_highlight_and_reasons(engine, docs):
+    from kanoon_bridge import present
+
+    res = engine.search(Query("BNS 103 knife", **Q))
+    top = res.precedents[0]
+    snip = present.snippet(docs[top.doc_id], res.query, engine.analyzer.text_res)
+    assert "**knife" in snip or "**Section 302 IPC**" in snip
+    why = present.explain(top, res.query, engine)
+    assert any("IPC 302 = BNS 103" in r for r in why)
+    assert any(r.startswith("binding") for r in why)
+    assert present.version_note("bns:103", engine.analyzer.text_res.normalizer).startswith("BNS 103 <- IPC 302")
+    counts = present.facet_counts(res.precedents, engine)
+    assert sum(counts["court"].values()) == len(res.precedents)
+
+
+def test_similar_cases_version_aware_coupling(engine, docs):
+    from kanoon_bridge.rank.similar import SimilarCases
+
+    sim = SimilarCases(engine=engine, docs=docs)
+    found = sim.find("P2", k=3)
+    assert found and found[0][0] in {"P1", "P3"}
+    assert found[0][2]["coupling"] == 1.0                      # both cite the murder offence
+    assert "P2" not in [d for d, _, _ in found]
+
+
+def test_relevance_feedback_and_date_filters(engine, docs):
+    from kanoon_bridge.rank.feedback import rocchio_options
+    from kanoon_bridge.search import SearchOptions
+
+    first = engine.search(Query("knife", **Q))
+    fb = rocchio_options(engine, first.query, docs, ["P3"], ["P1"])
+    assert fb["extra_terms"] and all(w == 0.75 for w in fb["extra_terms"].values())
+    res = engine.search(Query("knife", **Q), SearchOptions(**fb))
+    assert any(step == "feedback" for step, _ in res.query.trace)
+    dated = engine.search(Query("knife after:2016 before:2020", **Q))
+    assert {h.doc_id for h in dated.precedents} <= {"P2", "P3"}
+
+
+def test_ltr_rerank_and_duplicate_collapse(engine):
+    import copy
+
+    import numpy as np
+
+    from kanoon_bridge.rank.ltr import FEATURES, LinearRanker
+    from kanoon_bridge.search import SearchOptions
+
+    eng = copy.copy(engine)
+    w = np.zeros(len(FEATURES))
+    w[FEATURES.index("binding")] = 1.0                            # a ranker that only likes binding cases
+    eng.ltr = LinearRanker(weights=w)
+    res = eng.search(Query("knife murder", **Q), SearchOptions(ltr=True))
+    assert res.precedents[0].doc_id in {"P1", "P2"} and "ltr" in res.precedents[0].components
+    eng.near_dups = {"P1": "P1", "P2": "P1"}
+    res = eng.search(Query("knife murder", **Q), SearchOptions(collapse_duplicates=True))
+    ids = [h.doc_id for h in res.precedents]
+    assert not ({"P1", "P2"} <= set(ids))

@@ -177,6 +177,9 @@ class AnalyzedQuery:
     offence_ids: list[str] = field(default_factory=list)     # canonical offences after version normalisation
     code_in_force: Code = Code.UNKNOWN         # from incident_date
     boolean: Any = None                        # query.parser.QueryNode when the query uses AND/OR/NOT/""/ /k
+    corrections: list[Any] = field(default_factory=list)      # text.spell.Correction per corrected word
+    suggestion: str | None = None              # "did you mean" rewrite of the query text
+    wildcards: dict[str, list[str]] = field(default_factory=dict)  # pattern -> index terms it expanded to
     trace: list[tuple[str, str]] = field(default_factory=list)  # (step name, output) for --debug
 
     def weighted_terms(self) -> dict[str, float]:

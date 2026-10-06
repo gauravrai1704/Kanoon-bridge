@@ -32,6 +32,12 @@ text:
   stem_hindi: true
   remove_stopwords: true
   phonetic_matching: true
+  spelling: true                  # did-you-mean / correction of unseen query words (text/spell.py)
+  spelling_weight: 0.9            # weight of an added correction
+  spelling_min_df: 2              # a correction must occur in at least this many documents
+  spelling_max_query_words: 40    # longer queries (whole judgments, E1) are not spell-checked
+  wildcard_weight: 0.8            # weight of each term a wildcard ("extort*") expands to
+  wildcard_max_terms: 30          # most frequent expansions kept per wildcard
 
 zones:                            # BM25F zone weights
   facts: 1.0
@@ -79,6 +85,12 @@ tiers:
 
 search:
   top_k: 10
+
+similar:                          # "more like this" (rank/similar.py)
+  w_text: 0.6                     # the case's own top tf-idf terms as a BM25F query
+  w_coupling: 0.25                # version-aware bibliographic coupling (shared offences cited)
+  w_cocitation: 0.15              # cited together by the same cases (train-split graph)
+  n_terms: 40
 
 # Layer 2: research agent (agent/)
 agent:

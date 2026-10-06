@@ -47,7 +47,7 @@ def compare_agent(test_set: str = "e1_ilpcsr", engine=None, limit: int | None = 
     out_dir = project_path(ev.outputs.runs) / "agent"
     rows = []
     for system, ag in (("core", None), ("agent_rrf", rrf), ("agent_combsum", comb)):
-        scores = evaluate_set(engine, ts, SearchOptions(), system, ev, out_dir, agent=ag)
+        scores = evaluate_set(engine, ts, SearchOptions.full(), system, ev, out_dir, agent=ag)
         rows.append({"set": test_set, "system": system, **{k: round(v, 4) for k, v in scores.items()}})
         print(f"  agent {test_set} {system:14s} MAP={scores.get('MAP', 0):.4f}")
 

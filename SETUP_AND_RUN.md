@@ -137,8 +137,11 @@ What to do with the disagreements:
 make data      # scripts/01_build_corpus.py → data/processed/docs.jsonl (statutes, precedents, query cases)
 make index     # scripts/02_build_index.py  → data/processed/index/ (zone + facet indexes, statute terms)
 make graph     # scripts/03_build_graph.py  → citation graph (train qrels only), authority, tiers
+make ltr       # scripts/06_train_ltr.py    → learning-to-rank model trained on IL-PCSR val (prints 5-fold CV MAP)
 # optional, Kashvi: make dense  (then set dense.enabled: true in configs/default.yaml)
 ```
+
+`make index` also writes the corpus spellings (for "did you mean") and the near-duplicate groups (MinHash). It prints how many it found. `make ltr` runs about 627 searches and takes a few minutes. Rerun it whenever the indexes, the dense setting or the features change; an outdated model is refused with a warning.
 
 ### Optional: the dense channel (multilingual embeddings, GPU recommended)
 
@@ -171,9 +174,25 @@ The query syntax is:
 | `"..."` | phrase |
 | `t1 /k t2` | the two terms within k words of each other |
 | `( )` | grouping |
+| `extort*` `*bail` | wildcard (works inside Boolean queries too) |
 | `state:` `date:` `code:` `court:` | filters |
+| `after:2015` `before:2020-06-30` | precedents decided in a date range |
 
 Matching documents are ranked on the query's positive words. Section mentions such as "BNS 103" or "Section 302 IPC" stay one term and match the same offence under either code.
+
+### Search features to try
+
+```bash
+python app/cli.py "punishmnt for murdr with a knfe" --date 2025-01-03     # Did you mean: punishment for murder with a knife
+python app/cli.py "extort* threat" --debug                                # wildcard expansion in the trace
+python app/cli.py "dowry death" --state delhi --snippets 5                # snippets with **highlights** + "why" lines
+python app/cli.py "knife attack" --feedback P01,P06                       # Rocchio relevance feedback (use real ids)
+python app/cli.py "" --like <precedent_id>                                # similar cases (text + coupling + co-citation)
+python app/cli.py "dowry death" --similar                                 # results, then cases like the top one
+python app/cli.py "dowry death" --no-ltr                                  # hand-set weights instead of the learned ranker
+```
+
+Every precedent shows a query-biased snippet and a "why" line. The line names the offence matched across codes, where the match is, binding or persuasive for your state, and old-code relevance. Statutes show their version note (`BNS 103 <- IPC 302 (same offence)`). Near-duplicate judgments are collapsed to one. `--no-snippets` prints ids and scores only.
 
 ## 6. Run the evaluations
 
@@ -199,6 +218,7 @@ What runs:
 | `results/tables/ablation_e1_ilpcsr.csv` (and e2) | ladder bm25 → +zones → +code_filter → +bridge → +authority → +dense → +qpp → +jurisdiction |
 | `results/tables/language_e4.csv` | E4 analyzer steps switched on one at a time (needs E4 qrels) |
 | `results/tables/efficiency.csv` | exhaustive vs tiered vs champion lists: median/p95 latency and Recall@20 vs exhaustive (200 E1 queries) |
+| `results/tables/typos.csv`, `typo_queries.jsonl` | typo robustness: known-item statute search with simulated misspellings; spelling correction off vs on, plus the clean titles (MRR@10, Success@1/10) |
 | `results/tables/agent_e1_ilpcsr.csv` (and e6 once judged) | core vs agent (RRF) vs agent (CombSUM); searches per question, sub-query kinds, share reformulated and share where reformulation helped |
 | `results/tables/rag.csv`, `rag_answers.jsonl` | layer 3: supported-sentence rate, version flags, abstention precision/recall |
 | `results/runs/*.run` | TREC run files: `query_id Q0 doc_id rank score system` |
@@ -277,7 +297,7 @@ With a key, `make eval` also asks Claude **closed-book** (no sources) and checks
 make app                          # streamlit run app/streamlit_app.py
 ```
 
-The app has a query box, a state picker and an incident date. It shows statutes and precedents with score breakdowns and the query-analysis trace. A **Research agent (layer 2)** checkbox shows what the agent did and which sub-query found each precedent. A **Grounded answer (layer 3)** checkbox adds the RAG answer with its flags; it works on either result.
+The app has a query box, a state picker and an incident date. It shows "Did you mean" when it corrected a spelling. Statutes come with version notes; precedents come as cards with a highlighted snippet, a "why" line and a score breakdown. The sidebar has facet counts. Tick **relevant** on some cards and press **Refine** to apply relevance feedback. A **Similar cases** panel is at the bottom. A **Research agent (layer 2)** checkbox shows what the agent did and which sub-query found each precedent. A **Grounded answer (layer 3)** checkbox adds the RAG answer with its flags; it works on either result.
 
 ## 10. No Hugging Face access yet? Run everything on the synthetic sample
 
