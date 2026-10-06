@@ -106,10 +106,11 @@ def _read_table(path: Path) -> list[dict]:
 @lru_cache(maxsize=16)
 def _rows(config: str, split: str, root: str) -> tuple[dict, ...]:
     base = Path(root) / config
-    for ext in (".parquet", ".jsonl", ".json"):
-        path = base / f"{split}{ext}"
-        if path.exists():
-            return tuple(_read_table(path))
+    for folder in (base, Path(root)):        # <config>/<split>.* (our export) or flat <split>.* (HF download)
+        for ext in (".parquet", ".jsonl", ".json"):
+            path = folder / f"{split}{ext}"
+            if path.exists():
+                return tuple(_read_table(path))
     try:
         from datasets import load_dataset
     except ImportError as err:
@@ -156,13 +157,30 @@ def _date(value) -> date | None:
         return None
 
 
+def _as_list(value) -> list:
+    """A list column, also when an export stored it as a string ("['a', 'b']")."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        v = value.strip()
+        if v.startswith("[") and v.endswith("]"):
+            import ast
+
+            try:
+                return list(ast.literal_eval(v))
+            except (ValueError, SyntaxError):
+                pass
+        return [value]
+    return list(value)
+
+
 def _roles(row: dict) -> list[str] | None:
-    return row.get("rhetorical_roles") or row.get("rr")
+    roles = _as_list(row.get("rhetorical_roles", row.get("rr")))
+    return roles or None
 
 
 def _paragraph_texts(row: dict) -> list[str]:
-    text = row.get("text") or []
-    return [text] if isinstance(text, str) else list(text)
+    return [str(t) for t in _as_list(row.get("text"))]
 
 
 @lru_cache(maxsize=4)
@@ -184,8 +202,8 @@ def _judgment(row: dict, doc_type: DocType, split: str | None, cfg: Config) -> D
         title=row.get("case_title") or "",
         paragraphs=paragraphs,
         decision_date=_date(row.get("date")),
-        statutes_cited=sorted({refs.get(s, s) for s in row.get("relevant_statute_ids") or []}),
-        precedents_cited=[str(p) for p in row.get("relevant_precedent_ids") or []],
+        statutes_cited=sorted({refs.get(s, s) for s in _as_list(row.get("relevant_statute_ids"))}),
+        precedents_cited=[str(p) for p in _as_list(row.get("relevant_precedent_ids"))],
         split=split,
         meta={"jurisdiction": row.get("jurisdiction") or "", "source": "il-pcsr"},
     )
@@ -231,7 +249,7 @@ def load_qrels(split: str, target: str = "precedent", cfg: Config | None = None)
     """
     cfg = cfg or load_config()
     key = "relevant_precedent_ids" if target == "precedent" else "relevant_statute_ids"
-    return {str(r["id"]): {str(d): 1 for d in r.get(key) or []} for r in rows("queries", SPLIT_NAMES[split], cfg)}
+    return {str(r["id"]): {str(d): 1 for d in _as_list(r.get(key))} for r in rows("queries", SPLIT_NAMES[split], cfg)}
 
 
 def iter_all(cfg: Config | None = None) -> Iterable[Document]:

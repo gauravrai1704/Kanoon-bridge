@@ -28,6 +28,8 @@ ROLE_TO_ZONE: dict[str, str] = {
     "courtres": "ratio",
     "court reasoning": "ratio",
     "precedent": "ratio",
+    "precedent analysis": "ratio",
+    "statute analysis": "ratio",
     "statute": "ratio",
     "statue": "ratio",
     "section": "ratio",
