@@ -165,6 +165,7 @@ def extract_rows_from_pdf(pdf_path: str | Path, debug: bool = False) -> list[dic
     rows: list[dict] = []
     stats = {"pages": 0, "tables": 0, "table_rows": 0, "text_rows": 0}
     bns_col = ipc_col = None
+    packed = (0, 0, 0)
     with pdfplumber.open(str(pdf_path)) as pdf:
         texts = []
         for page in pdf.pages:
@@ -179,11 +180,20 @@ def extract_rows_from_pdf(pdf_path: str | Path, debug: bool = False) -> list[dic
                     b, i = _find_columns(cells)
                     if b is not None and i is not None:
                         bns_col, ipc_col = b, i
+                        # the header may carry empty spacer columns that the body rows lack
+                        # (MHA PDF: 6 header cells, 4 body cells); remember both layouts
+                        kept = [k for k, c in enumerate(cells) if c]
+                        packed = (len(kept), kept.index(b), kept.index(i))
                         continue
-                    if bns_col is None or max(bns_col, ipc_col) >= len(cells):
+                    if bns_col is None:
                         continue
-                    m = _BNS_CELL.match(cells[bns_col].replace(" (", "("))
-                    ipcs, _ = parse_ipc_reference(cells[ipc_col])
+                    b, i = bns_col, ipc_col
+                    if len(cells) == packed[0] and len(cells) <= max(b, i):
+                        b, i = packed[1], packed[2]
+                    if max(b, i) >= len(cells):
+                        continue
+                    m = _BNS_CELL.match(cells[b].replace(" (", "("))
+                    ipcs, _ = parse_ipc_reference(cells[i])
                     if m:
                         stats["table_rows"] += 1
                         for ipc in ipcs:
