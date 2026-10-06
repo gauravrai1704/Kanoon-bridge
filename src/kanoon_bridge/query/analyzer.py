@@ -99,6 +99,13 @@ class QueryAnalyzer:
         aq.sections = [t[len("sec:"):] for t in aq.tokens if is_section_token(t)]
         aq.offence_ids = [t for t in aq.tokens if t.startswith("off:")]
         aq.trace.append(("tokens", " ".join(aq.tokens)))
+        resolver = self.text_res.resolver
+        for tok, readings in getattr(resolver, "last_readings", []) or []:
+            aq.trace.append(("collision", f"{tok} -> " + ", ".join(
+                f"{r.section_ref} {r.confidence:.2f} ({r.reason})" for r in readings)))
+        if aq.offence_ids and self.text_res.normalizer is not None:
+            aq.trace.append(("offences", "; ".join(f"{o} = {self.text_res.normalizer.label(o)}"
+                                                  for o in dict.fromkeys(aq.offence_ids))))
 
         # 6. code in force
         resolver = self.text_res.resolver

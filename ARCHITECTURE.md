@@ -25,8 +25,8 @@ switched off without touching layer 1 — and the core is a complete submission 
 | **IL-PCSR precedents** | 3,183 SC + HC judgments (unmasked) | `docs.jsonl` as `PRECEDENT` → precedent zone index | layer 1 ranking, citation graph, RAG chunks | indexed |
 | **IL-PCSR statutes** | 936 IPC-era sections | `docs.jsonl` as `STATUTE` → statute index | layer 1 statute ranking, statute bridge | indexed |
 | **IL-PCSR qrels** | which precedents/statutes each query cited | loaded by `ingest/load_ilpcsr.load_qrels` | train → graph; val → tuning; test → E1/E3 | never tune on test |
-| **BNS bare act** (India Code) | 358 sections, in force from 1 July 2024 | `docs.jsonl` as `STATUTE` (code BNS) | BNS-era statute retrieval | indexed |
-| **IPC↔BNS crosswalk** (government table) | section-by-section mapping | `data/crosswalk/ipc_bns.csv`, `offence_ids.csv` | version normalisation, collision resolver, RAG version check | hand-checked by B |
+| **BNS bare act** (via bns-study-platform, verified against the Gazette) | 358 sections, in force from 1 July 2024 | `docs.jsonl` as `STATUTE` (code BNS) | BNS-era statute retrieval | indexed |
+| **IPC↔BNS crosswalk** (each BNS section's IPC correspondence; government table as cross-check) | 496 section pairs → ~350 offences | `data/crosswalk/ipc_bns.csv`, `offence_ids.csv` | version normalisation, collision resolver, statute bridge, RAG version check | spot-check key sections |
 | **Lexicons** (ours) | Hinglish legal terms, stop words, court→states | `data/lexicons/` | analyzer expansion, text pipeline, metadata | committed |
 | **Hand-built query sets** (ours) | E2, E3, E4, E6, E7 queries + 2-judge qrels | `data/queries/` | evaluation only | written **before** rules are final |
 | PoliceDrishti (optional, gated) | 190 case summaries → BNS charges | `data/raw/policedrishti/` | E5 facts → sections | eval only |
@@ -36,7 +36,7 @@ switched off without touching layer 1 — and the core is a complete submission 
 
 | Split | Size | Used for | Never used for |
 | --- | --- | --- | --- |
-| train | 5,021 queries | citation-graph edges → authority g(d) | evaluation |
+| train | 5,017 queries | citation-graph edges → authority g(d) | evaluation |
 | val | 627 queries | tuning λ (authority), α (fusion), zone weights, choosing k for F1@k | reported results |
 | test | 627 queries | E1 and E3 results in the report | tuning anything, graph edges |
 | hand-built sets | ~30–100 each | E2, E4, E6, E7 | rule design (write them first) |

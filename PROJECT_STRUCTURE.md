@@ -4,8 +4,9 @@ Read `ARCHITECTURE.md` first for how the pieces fit. This file is the map: every
 it, whether it works yet, what it is for, and **what it must contain** (the functions and classes
 other code calls — keep these names and signatures, or tell the team).
 
-**Owners:** **A** indexing & ingest · **B** version normalisation · **C** Hindi/Hinglish + dense ·
-**D** ranking + evaluation · **AG** research agent (layer 2, suggest B) · **R** RAG (layer 3, first free member).
+**Owners:** **Gaurav** ingest, version normalisation (was B), ranking + evaluation (was D) ·
+**Sharanya** (A) positional/zone/facet indexes, query parser, tokenizer · **Kashvi** (C) Hindi/Hinglish + dense ·
+**Shaurya** (AG) research agent, layer 2 · **R** RAG, layer 3 (first free member).
 
 **Status:** ✅ working · 🔧 wiring works, parts are stubs · ⬜ stub (`raise NotImplementedError("TODO(owner): …")`).
 Run `python scripts/00_check_access.py` to see how many TODOs each owner has left.
@@ -92,11 +93,11 @@ kanoon-bridge/
 
 | File | Owner | Status | Purpose | Must contain |
 | --- | --- | --- | --- | --- |
-| `load_ilpcsr.py` | A | ⬜ | Read IL-PCSR queries, precedents, statutes, qrels. First job in hour 0: `inspect()` the real files | `inspect()`, `load_queries(split)`, `load_precedents()`, `load_statute_candidates()`, `load_qrels(split, target) -> {qid: {doc_id: 1}}` |
-| `load_statutes.py` | A | ⬜ | BNS bare act → one `Document` per section | `parse_bns(path) -> list[Document]` (doc_id like `bns:103`, code BNS) |
-| `parse_crosswalk.py` | B | ⬜ | Government PDF → the two crosswalk CSVs | `extract_rows(pdf)`, `write_crosswalk(rows, out)`, `build_offence_ids(rows, out)`; runnable as a script |
-| `segment.py` | A | 🔧 | Judgments → zone paragraphs ("what is a document") | `ROLE_TO_ZONE`, `CUE_PHRASES`, ✅`split_paragraphs()`, ✅`zone_from_cues()`, ⬜`segment_judgment()`, ⬜`segment_statute()` |
-| `metadata.py` | A | 🔧 | Court, states, decision date, code in force — the spatio-temporal facets | ✅`CourtTable.load()/lookup()`, ✅`code_in_force()`, ⬜`find_date()`, ⬜`enrich(doc, table)` |
+| `load_ilpcsr.py` | Gaurav | ✅ | Read IL-PCSR queries, precedents, statutes, qrels. First job in hour 0: `inspect()` the real files | `parse_provision()`, `rows()`, `inspect()`, `load_queries(split)`, `load_precedents()`, `load_statute_candidates()`, `load_qrels(split, target) -> {qid: {doc_id: 1}}`, `iter_all()` — reads the parquet/jsonl export, falls back to the HF hub |
+| `load_statutes.py` | Gaurav | ✅ | BNS bare act → one `Document` per section | `parse_bns(path)` (JSON dir or plain text), `parse_bns_json()`, `parse_bns_text()`, `iter_section_records()` (doc_id like `bns:103`) |
+| `parse_crosswalk.py` | Gaurav | ✅ | BNS sections' IPC correspondences → the two crosswalk CSVs (government PDF as optional cross-check) | `parse_ipc_reference()`, `extract_rows_from_bns_json()`, `extract_rows_from_pdf()` (best-effort), `compare_sources()`, `write_crosswalk()`, `build_offences()`/`build_offence_ids()`; `python -m kanoon_bridge.ingest.parse_crosswalk [--compare]` |
+| `segment.py` | Gaurav | ✅ | Judgments → zone paragraphs ("what is a document") | `ROLE_TO_ZONE` (real IL-PCSR labels), `CUE_PHRASES`, `split_paragraphs()`, `zone_from_cues()`, `segment_judgment(text_or_paragraphs, roles)`, `segment_statute()` |
+| `metadata.py` | Gaurav | ✅ | Court, states, decision date, code in force — the spatio-temporal facets | `CourtTable.load()/lookup()` (all 25 High Courts), `find_dates()`, `find_date()`, `code_in_force()`, `enrich(doc, table)` |
 
 ### `text/` — analysis and normalisation (A, B, C)
 
@@ -105,8 +106,8 @@ kanoon-bridge/
 | `pipeline.py` | all | ✅ | **The one text pipeline** for documents and queries (rule 2). Skips unfinished steps with a warning | `TextOptions`, `TextResources.load()`, `analyze_text(text, resources, lang, date, options) -> list[str]` |
 | `tokenize.py` | A | ✅ | Section-aware tokeniser: "u/s 498A IPC" → `sec:ipc:498a`; bare numbers → `sec:?:302` | `tokenize()`, `extract_sections() -> list[SectionMention]`, `is_section_token()`, `SECTION_PREFIX` |
 | `stem.py` | C | 🔧 | Porter (✅) and Hindi light stemmer (⬜); never stems `sec:`/`off:` tokens | `stem_tokens(tokens, lang, enabled)`, `stem_english()`, `stem_hindi()` |
-| `version_norm.py` | B | 🔧 | **Core novelty.** Section tokens → canonical offence IDs, both codes | ✅`VersionNormalizer.load()`, ⬜`to_offences(ref) -> [(off_id, weight)]`, ⬜`equivalents(ref)`, ⬜`normalize_tokens(tokens)` |
-| `collision.py` | B | 🔧 | Resolve bare/colliding numbers from date + context. **Hardest part** | `Reading`, ✅`CollisionResolver.load()/code_for_date()`, ⬜`resolve(section, context, date)`, ⬜`resolve_tokens(tokens, date)` |
+| `version_norm.py` | Gaurav | ✅ | **Core novelty.** Section tokens → canonical offence IDs, both codes | `VersionNormalizer.load()`, `to_offences(ref) -> [(off_id, weight)]`, `offences_for()`, `sections_of()`, `equivalents(ref)`, `normalize_tokens(tokens)`, `label()` |
+| `collision.py` | Gaurav | ✅ | Resolve bare/colliding numbers from date + context. **Hardest part** | `Reading`, `CollisionResolver.load()`, `code_for_date()`, `resolve(section, context, date)`, `resolve_tokens(tokens, date)`, `last_readings` (trace) |
 | `transliterate.py` | C | 🔧 | Language detection, Devanagari↔Roman, Hinglish spelling, legal lexicon | ✅`detect_lang()`, ⬜`devanagari_to_roman()`, ⬜`normalize_roman()`, ✅`LegalLexicon.load()`, ⬜`.lookup(word)` |
 | `phonetic.py` | C | 🔧 | Soundex for Roman Hindi (`hatya = hathya = hattya`) | ✅`soundex()` (baseline), ⬜`hindi_soundex()`, ⬜`PhoneticIndex.build()/matches()` |
 
@@ -117,7 +118,7 @@ kanoon-bridge/
 | `positional.py` | A | 🔧 | Inverted index with positions | `PositionalIndex`: ⬜`add(doc_id, tokens)`, ⬜`phrase(terms)`; ✅ stats `df/idf/tf/postings_for/docs_with/n_docs/avg_doc_len/vocabulary` |
 | `zones.py` | A | 🔧 | One positional index per zone + whole-doc index; feeds BM25F | `ZoneIndex`: ⬜`build(docs, analyze)`; ✅`tf(term, doc, zone)`, `zone_len()`, `avg_zone_len()`, `df()`, `.whole` |
 | `facets.py` | A | ⬜ | Parametric index: type, court, states, date, code, sections cited | `DocMeta`, `FacetIndex.build(docs)`, `.filter(doc_type, court, states, date_from, date_to, code, cites_any) -> set`, `.meta(doc_id)`, `.by_section` |
-| `tiers.py` | D | ⬜ | Tiered index + champion lists (efficiency experiment) | `TieredIndex.build(zidx, authority, quantile, champion_size)`, `.candidates(terms, min_results, use_champions)` |
+| `tiers.py` | Gaurav | ✅ | Tiered index + champion lists (efficiency experiment) | `TieredIndex.build(zidx, authority, quantile, champion_size)`, `.candidates(terms, min_results, use_champions, index)` |
 | `store.py` | A | ✅ | Save/load artefacts under `data/processed/index/` | `save(obj, name, fmt)`, `load(name, fmt)`, `exists()`, `index_dir()` |
 | `docstore.py` | all | ✅ | doc_id → `Document` text (agent, RAG, judging tool, app) | `DocStore.load()`, mapping access, `.snippet()` |
 
@@ -134,13 +135,13 @@ kanoon-bridge/
 
 | File | Owner | Status | Purpose | Must contain |
 | --- | --- | --- | --- | --- |
-| `vsm.py` | D | ⬜ | tf-idf, SMART lnc.ltc, cosine — classic baseline | `TfidfScorer(index).prepare()`, `.score(terms, candidates) -> {doc: score}` |
-| `bm25f.py` | D | ⬜ | **Main lexical scorer**, zone-weighted BM25 | `BM25F.from_config(zidx, cfg, use_zones)`, `.idf(term)`, `.score(terms, candidates)` |
+| `vsm.py` | Gaurav | ✅ | tf-idf, SMART lnc.ltc, cosine — classic baseline | `TfidfScorer(index).prepare()`, `.score(terms, candidates) -> {doc: score}` |
+| `bm25f.py` | Gaurav | ✅ | **Main lexical scorer**, zone-weighted BM25 | `BM25F.from_config(zidx, cfg, use_zones)`, `.idf(term)`, `.score(terms, candidates)` |
 | `dense.py` | C | ⬜ | NLLB-E5 paragraph embeddings, MaxP doc score | `DenseRetriever.load(cfg)`, `.encode_corpus(docs, name)`, `.score(text, candidates)` |
-| `statute_bridge.py` | D | ⬜ | Top statutes → expand + boost precedents (replaces IL-PCSR's LLM step) | `BridgeOutput(expansion, boosts, statutes_used)`, `StatuteBridge.run(statute_hits)` |
-| `citation_graph.py` | D | 🔧 | Citation graph from **train** qrels + precedent citations | ⬜`build_graph()`, ⬜`jurisdiction_subgraphs()`, ✅`save_graph()/load_graph()` |
-| `authority.py` | D | 🔧 | g(d) and g(d \| state) | ✅`binding_status(meta, state)`, ⬜`Authority.compute()`, ⬜`.score(doc, state, jurisdiction)`, ✅`to_dict/from_dict` |
-| `qpp.py` | D | ⬜ | Query performance prediction (no labels) | `QPPFeatures`, `pre_retrieval()`, `post_retrieval()`, `alpha_from_qpp()`, `should_abstain()` |
+| `statute_bridge.py` | Gaurav | ✅ | Top statutes → expand + boost precedents (replaces IL-PCSR's LLM step) | `BridgeOutput(expansion, boosts, statutes_used)`, `StatuteBridge(facets, statute_terms, top_n, boost, normalizer).run(statute_hits)` — reaches IPC-citing precedents from BNS statutes via offence ids |
+| `citation_graph.py` | Gaurav | ✅ | Citation graph from **train** qrels + precedent citations | `build_graph()` (leakage guard), `jurisdiction_subgraphs()`, `stats()`, `save_graph()/load_graph()` |
+| `authority.py` | Gaurav | ✅ | g(d) and g(d \| state) | `binding_status(meta, state)`, `pagerank()` (own power iteration), `Authority.compute()`, `.score(doc, state, jurisdiction)`, `.top()`, `to_dict/from_dict` |
+| `qpp.py` | Gaurav | ✅ | Query performance prediction (no labels) | `QPPFeatures`, `pre_retrieval()`, `post_retrieval()`, `confidence()`, `alpha_from_qpp()`, `should_abstain()` |
 | `fusion.py` | C | ✅ | Score normalisation + lexical/dense fusion | `minmax()`, `zscore()`, `fuse(lexical, dense, alpha, method)` |
 | `topk.py` | D | ✅ | Heap top-K and net score | `top_k(scores, k)`, `net_score()`, `to_scored()` |
 
@@ -184,10 +185,11 @@ kanoon-bridge/
 
 | File | Owner | Status | Does |
 | --- | --- | --- | --- |
+| `00_fetch_data.py` | Gaurav | ✅ | Clones the BNS source; exports IL-PCSR from Hugging Face to parquet (needs `huggingface-cli login`) |
 | `00_check_access.py` | all | ✅ | PASS/MISSING for config, data, packages; TODOs left per owner |
-| `01_build_corpus.py` | A | 🔧 | IL-PCSR + BNS → zones + metadata → `docs.jsonl`; prints missing court/date counts |
+| `01_build_corpus.py` | Gaurav | ✅ | IL-PCSR + BNS → zones + metadata → `docs.jsonl`; prints missing court/date counts |
 | `02_build_index.py` | A | 🔧 | Same text pipeline as queries → zone indexes, facets, statute terms |
-| `03_build_graph.py` | D | 🔧 | Train qrels → graph → authority + tiers |
+| `03_build_graph.py` | Gaurav | ✅ | Train qrels → graph → authority + tiers |
 | `04_encode_dense.py` | C | 🔧 | Paragraph embeddings once (GPU) |
 | `05_run_all_evals.py` | D | 🔧 | All test sets (baseline vs full), ablations, efficiency, figures |
 | `judge_queries.py` | all | ✅ | Terminal judging tool, resumable, per-judge TSV |
@@ -206,6 +208,7 @@ kanoon-bridge/
 | `notebooks/01_explore_ilpcsr.ipynb` | Corpus statistics for the report |
 | `notebooks/02_postings_demo.ipynb` | Postings, weights and "IPC 302 = BNS 103" live, for the video |
 | `notebooks/03_results.ipynb` | Results walkthrough |
+| `tests/data/make_ilpcsr_sample.py` | Writes the synthetic IL-PCSR-schema sample used by `make sample` and the ingest tests (fictional cases) |
 | `tests/conftest.py` | `@todo` marks a test as a spec: skipped while the code raises `NotImplementedError`, runs for real once implemented; `toy_docs` fixture |
 | `tests/test_*.py` | One file per area: tokenize, version_norm, collision, phonetic, positional, boolean, bm25f, authority, metrics, agent, schema_and_pipeline |
 | `results/` | `runs/` (TREC files), `tables/` (CSV), `figures/` (committed, used in report) |
@@ -215,19 +218,18 @@ kanoon-bridge/
 
 ---
 
-## Workload (TODO stubs left at scaffold time)
+## Workload (TODO stubs left)
 
-| Owner | Stubs | Main pieces |
+| Owner | Left | Main pieces |
 | --- | --- | --- |
-| A | 20 | IL-PCSR loader, segmentation, metadata, positional/zone/facet indexes, Boolean parser |
-| B | 8 | crosswalk parsing, version normalisation, collision resolver |
-| C | 10 | transliteration, phonetic, Hindi stemmer, dense channel |
-| D | 21 | BM25F, tf-idf, statute bridge, graph, authority, QPP, tiers, evaluation |
-| AG | 8 | planner rules, CombSUM, reflection |
-| R | 7 | RAG steps + agent/RAG evaluation |
+| Gaurav | 6 (evaluation only) | run_eval test-set loading, ablations, efficiency, plots — ingest, normalisation and all Layer 1 ranking are done |
+| Sharanya | 10 | positional/zone/facet index build + filter, phrase, Boolean parser, intersection, proximity |
+| Kashvi | 10 | transliteration, Roman-Hindi normalisation, lexicon lookup, Hindi soundex, Hindi stemmer, dense channel |
+| Shaurya | 8 | planner rules, CombSUM, reflection (QPP retry + pseudo-relevance feedback) |
+| RAG | 7 | RAG steps + agent/RAG evaluation |
 
-Suggested rebalancing (team decision): move `rank/qpp.py` to C (fusion uses it) and `index/tiers.py`
-to B; B also owns the agent after finishing normalisation.
+**Sharanya's index build is now the critical path**: `scripts/02_build_index.py` (and so search) needs
+`PositionalIndex.add`, `ZoneIndex.build` and `FacetIndex.build/filter`. Everything downstream of it is built.
 
 ## Integration rules
 

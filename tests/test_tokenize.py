@@ -40,3 +40,17 @@ def test_plain_words_lowercased():
 
 def test_devanagari_kept():
     assert "हत्या" in tokenize("हत्या का मामला")
+
+
+def test_code_first_forms():
+    assert tokenize("punishment for murder, BNS 103")[-1] == "sec:bns:103"
+    assert tokenize("IPC section 302 and 34") == ["sec:ipc:302", "sec:ipc:34"]
+    assert tokenize("bns 103(1)") == ["sec:bns:103(1)"]
+
+
+def test_year_is_not_a_section():
+    assert "sec:bns:2023" not in tokenize("the BNS, 2023 came into force")
+
+
+def test_indian_kanoon_style_title():
+    assert tokenize("Section 302 in The Indian Penal Code")[0] == "sec:ipc:302"

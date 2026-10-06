@@ -38,12 +38,11 @@ def main() -> None:
     store.save(ZoneIndex.build(precedents, analyze), "precedents_zone")
     store.save(FacetIndex.build(statutes + precedents), "facets")
 
+    # statute doc -> its canonical section token + offence tokens (input of rank/statute_bridge.py)
     statute_terms = {}
     for d in statutes:
-        terms = analyze_text(f"section {d.section} {d.code.value}", res) if d.section else []
-        statute_terms[d.doc_id] = [t for t in terms if t.startswith(("sec:", "off:"))] + [
-            f"off:{o.removeprefix('off:')}" for o in d.offence_ids
-        ]
+        ref = d.meta.get("ref", "")
+        statute_terms[d.doc_id] = ([f"sec:{ref}"] if ref else []) + list(dict.fromkeys(d.offence_ids))
     store.save(statute_terms, "statute_terms", "json")
     print("saved indexes to", store.index_dir())
 

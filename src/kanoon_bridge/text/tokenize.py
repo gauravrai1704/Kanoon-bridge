@@ -48,10 +48,12 @@ _NUM_LIST = rf"{_NUM}(?:\s*(?:,|and|&|/|or)\s*{_NUM})*"     # 302, 307 and 34
 _LEAD_RE = re.compile(
     rf"\b(?:u/ss?\.?|under\s+sections?|sections?|secs?\.?|ss?\.)\s*"
     rf"(?P<nums>{_NUM_LIST})"
-    rf"(?:\s*(?:of\s+(?:the\s+)?)?(?P<code>{_CODE_RE}))?",
+    rf"(?:\s*(?:(?:of|in|under)\s+(?:the\s+)?)?(?P<code>{_CODE_RE}))?",
 )
 # "302 ipc", "498a i.p.c."
 _TRAIL_RE = re.compile(rf"\b(?P<nums>{_NUM_LIST})\s+(?:of\s+(?:the\s+)?)?(?P<code>{_CODE_RE})")
+# "bns 103", "ipc section 302", "ipc s. 498a" (code first; a 4-digit year never matches)
+_CODE_FIRST_RE = re.compile(rf"\b(?P<code>{_CODE_RE})\s*(?:,\s*)?(?:sections?|secs?\.?|ss?\.)?\s*(?P<nums>{_NUM_LIST})(?![0-9a-z])")
 
 _WORD_RE = re.compile(r"sec:[a-z?]+:[0-9a-z()]+|[a-z0-9]+(?:'[a-z]+)?|[ऀ-ॿ]+")
 
@@ -89,7 +91,7 @@ def extract_sections(text: str) -> list[SectionMention]:
     low = text.lower()
     found: list[SectionMention] = []
     taken: list[tuple[int, int]] = []
-    for regex in (_LEAD_RE, _TRAIL_RE):
+    for regex in (_CODE_FIRST_RE, _LEAD_RE, _TRAIL_RE):
         for m in regex.finditer(low):
             if any(s < m.end() and m.start() < e for s, e in taken):
                 continue

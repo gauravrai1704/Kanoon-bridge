@@ -15,6 +15,13 @@ paths:
   embeddings: data/processed/embeddings
   graph: data/processed/citation_graph.json
   results: results
+  ilpcsr_dir: data/raw/ilpcsr            # local export of the HF dataset (scripts/00_fetch_data.py)
+  bns_dir: data/raw/bns-study-platform    # git clone with BNS bare-act JSON + IPC references
+  crosswalk_pdf: data/raw/crosswalk/comparison_summary_BNS_to_IPC.pdf   # optional second source
+
+ilpcsr:
+  hf_name: Exploration-Lab/IL-PCSR       # gated: accept terms + `huggingface-cli login`
+  splits: {train: train_queries, val: dev_queries, test: test_queries}
 
 legal:
   bns_in_force: "2024-07-01"     # offences on/after this date fall under BNS
@@ -36,6 +43,12 @@ zones:                            # BM25F zone weights
 bm25:
   k1: 1.6
   b: 0.7
+  max_query_terms: 300            # long queries (whole judgments) keep their highest-idf terms
+
+collision:
+  date_prior: 0.75                # P(code in force on the date) before looking at context
+  context_weight: 4.0             # each matching offence keyword multiplies a reading by (1 + this)
+  keep_second_below: 0.7          # also index the runner-up reading when the top one is less sure
 
 statute_bridge:
   top_statutes: 10                # statutes used to expand/filter the precedent query

@@ -94,7 +94,8 @@ class SearchEngine:
             from kanoon_bridge.rank.statute_bridge import StatuteBridge
 
             engine.bridge = StatuteBridge(facets=facets, statute_terms=store.load("statute_terms", "json"),
-                                          top_n=cfg.statute_bridge.top_statutes, boost=cfg.statute_bridge.boost)
+                                          top_n=cfg.statute_bridge.top_statutes, boost=cfg.statute_bridge.boost,
+                                          normalizer=analyzer.text_res.normalizer)
         if cfg.dense.enabled:
             from kanoon_bridge.rank.dense import DenseRetriever
 
@@ -130,7 +131,11 @@ class SearchEngine:
         t0 = clock()
         statute_cands = None
         if opt.code_filter and aq.code_in_force in (Code.IPC, Code.BNS):
-            statute_cands = self.facets.filter(doc_type=DocType.STATUTE.value, code=aq.code_in_force.value)
+            # drop only the superseded penal code; other Acts (CrPC, Constitution, ...) stay
+            superseded = (Code.BNS if aq.code_in_force == Code.IPC else Code.IPC).value
+            all_statutes = self.facets.filter(doc_type=DocType.STATUTE.value)
+            statute_cands = all_statutes - self.facets.filter(doc_type=DocType.STATUTE.value, code=superseded)
+            aq.trace.append(("statute_filter", f"excluded {superseded.upper()} sections (code in force: {aq.code_in_force.value.upper()})"))
         statute_scores = self._scorer("statute", opt).score(terms, statute_cands)
         statutes = to_scored(top_k(statute_scores, opt.top_k), DocType.STATUTE,
                              {d: {"lexical": s} for d, s in statute_scores.items()})
@@ -150,9 +155,16 @@ class SearchEngine:
         # --- precedents: lexical, dense, fusion -----------------------------------
         t0 = clock()
         prec_cands = self._precedent_filter(query)
-        lexical = self._scorer("precedent", opt).score(terms, prec_cands)
-        relevance = lexical
+        scorer = self._scorer("precedent", opt)
+        lexical = scorer.score(terms, prec_cands)
         components = {d: {"lexical": s} for d, s in lexical.items()}
+        for d, zones in getattr(scorer, "last_breakdown", {}).items():
+            if d in components:
+                components[d].update({f"zone_{z}": v for z, v in zones.items()})
+        # relevance on a 0-1 scale (divide by the best score) so bridge boosts and lambda*g(d)
+        # are comparable across queries; ranking by relevance alone is unchanged
+        top_lex = max(lexical.values(), default=0.0) or 1.0
+        relevance = {d: s / top_lex for d, s in lexical.items()}
 
         if opt.dense and self.dense is not None:
             from kanoon_bridge.rank.fusion import fuse

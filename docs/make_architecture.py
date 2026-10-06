@@ -97,16 +97,16 @@ def chain(xs, y, h):
 # --------------------------------------------------------------------------- content
 
 DATA = [
-    ("IL-PCSR", "IIT Kgp + Kanpur", ["6,271 query judgments", "  train 5,021 / val 627 /", "  test 627", "3,183 precedents", "936 statutes (IPC era)", "qrels = what each cited"]),
-    ("BNS bare act", "India Code", ["358 sections", "in force from", "1 July 2024", "-> BNS statute docs"]),
-    ("IPC-BNS crosswalk", "Govt PDF", ["section comparison table", "-> ipc_bns.csv", "-> offence_ids.csv", "same/split/merge/new"]),
+    ("IL-PCSR", "IIT Kgp + Kanpur", ["6,271 query judgments", "  train 5,017 / val 627 /", "  test 627", "3,183 precedents", "936 statutes (IPC era)", "qrels = what each cited"]),
+    ("BNS bare act", "via GitHub", ["358 sections, text", "verified vs Gazette", "+ IPC reference each", "-> BNS statute docs"]),
+    ("IPC-BNS crosswalk", "derived", ["496 section pairs", "-> ipc_bns.csv", "-> offence_ids.csv", "Govt PDF: cross-check"]),
     ("Lexicons", "ours", ["Hinglish legal terms", "Hindi + legal stop words", "court -> states table"]),
     ("Hand-built queries", "ours", ["E2 collision", "E3 cross-version", "E4 en / hi / Hinglish", "E6 jurisdiction", "E7 temporal", "2 judges + kappa"]),
     ("Optional", "", ["PoliceDrishti: 190 facts", "-> BNS charges (E5)", "NLLB-E5 weights", "(Hindi-BEIR, NAACL'25)"]),
 ]
 
 SPLITS = [
-    ("TRAIN  5,021 queries", "", ["-> citation-graph edges for g(d)"]),
+    ("TRAIN  5,017 queries", "", ["-> citation-graph edges for g(d)"]),
     ("VAL  627 queries", "", ["-> tune lambda, alpha, zone weights, k"]),
     ("TEST  627 queries", "", ["-> E1 / E3 results only, never tuned"]),
     ("HAND-BUILT SETS", "", ["-> E2, E4, E6, E7 (written first)"]),
