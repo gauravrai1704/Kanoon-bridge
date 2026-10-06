@@ -23,8 +23,12 @@ test_sets:
     queries: data/queries/e2_collision.jsonl
     qrels: data/queries/qrels/e2_collision.tsv
     target: statute
-  e3_cross_version:             # rows carry "source_query_id"; gold = that IL-PCSR test query's citations
+  e3_cross_version:             # generated (scripts/07): facts + the sections named in BNS; gold = IL-PCSR citations
     queries: data/queries/e3_cross_version.jsonl
+    qrels: ilpcsr_test
+    target: precedent
+  e3_control:                   # the same queries naming the IPC sections: E3 should score about the same
+    queries: data/queries/e3_control.jsonl
     qrels: ilpcsr_test
     target: precedent
   e4_multilingual:              # rows carry "lang": en | hi | hinglish

@@ -72,6 +72,8 @@ systems.
 | --- | --- | --- |
 | E1 precedent / statute retrieval | IL-PCSR protocol: macro-F1@k with k chosen on val, plus MAP and MRR | `eval/run_eval.py` |
 | Ablation ladder (bm25 → … → +ltr) | One component added per step | `eval/ablation.py` |
+| **Significance** for every comparison | Paired randomization test + bootstrap CI (Smucker, Allan & Carterette, CIKM 2007); Holm–Bonferroni correction | `eval/significance.py` |
+| Generated E2 / E3 / E7 sets | Gold derived from the crosswalk and IL-PCSR citations; E3 pairs each query with an IPC-worded control to isolate the version effect | `scripts/07_make_test_sets.py` |
 | **Typo robustness** | Simulated known-item queries (Azzopardi, de Rijke & Balog, SIGIR 2007); Damerau error model | `eval/typos.py` |
 | Efficiency | Latency and Recall@20 vs exhaustive scoring | `eval/efficiency.py` |
 | Agent vs core; RAG support / version errors / abstention | | `eval/agent_eval.py` |

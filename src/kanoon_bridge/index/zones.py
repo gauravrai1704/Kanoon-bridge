@@ -25,7 +25,9 @@ Analyzer = Callable[[str, Document], list[str]]
 
 @dataclass
 class ZoneIndex:
-    zones: dict[str, PositionalIndex] = field(default_factory=lambda: {z: PositionalIndex() for z in ZONES})
+    # zone indexes keep counts only (all BM25F needs); the whole-document index keeps positions
+    # for phrase / proximity / Boolean queries. This roughly halves memory and pickle size.
+    zones: dict[str, PositionalIndex] = field(default_factory=lambda: {z: PositionalIndex(positions=False) for z in ZONES})
     whole: PositionalIndex = field(default_factory=PositionalIndex)
     doc_ids: list[str] = field(default_factory=list)
 

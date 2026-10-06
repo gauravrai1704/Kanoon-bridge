@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -34,6 +34,14 @@ dense:
 ltr:
 	$(PY) scripts/06_train_ltr.py
 
+# generated E2 / E3 / E7 test sets (after make data)
+testsets:
+	$(PY) scripts/07_make_test_sets.py
+
+# significance tests from the existing run files
+significance:
+	$(PY) -m kanoon_bridge.eval.significance --all
+
 eval:
 	$(PY) scripts/05_run_all_evals.py
 
@@ -57,7 +65,7 @@ app:
 test:
 	$(PY) -m pytest -q
 
-all: data index graph ltr eval
+all: data index graph ltr testsets eval
 
 # synthetic end-to-end run (no Hugging Face access needed; BNS source still required)
 sample:

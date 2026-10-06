@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from kanoon_bridge.index.positional import PositionalIndex
+from kanoon_bridge.index.positional import PositionalIndex, count
 
 
 def _log_tf(tf: float) -> float:
@@ -34,7 +34,7 @@ class TfidfScorer:
         sq: dict[str, float] = {}
         for postings in self.index.postings.values():
             for doc, positions in postings.items():
-                w = _log_tf(len(positions))
+                w = _log_tf(count(positions))
                 sq[doc] = sq.get(doc, 0.0) + w * w
         self.doc_norms = {d: math.sqrt(v) for d, v in sq.items()}
         return self
@@ -51,5 +51,5 @@ class TfidfScorer:
             for doc, positions in self.index.postings.get(term, {}).items():
                 if candidates is not None and doc not in candidates:
                     continue
-                acc[doc] = acc.get(doc, 0.0) + (wq / q_norm) * _log_tf(len(positions))
+                acc[doc] = acc.get(doc, 0.0) + (wq / q_norm) * _log_tf(count(positions))
         return {d: s / (self.doc_norms.get(d) or 1.0) for d, s in acc.items()}

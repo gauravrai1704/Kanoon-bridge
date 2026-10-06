@@ -20,6 +20,8 @@ matters most for E1.
 
 from __future__ import annotations
 
+from kanoon_bridge.index.positional import count
+
 import math
 from dataclasses import dataclass, field
 
@@ -89,7 +91,7 @@ class BM25F:
                 for doc, positions in postings.items():
                     if candidates is not None and doc not in candidates:
                         continue
-                    part = weight * len(positions) / norms.get(doc, 1.0)
+                    part = weight * count(positions) / norms.get(doc, 1.0)
                     tf_tilde[doc] = tf_tilde.get(doc, 0.0) + part
                     if self.use_zones:
                         br = breakdown.setdefault(doc, {})

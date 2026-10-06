@@ -141,7 +141,13 @@ make ltr       # scripts/06_train_ltr.py    → learning-to-rank model trained o
 # optional, Kashvi: make dense  (then set dense.enabled: true in configs/default.yaml)
 ```
 
-`make index` also writes the corpus spellings (for "did you mean") and the near-duplicate groups (MinHash). It prints how many it found. `make ltr` runs about 627 searches and takes a few minutes. Rerun it whenever the indexes, the dense setting or the features change; an outdated model is refused with a warning.
+`make index` keeps memory down: each judgment-section index stores word counts only, and only the whole-judgment index keeps word positions, packed 4 bytes each. On a synthetic benchmark of 400 judgments of 7,500 words, memory fell from about 400 MB to 140 MB, so expect roughly 1–1.5 GB for all of IL-PCSR. To check on your machine:
+
+```bash
+/usr/bin/time -v make index 2>&1 | grep -E "Maximum resident|Elapsed"     # Linux (macOS: /usr/bin/time -l)
+```
+
+It also writes the corpus spellings (for "did you mean") and the near-duplicate groups (MinHash). It prints how many it found. `make ltr` runs about 627 searches and takes a few minutes. Rerun it whenever the indexes, the dense setting or the features change; an outdated model is refused with a warning.
 
 ### Optional: the dense channel (multilingual embeddings, GPU recommended)
 
@@ -221,6 +227,7 @@ What runs:
 | `results/tables/typos.csv`, `typo_queries.jsonl` | typo robustness: known-item statute search with simulated misspellings; spelling correction off vs on, plus the clean titles (MRR@10, Success@1/10) |
 | `results/tables/agent_e1_ilpcsr.csv` (and e6 once judged) | core vs agent (RRF) vs agent (CombSUM); searches per question, sub-query kinds, share reformulated and share where reformulation helped |
 | `results/tables/rag.csv`, `rag_answers.jsonl` | layer 3: supported-sentence rate, version flags, abstention precision/recall |
+| `results/tables/significance.csv` | paired randomization tests + 95% CIs, Holm-corrected, for every comparison above |
 | `results/runs/*.run` | TREC run files: `query_id Q0 doc_id rank score system` |
 | `results/figures/*.png` | ablation, baseline-vs-full, agent, language, efficiency, RAG charts |
 
@@ -232,17 +239,64 @@ How E1 is run:
 - `F1@k_val` follows the IL-PCSR protocol: k is chosen on the val (dev) split, then reported on test.
 - MAP, MRR and nDCG are reported as well.
 
-Hand-built sets (E2–E7) live in `data/queries/*.jsonl` and `data/queries/qrels/*.tsv`. They currently hold only `EXAMPLE` rows. Fill them with `scripts/judge_queries.py` (two judges per query), following the field notes in `configs/eval.yaml`:
+### Fill the test sets
 
-| Set | What its rows need |
-| --- | --- |
-| E2 | `wrong_refs` |
-| E3 | `source_query_id` (an IL-PCSR test query id) |
-| E4 | `lang` |
-| E6 | `state` |
-| E7 | `incident_date` |
+E2–E7 ship with `EXAMPLE` rows only.
 
-A set with no judgments is skipped, except E2 (wrong_hit@10) and E7 (code_accuracy@1), whose headline metrics need no qrels.
+**Generated sets (E2, E3, E7).** Run this after `make data`:
+
+```bash
+make testsets             # = python scripts/07_make_test_sets.py   (or: --sets e3 e7, --limit 200)
+```
+
+| Set | Queries | Correct answer |
+| --- | --- | --- |
+| `e3_cross_version` + `e3_control` | Each IL-PCSR test judgment's opening facts plus the sections it applied, named in BNS (`; charged under BNS 103`) or in IPC (control) | The IL-PCSR citations, unchanged |
+| `e7_temporal` | Each offence with sections in both codes, asked on 2024-03-01 and on 2024-09-01 | The IPC section(s), then the BNS section(s) |
+| `e2_collision` | Section numbers that mean different offences in the two codes, asked bare and with context, before and after 1 July 2024 | The reading in force; the other one goes in `wrong_refs` |
+
+Every generated row is marked `"generated": true`. Their answers are only as good as the crosswalk, so check it first with `make compare`.
+
+**Hand-built sets (E4 Hinglish, E6 jurisdiction).**
+
+1. Write the queries in `data/queries/e4_multilingual.jsonl` (the same need in `en` / `hi` / `hinglish`, sharing a `need_id`) and `data/queries/e6_jurisdiction.jsonl` (the same text, once per state). Delete the `EXAMPLE` rows.
+2. Produce results to judge:
+   ```bash
+   for s in e4_multilingual e6_jurisdiction; do
+     python -m kanoon_bridge.eval.run_eval --set $s --system baseline
+     python -m kanoon_bridge.eval.run_eval --set $s --system full
+   done
+   ```
+3. Two judges per set. Each judge's file is created automatically, and both systems' top 10 are pooled and mixed, so a judge can't tell which system found a document:
+   ```bash
+   python scripts/judge_queries.py --set e4_multilingual --judge gaurav      # -> qrels/e4_multilingual.gaurav.tsv
+   python scripts/judge_queries.py --set e4_multilingual --judge kashvi
+   ```
+   Grades are 0, 1 or 2 (`s` skips, `q` quits; you can resume any time). For E6, grade topical relevance only; binding or persuasive is added automatically.
+4. Agreement, disagreements and the merged file:
+   ```bash
+   python scripts/merge_judgments.py --set e4_multilingual
+   ```
+   This prints percent agreement and Cohen's kappa (report it; above 0.6 is good). It lists the pairs graded 2 apart in `results/tables/e4_multilingual_disagreements.tsv`; settle those together and edit the merged `data/queries/qrels/e4_multilingual.tsv`. The merged file is what `make eval` uses.
+
+### Significance
+
+`make eval` ends with paired randomization tests: 10,000 permutations, a 95% bootstrap confidence interval, and Holm correction across all comparisons (Smucker, Allan & Carterette, CIKM 2007). It covers:
+
+- baseline vs full on every set,
+- each ablation step vs the previous one,
+- E3's IPC wording vs BNS wording.
+
+The output is `results/tables/significance.csv`; † marks p_holm < 0.05. To run it on its own:
+
+```bash
+make significance                                                       # everything, from the existing run files
+python -m kanoon_bridge.eval.significance --set e1_ilpcsr --a baseline --b full
+python -m kanoon_bridge.eval.significance --set e1_ilpcsr --ladder
+python -m kanoon_bridge.eval.significance --e3
+```
+
+In the report, call a difference an improvement only when it is significant after Holm correction, and give its interval.
 
 Rules that keep the numbers honest:
 

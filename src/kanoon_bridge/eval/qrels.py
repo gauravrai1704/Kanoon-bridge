@@ -50,10 +50,16 @@ def save_tsv(qrels: Qrels, path: str | Path, judge: str = "") -> None:
 
 
 def merge_judges(a: Qrels, b: Qrels) -> Qrels:
+    """First-pass merge of two judges: the mean grade, rounded half up (1 and 2 -> 2, 0 and 1 -> 1).
+    A pair only one judge graded keeps that grade. Disagreements of 2 should be settled by hand
+    (scripts/merge_judgments.py lists them)."""
     out: Qrels = {}
     for q in set(a) | set(b):
-        docs = set(a.get(q, {})) | set(b.get(q, {}))
-        out[q] = {d: round((a.get(q, {}).get(d, 0) + b.get(q, {}).get(d, 0)) / 2) for d in docs}
+        ga, gb = a.get(q, {}), b.get(q, {})
+        out[q] = {}
+        for d in set(ga) | set(gb):
+            grades = [g[d] for g in (ga, gb) if d in g]
+            out[q][d] = int(sum(grades) / len(grades) + 0.5)
     return out
 
 

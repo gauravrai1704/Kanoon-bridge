@@ -14,7 +14,7 @@ from __future__ import annotations
 import heapq
 from dataclasses import dataclass, field
 
-from kanoon_bridge.index.positional import PositionalIndex
+from kanoon_bridge.index.positional import PositionalIndex, count
 from kanoon_bridge.index.zones import ZoneIndex
 
 
@@ -34,7 +34,7 @@ class TieredIndex:
         tier1 = {d for d in ranked[:k] if authority.get(d, 0.0) > 0}
         champions = {
             term: [d for _, d in heapq.nlargest(
-                champion_size, ((len(pos) * (1 + authority.get(d, 0.0)), d) for d, pos in postings.items()))]
+                champion_size, ((count(pos) * (1 + authority.get(d, 0.0)), d) for d, pos in postings.items()))]
             for term, postings in whole.postings.items()
         }
         return cls(tier1=tier1, tier2=set(docs) - tier1, champions=champions)

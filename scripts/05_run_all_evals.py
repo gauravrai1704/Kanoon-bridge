@@ -4,7 +4,7 @@
     python scripts/05_run_all_evals.py                       # everything in configs/eval.yaml
     python scripts/05_run_all_evals.py --sets e2_collision e7_temporal
     python scripts/05_run_all_evals.py --limit 50            # quick pass: first 50 queries per set
-    python scripts/05_run_all_evals.py --skip-ablation --skip-efficiency --skip-agent --skip-rag --skip-typos
+    python scripts/05_run_all_evals.py --skip-ablation --skip-efficiency --skip-agent --skip-rag --skip-typos --skip-significance
     python scripts/05_run_all_evals.py --only-plots          # redraw figures from existing tables
     python scripts/05_run_all_evals.py --sample              # pipeline check on the synthetic sample
 
@@ -33,6 +33,7 @@ def main() -> None:
     ap.add_argument("--skip-agent", action="store_true")
     ap.add_argument("--skip-rag", action="store_true")
     ap.add_argument("--skip-typos", action="store_true")
+    ap.add_argument("--skip-significance", action="store_true")
     ap.add_argument("--rag-generator", help="auto | claude | extractive")
     ap.add_argument("--only-plots", action="store_true")
     ap.add_argument("--sample", action="store_true", help="evaluate on the synthetic sample (after make sample)")
@@ -102,6 +103,11 @@ def main() -> None:
             agent_eval.evaluate_rag(engine=engine, generator=args.rag_generator, ev=ev, limit=args.limit)
         except RuntimeError as err:
             print(f"rag: skipped ({err})")
+    if not args.skip_significance:
+        from kanoon_bridge.eval import significance
+
+        print("significance (paired randomization test, Holm-corrected; † = p_holm < 0.05):")
+        significance.run_all(ev, sets=sets)
     plots.make_all(tables, figures)
 
 

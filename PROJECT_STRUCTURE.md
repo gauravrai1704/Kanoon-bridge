@@ -117,7 +117,7 @@ kanoon-bridge/
 
 | File | Owner | Status | Purpose | Must contain |
 | --- | --- | --- | --- | --- |
-| `positional.py` | A | ✅ | Inverted index with positions | `PositionalIndex`: `add(doc_id, tokens)`, `phrase(terms)` (rarest-first positional intersection); stats `df/idf/tf/postings_for/docs_with/n_docs/avg_doc_len/vocabulary` |
+| `positional.py` | A | ✅ | Inverted index with positions (compact `array('I')`), or counts only (`positions=False`, used for zones) | `PositionalIndex`: `add(doc_id, tokens)`, `phrase(terms)` (rarest-first positional intersection); stats `df/idf/tf/postings_for/docs_with/n_docs/avg_doc_len/vocabulary` |
 | `zones.py` | A | ✅ | One positional index per zone + whole-doc index; feeds BM25F | `ZoneIndex`: `build(docs, analyze)`, `tf(term, doc, zone)`, `zone_len()`, `avg_zone_len()`, `df()`, `.whole` |
 | `facets.py` | A | ✅ | Parametric index: type, court, states, date, code, sections cited | `DocMeta`, `FacetIndex.build(docs)`, `.filter(doc_type, court, states, date_from, date_to, code, cites_any) -> set` (smallest set first), `.date_range()` (bisect), `.meta(doc_id)`, `.by_section` |
 | `tiers.py` | Gaurav | ✅ | Tiered index + champion lists (efficiency experiment) | `TieredIndex.build(zidx, authority, quantile, champion_size)`, `.candidates(terms, min_results, use_champions, index)` |
@@ -188,6 +188,7 @@ All default to off, so plain searches are unchanged.
 | `efficiency.py` | ✅ | Exhaustive vs tiered vs champion lists: latency + Recall@20 vs exhaustive | `compare_modes(n_queries)` |
 | `agreement.py` | ✅ | Inter-judge agreement | `percent_agreement()`, `cohens_kappa()` |
 | `agent_eval.py` | ✅ | Layer 2 vs core; layer 3 support rate, version flags, abstention | `compare_agent(set)`, `evaluate_rag(path)` |
+| `significance.py` | ✅ | Paired randomization test, bootstrap CI, Holm correction over run files (Smucker et al. CIKM 2007) | `per_query()`, `randomization_test()`, `bootstrap_ci()`, `holm()`, `compare()`, `run_all()` |
 | `typos.py` | ✅ | Typo robustness: simulated known-item statute queries with Damerau errors; spelling off vs on | `corrupt()`, `run()` → `typos.csv`, `typo_queries.jsonl` |
 | `plots.py` | ✅ | Report/video charts from results/tables | `bar_chart()`, `make_all()` |
 
@@ -204,6 +205,8 @@ All default to off, so plain searches are unchanged.
 | `03_build_graph.py` | Gaurav | ✅ | Train qrels → graph → authority + tiers |
 | `04_encode_dense.py` | C | ✅ | Paragraph embeddings once (GPU) |
 | `05_run_all_evals.py` | D | ✅ | All test sets (baseline vs full), ablations, efficiency, typos, agent, RAG, figures |
+| `07_make_test_sets.py` | Gaurav | ✅ | Generate E2 (collisions), E3 (+ control; cross-version), E7 (temporal) with gold answers from the crosswalk and IL-PCSR |
+| `merge_judgments.py` | all | ✅ | Agreement + kappa between judges, disagreement list, merged qrels |
 | `06_train_ltr.py` | Gaurav | ✅ | Train the learning-to-rank model on IL-PCSR val (5-fold CV report) → `index/ltr.json` |
 | `judge_queries.py` | all | ✅ | Terminal judging tool, resumable, per-judge TSV |
 

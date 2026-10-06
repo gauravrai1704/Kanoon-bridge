@@ -27,7 +27,7 @@ INK, INK_MUTED, GRID = "#1f2328", "#59636e", "#d8dee4"
 
 HEADLINE = {            # set -> (metric, higher is better?)
     "e1_ilpcsr": ("MAP", True), "e1s_ilpcsr_statutes": ("MAP", True), "e2_collision": ("wrong_hit@10", False),
-    "e3_cross_version": ("MAP", True), "e4_multilingual": ("P@5", True), "e6_jurisdiction": ("binding_share@5", True),
+    "e3_cross_version": ("MAP", True), "e3_control": ("MAP", True), "e4_multilingual": ("P@5", True), "e6_jurisdiction": ("binding_share@5", True),
     "e7_temporal": ("code_accuracy@1", True),
 }
 
