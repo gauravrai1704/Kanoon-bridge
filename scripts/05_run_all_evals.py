@@ -41,9 +41,12 @@ def main() -> None:
 
         os.environ["KB_ILPCSR_DIR"] = "tests/data/ilpcsr_sample"
 
-    ev = load_config("eval.yaml")
+    # sample runs write to results/sample/ so synthetic numbers never mix with real ones
+    ev = load_config("eval.yaml", overrides={"outputs": {"runs": "results/sample/runs", "tables": "results/sample/tables",
+                                                         "figures": "results/sample/figures"}} if args.sample else None)
+    tables, figures = project_path(ev.outputs.tables), project_path(ev.outputs.figures)
     if args.only_plots:
-        plots.make_all()
+        plots.make_all(tables, figures)
         return
     sets = args.sets or list(ev.test_sets)
     engine = SearchEngine.load()
@@ -92,7 +95,7 @@ def main() -> None:
             agent_eval.evaluate_rag(engine=engine, generator=args.rag_generator, ev=ev, limit=args.limit)
         except RuntimeError as err:
             print(f"rag: skipped ({err})")
-    plots.make_all()
+    plots.make_all(tables, figures)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ data/raw/
 data/processed/
 results/runs/
 results/tables/
+results/sample/
 *.npy
 *.pt
 *.bin

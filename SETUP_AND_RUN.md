@@ -249,7 +249,7 @@ make sample                       # synthetic IL-PCSR-shaped data → corpus →
 make eval-sample                  # all evals + figures on the sample (extractive RAG)
 ```
 
-The sample cases are fictional (`tests/data/ilpcsr_sample`). Use it only to check that everything runs, and never report its numbers. Run `make data && make index && make graph` again afterwards to go back to the real data.
+The sample cases are fictional (`tests/data/ilpcsr_sample`), and sample results go to `results/sample/` (git-ignored). Use it only to check that everything runs, and never report its numbers. Run `make data && make index && make graph` again afterwards to go back to the real data.
 
 ## Troubleshooting
 
