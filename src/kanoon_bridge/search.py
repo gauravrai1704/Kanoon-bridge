@@ -1,0 +1,216 @@
+"""The single search entry point.  [owner: D — integration contract, working]
+
+Team rule 4: the CLI, the Streamlit app and the evaluator ALL call this, so the demo shows
+exactly what the report measures.
+
+    from kanoon_bridge.search import SearchEngine, SearchOptions
+    from kanoon_bridge.schema import Query
+
+    engine = SearchEngine.load()                         # loads indexes from data/processed/index
+    result = engine.search(Query("mere bhai ko chaku maara", state="delhi",
+                                 incident_date="2025-03-01"))
+    result.statutes[0].doc_id, result.precedents[0].components
+
+Pipeline (each stage is switched by SearchOptions; eval/ablation.py walks the ladder):
+
+    analyze query            query/analyzer.py         C (+B)
+      -> statute scoring     rank/bm25f.py on statutes D   (filtered to the code in force)
+      -> statute bridge      rank/statute_bridge.py    D   (expansion + boosts)
+      -> precedent lexical   rank/bm25f.py (or vsm.py) D
+      -> dense + fusion      rank/dense.py, fusion.py  C   (alpha from rank/qpp.py)
+      -> authority           rank/authority.py         D   (g(d) or g(d | state))
+      -> top-K               rank/topk.py              D
+
+Index files expected in data/processed/index/ (written by scripts/02 and 03):
+    statutes_zone.pkl  precedents_zone.pkl  facets.pkl  authority.json  [tiers.pkl]
+"""
+
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass, field
+
+from kanoon_bridge.config import Config, load_config
+from kanoon_bridge.index import store
+from kanoon_bridge.schema import AnalyzedQuery, Code, DocType, Query, ScoredDoc, SearchResult
+from kanoon_bridge.rank.topk import net_score, to_scored, top_k
+
+
+@dataclass
+class SearchOptions:
+    """Switches for each component (names match configs/eval.yaml ablation_ladder)."""
+
+    lexical: str = "bm25f"         # "bm25f" | "tfidf"
+    zones: bool = True             # BM25F zone weights (False = plain BM25)
+    bridge: bool = True            # statute bridge
+    authority: bool = True         # add lambda * g(d)
+    dense: bool = False            # dense channel + fusion
+    qpp: bool = False              # QPP-gated alpha (needs dense)
+    jurisdiction: bool = True      # g(d | state) instead of g(d)
+    code_filter: bool = True       # statutes restricted to the code in force on the incident date
+    top_k: int = 10
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "SearchOptions":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+    @classmethod
+    def baseline(cls) -> "SearchOptions":
+        """Plain BM25, nothing else: the 'obvious baseline' in the report."""
+        return cls(zones=False, bridge=False, authority=False, dense=False, qpp=False,
+                   jurisdiction=False, code_filter=False)
+
+
+@dataclass
+class SearchEngine:
+    cfg: Config
+    analyzer: object                       # query.analyzer.QueryAnalyzer
+    statute_index: object                  # index.zones.ZoneIndex over statutes
+    precedent_index: object                # index.zones.ZoneIndex over precedents
+    facets: object                         # index.facets.FacetIndex over both
+    authority: object | None = None        # rank.authority.Authority
+    bridge: object | None = None           # rank.statute_bridge.StatuteBridge
+    dense: object | None = None            # rank.dense.DenseRetriever
+    _scorers: dict = field(default_factory=dict)
+
+    # ------------------------------------------------------------------ loading
+    @classmethod
+    def load(cls, cfg: Config | None = None) -> "SearchEngine":
+        cfg = cfg or load_config()
+        from kanoon_bridge.query.analyzer import QueryAnalyzer
+
+        statute_index = store.load("statutes_zone")
+        precedent_index = store.load("precedents_zone")
+        facets = store.load("facets")
+        analyzer = QueryAnalyzer.load(cfg, vocabulary=precedent_index.whole.vocabulary())
+        engine = cls(cfg=cfg, analyzer=analyzer, statute_index=statute_index,
+                     precedent_index=precedent_index, facets=facets)
+
+        if store.exists("authority", "json"):
+            from kanoon_bridge.rank.authority import Authority
+
+            engine.authority = Authority.from_dict(store.load("authority", "json"), facets.metas, cfg)
+        if store.exists("statute_terms", "json"):
+            from kanoon_bridge.rank.statute_bridge import StatuteBridge
+
+            engine.bridge = StatuteBridge(facets=facets, statute_terms=store.load("statute_terms", "json"),
+                                          top_n=cfg.statute_bridge.top_statutes, boost=cfg.statute_bridge.boost)
+        if cfg.dense.enabled:
+            from kanoon_bridge.rank.dense import DenseRetriever
+
+            engine.dense = DenseRetriever.load(cfg)
+        return engine
+
+    def _scorer(self, which: str, opt: SearchOptions):
+        key = (which, opt.lexical, opt.zones)
+        if key not in self._scorers:
+            zidx = self.statute_index if which == "statute" else self.precedent_index
+            if opt.lexical == "tfidf":
+                from kanoon_bridge.rank.vsm import TfidfScorer
+
+                self._scorers[key] = TfidfScorer(zidx.whole).prepare()
+            else:
+                from kanoon_bridge.rank.bm25f import BM25F
+
+                self._scorers[key] = BM25F.from_config(zidx, self.cfg, use_zones=opt.zones)
+        return self._scorers[key]
+
+    # ------------------------------------------------------------------ search
+    def search(self, query: Query, options: SearchOptions | None = None) -> SearchResult:
+        opt = options or SearchOptions()
+        t: dict[str, float] = {}
+        clock = time.perf_counter
+
+        t0 = clock()
+        aq: AnalyzedQuery = self.analyzer.analyze(query)
+        terms = aq.weighted_terms()
+        t["analyze"] = clock() - t0
+
+        # --- statutes -------------------------------------------------------------
+        t0 = clock()
+        statute_cands = None
+        if opt.code_filter and aq.code_in_force in (Code.IPC, Code.BNS):
+            statute_cands = self.facets.filter(doc_type=DocType.STATUTE.value, code=aq.code_in_force.value)
+        statute_scores = self._scorer("statute", opt).score(terms, statute_cands)
+        statutes = to_scored(top_k(statute_scores, opt.top_k), DocType.STATUTE,
+                             {d: {"lexical": s} for d, s in statute_scores.items()})
+        t["statutes"] = clock() - t0
+
+        # --- statute bridge -------------------------------------------------------
+        boosts: dict[str, float] = {}
+        if opt.bridge and self.bridge is not None:
+            t0 = clock()
+            out = self.bridge.run(statutes)
+            for term, w in out.expansion.items():
+                terms[term] = max(terms.get(term, 0.0), w)
+            boosts = out.boosts
+            aq.trace.append(("bridge_statutes", ", ".join(out.statutes_used)))
+            t["bridge"] = clock() - t0
+
+        # --- precedents: lexical, dense, fusion -----------------------------------
+        t0 = clock()
+        prec_cands = self._precedent_filter(query)
+        lexical = self._scorer("precedent", opt).score(terms, prec_cands)
+        relevance = lexical
+        components = {d: {"lexical": s} for d, s in lexical.items()}
+
+        if opt.dense and self.dense is not None:
+            from kanoon_bridge.rank.fusion import fuse
+
+            dense = self.dense.score(aq.transliterated or query.text, prec_cands)
+            alpha = self.cfg.fusion.alpha_default
+            if opt.qpp:
+                from kanoon_bridge.rank import qpp
+
+                idx = self.precedent_index
+                f = qpp.pre_retrieval(list(terms), {x: idx.whole.idf(x) for x in terms},
+                                      {x: idx.df(x) for x in terms}, idx.n_docs)
+                f = qpp.post_retrieval(f, sorted(lexical.values(), reverse=True))
+                alpha = qpp.alpha_from_qpp(f, alpha)
+            relevance = fuse(lexical, dense, alpha)
+            for d, s in dense.items():
+                components.setdefault(d, {})["dense"] = s
+            aq.trace.append(("alpha", f"{alpha:.2f}"))
+
+        for d, b in boosts.items():
+            if d in relevance:
+                relevance[d] += b
+                components.setdefault(d, {})["bridge"] = b
+
+        # --- authority -----------------------------------------------------------
+        final = relevance
+        if opt.authority and self.authority is not None:
+            lam = self.cfg.authority["lambda"]
+            state = query.state if opt.jurisdiction else None
+            final = {}
+            for d, rel in relevance.items():
+                g = self.authority.score(d, state=state, jurisdiction=opt.jurisdiction)
+                final[d] = net_score(rel, g, lam)
+                components.setdefault(d, {})["authority"] = g
+        precedents = to_scored(top_k(final, opt.top_k), DocType.PRECEDENT, components)
+        t["precedents"] = clock() - t0
+
+        return SearchResult(query=aq, statutes=statutes, precedents=precedents,
+                            timings_ms={k: v * 1000 for k, v in t.items()})
+
+    def _precedent_filter(self, query: Query) -> set[str] | None:
+        """Hard filters from the query (court:, type:, explicit date range). State is NOT a hard
+        filter: it changes authority instead, so persuasive precedent still shows up."""
+        f = query.filters
+        if not any(k in f for k in ("court", "date_from", "date_to")):
+            return self.facets.filter(doc_type=DocType.PRECEDENT.value)
+        return self.facets.filter(doc_type=DocType.PRECEDENT.value, court=f.get("court"),
+                                  date_from=f.get("date_from"), date_to=f.get("date_to"))
+
+
+_engine: SearchEngine | None = None
+
+
+def search(query: Query | str, options: SearchOptions | None = None, **query_fields) -> SearchResult:
+    """Module-level convenience: search("chaku maara", state="delhi")."""
+    global _engine
+    if _engine is None:
+        _engine = SearchEngine.load()
+    if isinstance(query, str):
+        query = Query(text=query, **query_fields)
+    return _engine.search(query, options)

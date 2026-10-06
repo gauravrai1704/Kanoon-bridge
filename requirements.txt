@@ -1,0 +1,18 @@
+# Core (same as pyproject.toml). Prefer: pip install -e ".[dev]"
+numpy>=1.24
+pyyaml>=6.0
+nltk>=3.8
+networkx>=3.0
+pandas>=2.0
+matplotlib>=3.7
+pdfplumber>=0.10
+tqdm>=4.65
+pytest>=7.4
+
+# Optional — install only if you own that part
+# datasets>=2.14               # loading IL-PCSR from Hugging Face
+# sentence-transformers>=2.2   # dense channel (C)
+# torch>=2.0
+# streamlit>=1.30              # demo app
+# anthropic>=0.30              # RAG layer
+# python-dotenv>=1.0

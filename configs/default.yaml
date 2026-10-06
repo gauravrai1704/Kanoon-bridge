@@ -1,0 +1,65 @@
+# All tunable values live here. Read them via kanoon_bridge.config.load_config().
+# Change values here, never hard-code them in modules.
+
+paths:
+  raw: data/raw
+  processed: data/processed
+  index_dir: data/processed/index
+  docs: data/processed/docs.jsonl
+  crosswalk: data/crosswalk/ipc_bns.csv
+  offence_ids: data/crosswalk/offence_ids.csv
+  lexicon_hinglish: data/lexicons/hinglish_legal_terms.csv
+  stopwords_hindi: data/lexicons/hindi_stopwords.txt
+  stopwords_legal: data/lexicons/legal_stopwords.txt
+  court_to_states: data/lexicons/court_to_states.csv
+  embeddings: data/processed/embeddings
+  graph: data/processed/citation_graph.json
+  results: results
+
+legal:
+  bns_in_force: "2024-07-01"     # offences on/after this date fall under BNS
+
+text:
+  stem_english: true
+  stem_hindi: true
+  remove_stopwords: true
+  phonetic_matching: true
+
+zones:                            # BM25F zone weights
+  facts: 1.0
+  arguments: 0.8
+  ratio: 1.5
+  decision: 1.2
+  statute: 1.0                    # statute documents have a single zone
+  other: 0.5
+
+bm25:
+  k1: 1.6
+  b: 0.7
+
+statute_bridge:
+  top_statutes: 10                # statutes used to expand/filter the precedent query
+  boost: 0.3                      # weight of statute-overlap score in precedent ranking
+
+authority:
+  lambda: 0.2                     # net score = relevance + lambda * g(d | state)
+  binding_weight: 1.0             # Supreme Court or the user's own High Court
+  persuasive_weight: 0.4          # other High Courts
+  pagerank_damping: 0.85
+
+dense:
+  enabled: false
+  model: ArkadeepAcharya/NLLB-E5  # fallback: intfloat/multilingual-e5-base
+  max_paragraph_tokens: 512
+
+fusion:
+  alpha_default: 0.7              # weight of lexical score when QPP is off
+  qpp_gated: true
+
+tiers:
+  tier1_authority_quantile: 0.8   # top 20% by authority go to tier 1
+  champion_list_size: 50
+  min_results_before_tier2: 20
+
+search:
+  top_k: 10

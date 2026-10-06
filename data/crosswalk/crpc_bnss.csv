@@ -1,0 +1,2 @@
+# STRETCH (roadmap): CrPC -> BNSS mapping, same format as ipc_bns.csv
+crpc_section,bnss_section,relation,note

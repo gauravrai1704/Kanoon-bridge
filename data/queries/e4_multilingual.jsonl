@@ -1,0 +1,3 @@
+{"id": "E4-EX1-en", "text": "my brother was stabbed with a knife", "lang": "en", "state": "delhi", "incident_date": "2025-03-01", "notes": "EXAMPLE - same need in 3 languages", "need_id": "N1"}
+{"id": "E4-EX1-hi", "text": "मेरे भाई को चाकू मारा", "lang": "hi", "state": "delhi", "incident_date": "2025-03-01", "notes": "EXAMPLE", "need_id": "N1"}
+{"id": "E4-EX1-hinglish", "text": "mere bhai ko chaku maara", "lang": "hinglish", "state": "delhi", "incident_date": "2025-03-01", "notes": "EXAMPLE", "need_id": "N1"}

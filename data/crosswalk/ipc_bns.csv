@@ -1,0 +1,12 @@
+# SEED ROWS FOR TESTING - verify against the bare acts, then replace with the full parsed table
+ipc_section,bns_section,relation,note
+302,103(1),same,murder
+298,302,same,uttering words to wound religious feelings
+304a,106(1),modified,causing death by negligence
+307,109,same,attempt to murder
+304b,80,same,dowry death
+376,64,modified,rape
+379,303(2),modified,theft
+420,318(4),modified,cheating and dishonestly inducing delivery of property
+498a,85,same,cruelty by husband or relatives
+506,351(2),modified,criminal intimidation

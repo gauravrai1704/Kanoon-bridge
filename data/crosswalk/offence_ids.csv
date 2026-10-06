@@ -1,0 +1,12 @@
+# SEED ROWS FOR TESTING - verify, then regenerate with ingest/parse_crosswalk.py
+offence_id,label,ipc_sections,bns_sections,keywords
+off:murder,Murder,302,103(1);103,murder;killed;death;stabbed;homicide
+off:religious_feelings,Uttering words to wound religious feelings,298,302,religious;feelings;wound;deliberate intention
+off:death_by_negligence,Causing death by negligence,304a,106(1);106,negligence;rash;negligent;accident
+off:attempt_to_murder,Attempt to murder,307,109,attempt;murder;injury;intention
+off:dowry_death,Dowry death,304b,80,dowry;death;marriage;cruelty
+off:rape,Rape,376,64,rape;sexual;assault;consent
+off:theft,Theft,379,303(2);303,theft;stole;stolen;movable property
+off:cheating,Cheating and dishonestly inducing delivery of property,420,318(4);318,cheating;fraud;dishonestly;inducing
+off:cruelty_by_husband,Cruelty by husband or relatives,498a,85;86,cruelty;husband;relatives;harassment
+off:criminal_intimidation,Criminal intimidation,506,351(2);351,intimidation;threat;threatened
