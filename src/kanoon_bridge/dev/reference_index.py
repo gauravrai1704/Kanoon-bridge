@@ -17,6 +17,13 @@ import sys
 from collections import defaultdict
 
 _installed: list[str] = []
+_originals: list[tuple[object, str, object]] = []      # (class, attribute, original) for uninstall()
+
+
+def _patch(cls, name: str, new) -> None:
+    _originals.append((cls, name, cls.__dict__[name]))
+    setattr(cls, name, new)
+    _installed.append(f"{cls.__name__}.{name}")
 
 
 def _still_todo(fn, *args) -> bool:
@@ -29,7 +36,7 @@ def _still_todo(fn, *args) -> bool:
     return False
 
 
-def install() -> list[str]:
+def install(quiet: bool = False) -> list[str]:
     from kanoon_bridge.index import facets, positional, zones
     from kanoon_bridge.index.facets import DocMeta
 
@@ -60,11 +67,9 @@ def install() -> list[str]:
         return out
 
     if _still_todo(positional.PositionalIndex().add, "x", ["a"]):
-        positional.PositionalIndex.add = add
-        _installed.append("PositionalIndex.add")
+        _patch(positional.PositionalIndex, "add", add)
     if _still_todo(positional.PositionalIndex().phrase, ["a"]):
-        positional.PositionalIndex.phrase = phrase
-        _installed.append("PositionalIndex.phrase")
+        _patch(positional.PositionalIndex, "phrase", phrase)
 
     # -------------------------------------------------------------- ZoneIndex
     @classmethod
@@ -84,8 +89,7 @@ def install() -> list[str]:
         return z
 
     if _still_todo(zones.ZoneIndex.build, [], lambda t, d: []):
-        zones.ZoneIndex.build = zbuild
-        _installed.append("ZoneIndex.build")
+        _patch(zones.ZoneIndex, "build", zbuild)
 
     # -------------------------------------------------------------- FacetIndex
     @classmethod
@@ -130,12 +134,18 @@ def install() -> list[str]:
         return set.intersection(*sets)
 
     if _still_todo(facets.FacetIndex.build, []):
-        facets.FacetIndex.build = fbuild
-        _installed.append("FacetIndex.build")
+        _patch(facets.FacetIndex, "build", fbuild)
     if _still_todo(facets.FacetIndex().filter):
-        facets.FacetIndex.filter = ffilter
-        _installed.append("FacetIndex.filter")
+        _patch(facets.FacetIndex, "filter", ffilter)
 
-    if _installed:
+    if _installed and not quiet:
         print(f"[KB_DEV_SHIM] temporary reference index code in use for: {', '.join(_installed)}", file=sys.stderr)
     return _installed
+
+
+def uninstall() -> None:
+    """Restore the real methods (tests use install()/uninstall() around one test only)."""
+    while _originals:
+        cls, name, original = _originals.pop()
+        setattr(cls, name, original)
+    _installed.clear()

@@ -1,9 +1,10 @@
 """Evaluate layers 2 and 3.  [owner: Gaurav — working; agent internals: Shaurya]
 
 Agent (layer 2), on E1 (and E6 if judged):
-    core single query  vs  agent (RRF over the plan's sub-queries)
-    metrics: MAP, MRR, F1@k (k from val), nDCG@10; plus mean searches per question.
-    Sanity: while the planner only emits the 'original' sub-query, agent == core ranking order.
+    core single query  vs  agent (RRF)  vs  agent (CombSUM), same planner and sub-results
+    metrics: MAP, MRR, F1@k (k from val), nDCG@10; plus searches per question, sub-query
+    kinds used, share of questions reformulated and share where reformulation improved AP.
+    Sanity: an agent whose plan has only the 'original' sub-query == core ranking order.
 
 RAG (layer 3), on data/queries/rag_questions.jsonl (rows: id, text, incident_date, state,
 answerable):
@@ -25,30 +26,55 @@ from kanoon_bridge.config import Config, load_config, project_path
 
 
 def compare_agent(test_set: str = "e1_ilpcsr", engine=None, limit: int | None = None,
-                  ev: Config | None = None) -> list[dict]:
+                  ev: Config | None = None, diagnostics: int = 50) -> list[dict]:
+    """core vs agent (RRF) vs agent (CombSUM) on one set, plus diagnostics of the RRF agent on
+    the first `diagnostics` queries: searches per question, sub-query kinds used, share of
+    questions that got a reformulation round and share where that round improved AP."""
+    import copy
+
+    from kanoon_bridge.agent.fuse import fuse
     from kanoon_bridge.agent.research import ResearchAgent
     from kanoon_bridge.eval.ablation import write_table
+    from kanoon_bridge.eval.metrics import average_precision
     from kanoon_bridge.eval.run_eval import evaluate_set, load_test_set
-    from kanoon_bridge.schema import Query
     from kanoon_bridge.search import SearchEngine, SearchOptions
 
     ev = ev or load_config("eval.yaml")
     engine = engine or SearchEngine.load()
     ts = load_test_set(test_set, ev=ev, limit=limit)
-    agent = ResearchAgent.load(engine)
+    rrf = ResearchAgent.load(engine, fusion="rrf")
+    comb = ResearchAgent(engine=engine, cfg=rrf.cfg, planner=rrf.planner, docs=rrf.docs, fusion="combsum")
     out_dir = project_path(ev.outputs.runs) / "agent"
     rows = []
-    for system, ag in (("core", None), ("agent_rrf", agent)):
+    for system, ag in (("core", None), ("agent_rrf", rrf), ("agent_combsum", comb)):
         scores = evaluate_set(engine, ts, SearchOptions(), system, ev, out_dir, agent=ag)
-        row = {"set": test_set, "system": system, **{k: round(v, 4) for k, v in scores.items()}}
-        if ag is not None and ts.queries:
-            import copy
+        rows.append({"set": test_set, "system": system, **{k: round(v, 4) for k, v in scores.items()}})
+        print(f"  agent {test_set} {system:14s} MAP={scores.get('MAP', 0):.4f}")
 
-            row["searches_per_q"] = round(statistics.fmean(
-                ag.run(copy.deepcopy(q), SearchOptions(top_k=10, max_query_terms=ts.max_query_terms)).n_searches
-                for q in ts.queries[:20]), 2)
-        rows.append(row)
-        print(f"  agent {test_set} {system:10s} MAP={scores.get('MAP', 0):.4f}")
+    # diagnostics on the RRF agent
+    searches, kinds, rounds2, improved = [], {}, 0, 0
+    judged = [q for q in ts.queries if any(g > 0 for g in ts.qrels.get(q.query_id, {}).values())][:diagnostics]
+    opt = SearchOptions(top_k=ev.get("depth", 100), max_query_terms=ts.max_query_terms)
+    for q in judged:
+        res = rrf.run(copy.deepcopy(q), opt)
+        searches.append(res.n_searches)
+        for sr in res.subresults:
+            kinds[sr.subquery.kind] = kinds.get(sr.subquery.kind, 0) + 1
+        if len(res.plans) > 1:
+            rounds2 += 1
+            first = [sr for sr in res.subresults if not sr.subquery.sq_id.startswith("r")]
+            r1 = fuse(first, ts.target, "rrf", rrf.cfg.agent.rrf_k)
+            final = [h.doc_id for h in (res.precedents if ts.target == "precedent" else res.statutes)]
+            rels = ts.qrels[q.query_id]
+            if average_precision(final, rels) > average_precision(sorted(r1, key=r1.get, reverse=True), rels):
+                improved += 1
+    if searches:
+        rows[1]["searches_per_q"] = round(statistics.fmean(searches), 2)
+        rows[1]["reformulated_share"] = round(rounds2 / len(searches), 3)
+        rows[1]["reformulation_helped_share"] = round(improved / rounds2, 3) if rounds2 else ""
+        rows[1]["subquery_kinds"] = " ".join(f"{k}={v}" for k, v in sorted(kinds.items()))
+        print(f"  agent diagnostics: {rows[1]['searches_per_q']} searches/q, kinds {rows[1]['subquery_kinds']}, "
+              f"reformulated {rounds2}/{len(searches)}, helped {improved}")
     write_table(rows, project_path(ev.outputs.tables) / f"agent_{test_set}.csv")
     return rows
 

@@ -5,6 +5,7 @@ regenerated without re-running retrieval:
 
     ablation_<set>.png    MAP and F1@k per ladder step
     main_results.png      baseline vs full system on each set's headline metric
+    agent_<set>.png       core vs agent (RRF) vs agent (CombSUM)
     language_e4.png       P@5 by query language, per language-ablation step
     efficiency.png        latency (left) and Recall@20 vs exhaustive (right) per scoring mode
     rag.png               supported-sentence rate: RAG vs closed-book
@@ -149,6 +150,14 @@ def make_all(tables: str | Path | None = None, figures: str | Path | None = None
         figures.mkdir(parents=True, exist_ok=True)
         fig.savefig(made[-1], dpi=160)
         plt.close(fig)
+
+    for path in sorted(tables.glob("agent_*.csv")):
+        rows = read_table(path)
+        if rows:
+            made.append(bar_chart(rows, "system", ["MAP", "MRR", "nDCG@10"],
+                                  _delta_title(rows, "MAP", rows[0]["system"], rows[-1]["system"],
+                                               f"Layer 2 on {path.stem.removeprefix('agent_')}"),
+                                  figures / f"{path.stem}.png"))
 
     lang = read_table(tables / "language_e4.csv")
     if lang:

@@ -6,7 +6,7 @@ other code calls — keep these names and signatures, or tell the team).
 
 **Owners:** **Gaurav** ingest, version normalisation (was B), ranking + evaluation (was D) ·
 **Sharanya** (A) positional/zone/facet indexes, query parser, tokenizer · **Kashvi** (C) Hindi/Hinglish + dense ·
-**Shaurya** (AG) research agent, layer 2 · **R** RAG, layer 3 (first free member).
+**Shaurya** (AG) research agent, layer 2 · **Gaurav** RAG, layer 3.
 
 **Status:** ✅ working · 🔧 wiring works, parts are stubs · ⬜ stub (`raise NotImplementedError("TODO(owner): …")`).
 Run `python scripts/00_check_access.py` to see how many TODOs each owner has left.
@@ -145,15 +145,19 @@ kanoon-bridge/
 | `fusion.py` | C | ✅ | Score normalisation + lexical/dense fusion | `minmax()`, `zscore()`, `fuse(lexical, dense, alpha, method)` |
 | `topk.py` | D | ✅ | Heap top-K and net score | `top_k(scores, k)`, `net_score()`, `to_scored()` |
 
-### `agent/` — layer 2 research agent (AG)
+### `agent/` — layer 2 research agent (AG: Shaurya)
 
 | File | Status | Purpose | Must contain |
 | --- | --- | --- | --- |
-| `plan.py` | 🔧 | One question → sub-queries; `original` always present, other rules stubbed | `SubQuery`, `Plan.add()`, `RulePlanner.plan(query, aq, idf)` with ⬜ rules `_cross_code`, `_boolean`, `_facet`, `_statutes`; ⬜ optional `LLMPlanner` |
-| `executor.py` | ✅ | Run each sub-query through `SearchEngine.search` | `SubResult(.ranking(), .scores())`, `run_plan(engine, plan, base_options, depth)` |
-| `fuse.py` | 🔧 | Merge ranked lists | ✅`reciprocal_rank_fusion(rankings, weights, k)`, ✅`fuse_subresults()`, ⬜`combsum()` |
-| `reflect.py` | 🔧 | Retry decision + pseudo-relevance feedback | ✅ round guard, ⬜ QPP test in `should_reformulate()`, ⬜`reformulate()` |
-| `research.py` | ✅ | The loop: plan → execute → fuse → reflect | `ResearchAgent.load(engine)`, `.run(query, options) -> AgentResult`, `AgentResult(statutes, precedents, plans, subresults, trace, n_searches)` |
+| `plan.py` | ✅ | One question → sub-queries: original, cross-code, Boolean (CNF over postings), facet (binding courts), statutes-first; optional LLM / hybrid planners | `SubQuery`, `Plan.add()`, `RulePlanner.plan(query, aq, idf)`, `LLMPlanner`, `HybridPlanner`, `make_planner(cfg, normalizer, df)`, `parse_llm_queries()` |
+| `executor.py` | ✅ | Run each sub-query through `SearchEngine.search` with its `SearchOptions` overrides | `SubResult(.ranking(), .scores())`, `run_plan(engine, plan, base_options, depth)` |
+| `fuse.py` | ✅ | Merge ranked lists | `reciprocal_rank_fusion()`, `fuse_subresults()`, `combsum()`, `fuse(subresults, target, method, k)` |
+| `reflect.py` | ✅ | QPP retry decision + Rocchio-style pseudo-relevance feedback | `should_reformulate(fused, aq, idf, round, max_rounds, core_scores)`, `reformulate(aq, fused, docs, plan, ..., idf, df, analyze)`, `feedback_terms()` |
+| `research.py` | ✅ | The loop: plan → execute → fuse → reflect → (PRF round) → fuse | `ResearchAgent.load(engine, docs, fusion, planner)`, `.run(query, options) -> AgentResult`; `AgentResult(statutes, precedents, query, analyzed, plans, subresults, trace, timings_ms, n_searches, found_by())` |
+
+Layer-1 hooks the agent uses (`SearchOptions`): `restrict_states` (facet), `require_terms`
+(Boolean CNF, executed by `SearchEngine.boolean_candidates`), `extra_terms` / `drop_terms` (PRF).
+All default to off, so plain searches are unchanged.
 
 ### `rag/` — layer 3 grounded answer (Gaurav)
 
@@ -205,7 +209,7 @@ kanoon-bridge/
 
 | File | Status | Does |
 | --- | --- | --- |
-| `cli.py` | ✅ | `python app/cli.py "<query>" --state delhi --date 2025-03-01 [--agent] [--answer] [--baseline] [--debug]` — `--debug` prints the full trace and score breakdowns for the video |
+| `cli.py` | ✅ | `python app/cli.py "<query>" --state delhi --date 2025-03-01 [--agent [--fusion rrf|combsum] [--planner rules|llm|hybrid]] [--answer [--generator ...]] [--baseline] [--debug]` — `--debug` prints the full trace and score breakdowns for the video |
 | `streamlit_app.py` | ✅ thin | Query box, state, date, results, trace; RAG panel to add after the gate |
 
 ## `notebooks/`, `tests/`, `results/`, `docs/`
@@ -217,7 +221,7 @@ kanoon-bridge/
 | `notebooks/03_results.ipynb` | Results walkthrough |
 | `tests/data/make_ilpcsr_sample.py` | Writes the synthetic IL-PCSR-schema sample used by `make sample` and the ingest tests (fictional cases) |
 | `tests/conftest.py` | `@todo` marks a test as a spec: skipped while the code raises `NotImplementedError`, runs for real once implemented; `toy_docs` fixture |
-| `tests/test_*.py` | One file per area: tokenize, version_norm, collision, phonetic, positional, boolean, bm25f, authority, metrics, agent, schema_and_pipeline |
+| `tests/test_*.py` | One file per area: tokenize, version_norm, collision, phonetic, positional, boolean, bm25f, authority, metrics, agent, rag, eval, crosswalk_pdf, schema_and_pipeline; `test_layers_integration.py` runs layers 1-3 + the evaluator together on an in-memory corpus |
 | `results/` | `runs/` (TREC files), `tables/` (CSV), `figures/` (committed, used in report) |
 | `docs/architecture.svg/.png` | The architecture diagram; regenerate with `python docs/make_architecture.py` |
 | `docs/ai_use.md` | Running AI-use log → report declaration |

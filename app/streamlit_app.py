@@ -32,31 +32,47 @@ def engine() -> SearchEngine:
 def rag():
     from kanoon_bridge.rag.answer import RagPipeline
 
-    return RagPipeline.load(engine())
+    return RagPipeline.load(engine(), docs=agent().docs)
+
+
+@st.cache_resource
+def agent():
+    from kanoon_bridge.agent.research import ResearchAgent
+
+    return ResearchAgent.load(engine())
 
 
 col1, col2, col3 = st.columns([4, 1, 1])
 text = col1.text_input("Describe the incident or search", "mere bhai ko chaku maara")
 state = col2.selectbox("Your state", STATES)
 date = col3.date_input("Incident date", dt.date.today())
-c1, c2 = st.columns(2)
+c1, c2, c3 = st.columns(3)
 baseline = c1.checkbox("Plain BM25 baseline")
-want_answer = c2.checkbox("Grounded answer (layer 3)")
+use_agent = c2.checkbox("Research agent (layer 2)")
+want_answer = c3.checkbox("Grounded answer (layer 3)")
 
 if text:
     opt = SearchOptions.baseline() if baseline else SearchOptions()
-    res = engine().search(Query(text, state=state or None, incident_date=date), opt)
+    query = Query(text, state=state or None, incident_date=date)
+    res = agent().run(query, opt) if use_agent else engine().search(query, opt)
+    analyzed = res.analyzed if use_agent else res.query
 
     with st.expander("How the query was understood"):
-        for step, out in res.query.trace:
+        for step, out in analyzed.trace:
             st.write(f"**{step}** - {out}")
+    if use_agent:
+        with st.expander(f"What the agent did ({res.n_searches} searches)", expanded=True):
+            for step, out in res.trace:
+                st.write(f"**{step}** - {out}")
 
     left, right = st.columns(2)
     left.subheader("Statutes")
     left.dataframe([{"rank": h.rank, "doc": h.doc_id, "score": round(h.score, 3)} for h in res.statutes])
     right.subheader("Precedents")
     right.dataframe([{"rank": h.rank, "doc": h.doc_id, "score": round(h.score, 3),
-                      **{k: round(v, 3) for k, v in h.components.items()}} for h in res.precedents])
+                      **{k: round(v, 3) for k, v in h.components.items()},
+                      **({"found by": ", ".join(res.found_by(h.doc_id))} if use_agent else {})}
+                     for h in res.precedents])
 
     if want_answer:
         st.subheader("Answer")

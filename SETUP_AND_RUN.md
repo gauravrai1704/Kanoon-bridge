@@ -181,10 +181,10 @@ What runs:
 | `results/tables/ablation_e1_ilpcsr.csv` (and e2) | ladder bm25 → +zones → +code_filter → +bridge → +authority → +dense → +qpp → +jurisdiction |
 | `results/tables/language_e4.csv` | E4 analyzer steps switched on one at a time (needs E4 qrels) |
 | `results/tables/efficiency.csv` | exhaustive vs tiered vs champion lists: median/p95 latency and Recall@20 vs exhaustive (200 E1 queries) |
-| `results/tables/agent_e1_ilpcsr.csv` | core single query vs research agent (RRF); searches per question |
+| `results/tables/agent_e1_ilpcsr.csv` (and e6 once judged) | core vs agent (RRF) vs agent (CombSUM); searches per question, sub-query kinds, share reformulated and share where reformulation helped |
 | `results/tables/rag.csv`, `rag_answers.jsonl` | layer 3: supported-sentence rate, version flags, abstention precision/recall |
 | `results/runs/*.run` | TREC run files: `query_id Q0 doc_id rank score system` |
-| `results/figures/*.png` | ablation, baseline-vs-full, language, efficiency, RAG charts |
+| `results/figures/*.png` | ablation, baseline-vs-full, agent, language, efficiency, RAG charts |
 
 How E1 is run:
 
@@ -212,7 +212,27 @@ Rules that keep the numbers honest:
 - `val` is for tuning.
 - `test` is only for reporting.
 
-## 7. Layer 3: RAG answers
+## 7. Layer 2: the research agent
+
+```bash
+python app/cli.py "BNS 103 knife stabbing" --state delhi --date 2025-01-03 --agent --debug
+python app/cli.py "..." --agent --fusion combsum            # CombSUM instead of reciprocal rank fusion
+python app/cli.py "..." --agent --planner hybrid            # + Claude-proposed sub-queries (needs the key, step 8)
+```
+
+`--debug` prints the plan and each sub-query's hit count. Each precedent shows which sub-queries found it. One question becomes these sub-queries, each a normal layer-1 search:
+
+1. **original**: the question as asked.
+2. **cross_code**: BNS 103 rewritten as IPC Section 302, which brings back judgments decided under the old code.
+3. **boolean**: `(murder offence OR its IPC/BNS sections) AND <most salient term>`, run as a postings filter and then ranked.
+4. **facet**: only Supreme Court and own-High-Court precedents (when a state is given).
+5. **statutes**: a statute search with the offence names spelled out.
+
+The lists are fused. If fewer than 10 precedents come back, or QPP confidence is low, a second round adds pseudo-relevance-feedback terms from the top 5 documents.
+
+All of this is tunable in the `agent:` block of `configs/default.yaml`: planner, fusion, rounds, PRF terms and thresholds. On E1 the agent runs about 5–6 searches per query, so expect `make eval` to take several times longer for the agent rows. Use `--skip-agent` while iterating.
+
+## 8. Layer 3: RAG answers
 
 ```bash
 cp .env.example .env              # then put your key in .env:  ANTHROPIC_API_KEY=sk-ant-...
@@ -223,7 +243,7 @@ python app/cli.py "..." --agent --answer                                        
 
 The pipeline (`src/kanoon_bridge/rag/`):
 
-1. **abstain**: QPP. No specific query term, nothing retrieved, or a flat score head means no LLM call.
+1. **abstain**: no LLM call when QPP finds no specific query term, nothing is retrieved, or the score head is flat. After chunking, it also abstains when the sources cover under 50% of the question's idf-weighted terms. Terms no index has ever seen ("GST") count fully against coverage.
 2. **chunker**: top statutes, labelled "BNS Section 103 - Punishment for murder", then the best ratio/decision paragraph of each top precedent.
 3. **generate**: Claude at temperature 0, 3–5 sentences, each ending in one `[n]` citation. The default model is `claude-haiku-4-5-20251001`. Change it with `rag.model` in `configs/default.yaml` or `KB_RAG_MODEL` in `.env`.
 4. **citation_check**: tf-idf cosine of each sentence vs the chunk it cites. Below 0.2 it is flagged unsupported.
@@ -233,15 +253,15 @@ The RAG evaluation uses `data/queries/rag_questions.jsonl`: 16 answerable questi
 
 With a key, `make eval` also asks Claude **closed-book** (no sources) and checks those sentences against the same retrieved chunks. That gives the "supported-sentence rate, RAG vs no retrieval" comparison. With the extractive generator, the support rate is about 1 by construction, so report the Claude numbers. The API key stays in `.env`, which is git-ignored. Declare Claude use in `docs/ai_use.md`.
 
-## 8. Demo app
+## 9. Demo app
 
 ```bash
 make app                          # streamlit run app/streamlit_app.py
 ```
 
-The app has a query box, a state picker and an incident date. It shows statutes and precedents with score breakdowns and the query-analysis trace. A **Grounded answer (layer 3)** checkbox adds the RAG answer with its flags.
+The app has a query box, a state picker and an incident date. It shows statutes and precedents with score breakdowns and the query-analysis trace. A **Research agent (layer 2)** checkbox shows what the agent did and which sub-query found each precedent. A **Grounded answer (layer 3)** checkbox adds the RAG answer with its flags; it works on either result.
 
-## 9. No Hugging Face access yet? Run everything on the synthetic sample
+## 10. No Hugging Face access yet? Run everything on the synthetic sample
 
 ```bash
 export KB_DEV_SHIM=1              # until the index code lands

@@ -75,7 +75,9 @@ class TextResources:
 
 def _load_stopwords(cfg: Config) -> set[str]:
     words: set[str] = set()
-    for key in ("stopwords_legal", "stopwords_hindi"):
+    for key in ("stopwords_english", "stopwords_legal", "stopwords_hindi"):
+        if key not in cfg.paths:
+            continue
         path = project_path(cfg.paths[key])
         if Path(path).exists():
             with open(path, encoding="utf-8") as f:

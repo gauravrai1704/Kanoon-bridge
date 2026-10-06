@@ -3,6 +3,10 @@
 Uses rank/qpp.py signals: max idf of the query terms (is anything specific being asked?) and the
 head of each ranked list (a clear winner, or a flat list of near-ties?). Abstain when the query
 has no specific term, nothing was retrieved, or BOTH the statute and precedent heads are flat.
+After chunking, a second test (`coverage`): the idf-weighted share of the question's content
+terms that occur in the retrieved chunks. Terms the indexes have never seen count with the
+maximum idf, so "GST rate on restaurant food" is not "covered" just because "food" appears in
+some section. Below rag.abstain_min_coverage -> abstain.
 Metric: abstention precision on questions we know the corpus cannot answer (rag_questions.jsonl
 rows with "answerable": false).
 """
@@ -44,3 +48,19 @@ def decide(result, idf=None, query_terms: list[str] | None = None, min_idf: floa
     if all(flat):
         return True, "flat score head in both statutes and precedents"
     return False, f"ok (max idf {max_idf:.2f})"
+
+
+def coverage(content_terms: list[str], chunk_texts: list[str], idf, unseen_idf: float) -> float:
+    """idf-weighted share of `content_terms` found in the chunks (unseen terms weigh unseen_idf)."""
+    from kanoon_bridge.rag._util import terms
+
+    look = idf_lookup(idf)
+    present: set[str] = set()
+    for text in chunk_texts:
+        present.update(terms(text))
+    total = got = 0.0
+    for t in dict.fromkeys(content_terms):
+        w = look(t) or unseen_idf
+        total += w
+        got += w if t in present else 0.0
+    return got / total if total else 1.0

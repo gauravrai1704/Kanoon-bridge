@@ -3,6 +3,7 @@
     python app/cli.py "mere bhai ko chaku maara" --state delhi --date 2025-03-01 --debug
     python app/cli.py "section 302" --date 2023-05-10
     python app/cli.py "murder knife" --baseline          # plain BM25 for comparison
+    python app/cli.py "BNS 103 knife" --state delhi --date 2025-01-03 --agent --debug      # layer 2
     python app/cli.py "punishment for murder" --date 2025-01-03 --answer                 # layer 3
     python app/cli.py "punishment for murder" --date 2025-01-03 --answer --generator extractive
 
@@ -28,6 +29,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--baseline", action="store_true", help="plain BM25 only")
     ap.add_argument("--no-jurisdiction", action="store_true")
     ap.add_argument("--agent", action="store_true", help="layer 2: research agent (several sub-queries, fused)")
+    ap.add_argument("--fusion", choices=["rrf", "combsum"], help="layer 2 fusion (default: config agent.fusion)")
+    ap.add_argument("--planner", choices=["rules", "llm", "hybrid"], help="layer 2 planner (default: config agent.planner)")
     ap.add_argument("--answer", action="store_true", help="layer 3: cited answer on top of the results")
     ap.add_argument("--generator", default=None, help="auto | claude | extractive (default: configs rag.generator)")
     ap.add_argument("--debug", action="store_true")
@@ -43,12 +46,17 @@ def main(argv: list[str] | None = None) -> int:
     opt.top_k = args.k
     query = Query(args.query, state=args.state, incident_date=args.date)
 
+    agent = None
     if args.agent:
         from kanoon_bridge.agent.research import ResearchAgent
 
-        agent = ResearchAgent.load(engine)
+        if args.planner:
+            from kanoon_bridge.config import load_config
+
+            engine.cfg = load_config(overrides={"agent": {"planner": args.planner}})
+        agent = ResearchAgent.load(engine, fusion=args.fusion)
         res = agent.run(query, opt)
-        trace = res.trace
+        trace = res.analyzed.trace + res.trace
     else:
         res = engine.search(query, opt)
         trace = res.query.trace
@@ -64,13 +72,15 @@ def main(argv: list[str] | None = None) -> int:
     print("\n-- precedents --")
     for h in res.precedents:
         extra = "  " + "  ".join(f"{k}={v:.3f}" for k, v in h.components.items()) if args.debug else ""
+        if args.debug and agent is not None:
+            extra += "  from " + ",".join(res.found_by(h.doc_id))
         print(f"  {h.rank:2d}. {h.doc_id:20s} {h.score:8.3f}{extra}")
 
     if args.answer:
         from kanoon_bridge.rag.answer import RagPipeline, render
 
         try:
-            rag = RagPipeline.load(engine, docs=getattr(locals().get("agent"), "docs", None))
+            rag = RagPipeline.load(engine, docs=getattr(agent, "docs", None))
             print("\n-- answer --\n" + render(rag.answer(res, generator=args.generator)))
         except (NotImplementedError, RuntimeError, FileNotFoundError) as err:
             print(f"\n-- answer -- not available ({err})")

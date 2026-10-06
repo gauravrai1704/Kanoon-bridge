@@ -132,15 +132,19 @@ def call_claude(prompt: str, model: str | None = None, max_tokens: int = 600, sy
 
 
 def extractive(question: str, chunks: list[Chunk], max_sentences: int = 4) -> Answer:
-    """No-LLM answer: the sentences with most query-term overlap across the chunks (at most one
-    per chunk, ties broken by chunk order), each quoted with its citation."""
+    """No-LLM answer: the top-ranked statute's best sentence, then the sentences with most
+    query-term overlap across the other chunks (at most one per chunk, ties broken by chunk
+    order), each quoted with its citation."""
     qterms = set(terms(question))
     cands = []
     for c in chunks:
         sents = [s for s in (split_sentences(c.text) or [c.text]) if len(s.split()) >= 6] or [c.text]
         best = max(sents, key=lambda s: len(qterms & set(terms(s))))
         cands.append((len(qterms & set(terms(best))), -c.n, c, best))
-    cands = [x for x in sorted(cands, key=lambda x: (x[0], x[1]), reverse=True) if x[0] > 0][:max_sentences]
+    # the top-ranked statute always leads (retrieval already judged it best); the rest by overlap
+    lead = [x for x in cands if x[2].n == 1 and x[2].zone == "statute"]
+    rest = [x for x in sorted(cands, key=lambda x: (x[0], x[1]), reverse=True) if x[0] > 0 and x not in lead]
+    cands = (lead + rest)[:max_sentences]
     if not cands:
         return Answer(text="The retrieved sources do not answer this question.", generator="extractive")
     out = []

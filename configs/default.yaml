@@ -11,6 +11,7 @@ paths:
   lexicon_hinglish: data/lexicons/hinglish_legal_terms.csv
   stopwords_hindi: data/lexicons/hindi_stopwords.txt
   stopwords_legal: data/lexicons/legal_stopwords.txt
+  stopwords_english: data/lexicons/english_stopwords.txt
   court_to_states: data/lexicons/court_to_states.csv
   embeddings: data/processed/embeddings
   graph: data/processed/citation_graph.json
@@ -80,12 +81,19 @@ search:
 # Layer 2: research agent (agent/)
 agent:
   enabled: false                  # switch on after the hour-26 gate
-  planner: rules                  # rules | llm
+  planner: rules                  # rules | llm | hybrid (llm/hybrid need ANTHROPIC_API_KEY)
+  llm_model: ""                   # "" = rag default model
+  fusion: rrf                     # rrf | combsum
   max_rounds: 2                   # plan + at most one reformulation round
   depth: 50                       # results per sub-query that go into fusion
   rrf_k: 60                       # reciprocal rank fusion constant
   prf_top_docs: 5                 # pseudo-relevance feedback: docs used
   prf_terms: 10                   # pseudo-relevance feedback: terms added
+  prf_beta: 0.5                   # weight of each feedback term
+  min_results: 10                 # fewer fused precedents than this -> reformulate
+  retry_confidence: 0.35          # QPP confidence below this -> reformulate
+  boolean_terms: 3                # clauses in the Boolean sub-query
+  boolean_min_df: 2               # Boolean terms must occur in at least this many precedents
   facet_weight: 0.8               # fusion weight of the binding-only sub-query
 
 # Layer 3: grounded answers (rag/)
@@ -96,3 +104,6 @@ rag:
   max_chunks: 8
   max_chunk_chars: 1200
   support_threshold: 0.2          # tf-idf cosine below this = unsupported sentence
+  abstain_min_idf: 0.3            # no query term with idf >= this (log10 N/df) -> abstain
+  abstain_min_coverage: 0.5       # idf-weighted share of question terms found in the sources
+  abstain_unseen_idf: 3.0         # weight of a question term no index has seen (~ log10 of corpus size)

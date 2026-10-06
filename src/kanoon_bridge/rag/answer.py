@@ -19,6 +19,7 @@ from dataclasses import dataclass
 
 from kanoon_bridge.config import Config, load_config
 from kanoon_bridge.rag import abstain, chunker, citation_check, generate, version_check
+from kanoon_bridge.rag._util import idf_lookup
 from kanoon_bridge.rag.generate import Answer
 
 
@@ -28,20 +29,37 @@ def _query_of(result):
 
 
 def answer(result, docs, cfg: Config | None = None, idf=None, resolver=None, normalizer=None,
-           generator: str | None = None, closed_book: bool = False, check_abstain: bool = True) -> Answer:
+           generator: str | None = None, closed_book: bool = False, check_abstain: bool = True,
+           abstain_idf=None) -> Answer:
+    """`idf` scores support (precedent index); `abstain_idf` (default: idf) judges whether the
+    question has a specific term - RagPipeline passes max(precedent idf, statute idf)."""
     cfg = cfg or load_config()
     rcfg = cfg.rag
     query = _query_of(result)
-    qterms = list(result.query.weighted_terms()) if hasattr(result.query, "weighted_terms") else None
+    analyzed = getattr(result, "analyzed", None) or result.query     # AgentResult keeps it in .analyzed
+    qterms = list(analyzed.weighted_terms()) if hasattr(analyzed, "weighted_terms") else None
 
     if check_abstain and not closed_book:
-        abstained, reason = abstain.decide(result, idf, query_terms=qterms)
+        abstained, reason = abstain.decide(result, abstain_idf or idf, query_terms=qterms,
+                                           min_idf=rcfg.get("abstain_min_idf", 0.3))
         if abstained:
             return Answer(text=f"Not enough grounding in the indexed law to answer this ({reason}).",
                           abstained=True, generator="abstain")
 
     chunks = chunker.make_chunks(result, docs, max_chunks=rcfg.max_chunks, max_chars=rcfg.max_chunk_chars,
                                  query_terms=qterms)
+    if check_abstain and not closed_book and hasattr(analyzed, "tokens"):
+        content = [t for t in analyzed.tokens if not t.startswith(("sec:", "off:")) and not t.isdigit()]
+        if analyzed.detected_lang != "en":                 # Hindi/Hinglish: judge the English expansions
+            content = [t for t in analyzed.expanded_terms if not t.startswith(("sec:", "off:"))] or content
+        look = idf_lookup(abstain_idf or idf)
+        cov = abstain.coverage(content, [c.text for c in chunks], look,
+                               unseen_idf=rcfg.get("abstain_unseen_idf", 3.0))
+        if content and cov < rcfg.get("abstain_min_coverage", 0.5):
+            return Answer(text="Not enough grounding in the indexed law to answer this "
+                               f"(retrieved sources cover {cov:.0%} of the question's terms).",
+                          abstained=True, generator="abstain")
+
     ans = generate.generate(query.text, chunks, incident_date=str(query.incident_date or "unknown"),
                             state=query.state or "unknown", generator=generator or rcfg.get("generator", "auto"),
                             model=rcfg.model or None, closed_book=closed_book)
@@ -61,6 +79,7 @@ class RagPipeline:
     idf: object
     resolver: object
     normalizer: object
+    statute_idf: object = None
 
     @classmethod
     def load(cls, engine, cfg: Config | None = None, docs=None) -> "RagPipeline":
@@ -71,12 +90,16 @@ class RagPipeline:
             docs = DocStore.load(cfg)
         res = engine.analyzer.text_res
         return cls(cfg=cfg, docs=docs, idf=engine.precedent_index.whole.idf,
-                   resolver=res.resolver, normalizer=res.normalizer)
+                   resolver=res.resolver, normalizer=res.normalizer, statute_idf=engine.statute_index.whole.idf)
+
+    def _abstain_idf(self, term: str) -> float:
+        return max(self.idf(term), self.statute_idf(term) if self.statute_idf else 0.0)
 
     def answer(self, result, generator: str | None = None, closed_book: bool = False,
                use_normalizer: bool = True) -> Answer:
         return answer(result, self.docs, self.cfg, self.idf, self.resolver,
-                      self.normalizer if use_normalizer else None, generator, closed_book)
+                      self.normalizer if use_normalizer else None, generator, closed_book,
+                      abstain_idf=self._abstain_idf)
 
 
 def render(ans: Answer) -> str:

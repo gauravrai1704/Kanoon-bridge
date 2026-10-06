@@ -88,11 +88,11 @@ Worked example (values are illustrative):
 
 | Step | Module | What happens |
 | --- | --- | --- |
-| Plan | `agent/plan.py` (`RulePlanner`) | q0 original · q1 cross-code ("IPC 307 knife injury") · q2 Boolean ("(knife OR chaku) AND (injury OR hurt)") · q3 facet (binding courts for Delhi only) · q4 statutes-first |
-| Execute | `agent/executor.py` | each sub-query = one layer-1 search (same engine, rule 4) |
-| Fuse | `agent/fuse.py` | reciprocal rank fusion: Σ w / (60 + rank) |
-| Reflect | `agent/reflect.py` | QPP on the fused list; if weak, pseudo-relevance feedback adds top-document terms and runs one more round (max 2) |
-| Output | `agent.research.AgentResult` | fused statutes + precedents, every sub-query and its results in the trace |
+| Plan | `agent/plan.py` (`RulePlanner`; `agent.planner: llm / hybrid` adds Claude-proposed sub-queries) | q0 original · q1 cross-code ("knife stabbing IPC Section 302" for "BNS 103 knife stabbing") · q2 Boolean `(off:murder OR sec:bns:103 OR sec:ipc:302) AND stab`, run as a postings filter then ranked · q3 facet: only precedents binding in the user's state (SC + its HC), weight 0.8 · q4 statutes-first with the offence names spelled out |
+| Execute | `agent/executor.py` | each sub-query = one layer-1 search (same engine, rule 4) with its own `SearchOptions` overrides (`require_terms`, `restrict_states`, `extra_terms`, `drop_terms`) |
+| Fuse | `agent/fuse.py` | reciprocal rank fusion Σ w / (60 + rank) (default) or CombSUM of min-max scores; a sub-query feeds its target list, the original feeds both |
+| Reflect | `agent/reflect.py` | fewer than 10 fused precedents, or QPP confidence (max idf + top-score gap of the core list) below 0.35 → round 2: pseudo-relevance feedback adds the top-5 documents' best ratio/decision terms (weight 0.5) and drops the vaguest query term; max 2 rounds |
+| Output | `agent.research.AgentResult` | fused statutes + precedents, `.analyzed` query, every sub-query and its hits in the trace, `found_by(doc)` |
 
 With only the `original` sub-query the agent returns exactly the layer-1 ranking — a built-in sanity check.
 
@@ -111,11 +111,15 @@ With only the `original` sub-query the agent returns exactly the layer-1 ranking
 
 ```
 Query ──► Layer 1 ──► SearchResult(statutes, precedents, query.trace)
-Query ──► Layer 2 ──(many Queries)──► Layer 1 ──► AgentResult(statutes, precedents, trace)
-SearchResult | AgentResult ──► Layer 3 ──► Answer(text, flags, abstained)
+Query ──► Layer 2 ──(many Queries + SearchOptions hooks)──► Layer 1 ──► AgentResult(statutes, precedents, analyzed, trace)
+SearchResult | AgentResult ──► Layer 3 ──► Answer(text, flags, abstained, chunks)
+SearchEngine (+ ResearchAgent) ──► eval/run_eval.evaluate_set ──► metrics, run files
 ```
 
-Both `SearchResult` and `AgentResult` expose `.statutes` and `.precedents`, so layer 3 works on either.
+Both `SearchResult` and `AgentResult` expose `.statutes`, `.precedents`, `.timings_ms` and the
+analysed query (`SearchResult.query` / `AgentResult.analyzed`), so layer 3, the CLI, the app and
+the evaluator accept either. `tests/test_layers_integration.py` checks every one of these hand-offs
+on an in-memory corpus.
 
 ---
 

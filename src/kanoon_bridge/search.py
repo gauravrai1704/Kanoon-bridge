@@ -51,6 +51,11 @@ class SearchOptions:
     top_k: int = 10
     max_query_terms: int | None = None   # cap long queries (E1 uses 100); None = config bm25.max_query_terms
     candidate_mode: str = "all"    # "all" | "tiers" | "champions" (efficiency experiment)
+    # --- hooks used by the research agent (layer 2); all off in a plain search -----------
+    restrict_states: list[str] | None = None        # precedents binding in these states only (SC included)
+    require_terms: list[list[str]] | None = None    # Boolean CNF over analysed terms: AND of ORs (postings)
+    extra_terms: dict[str, float] | None = None     # added query terms -> weight (pseudo-relevance feedback)
+    drop_terms: list[str] | None = None             # analysed terms removed from the query
 
     @classmethod
     def from_dict(cls, d: dict) -> "SearchOptions":
@@ -79,28 +84,34 @@ class SearchEngine:
     # ------------------------------------------------------------------ loading
     @classmethod
     def load(cls, cfg: Config | None = None) -> "SearchEngine":
+        """Load the indexes written by scripts/02 and 03 from data/processed/index/."""
         cfg = cfg or load_config()
+        authority = store.load("authority", "json") if store.exists("authority", "json") else None
+        statute_terms = store.load("statute_terms", "json") if store.exists("statute_terms", "json") else None
+        tiers = store.load("tiers") if store.exists("tiers") else None
+        return cls.from_components(cfg, store.load("statutes_zone"), store.load("precedents_zone"),
+                                   store.load("facets"), statute_terms, authority, tiers)
+
+    @classmethod
+    def from_components(cls, cfg: Config, statute_index, precedent_index, facets, statute_terms=None,
+                        authority=None, tiers=None) -> "SearchEngine":
+        """Assemble an engine from in-memory parts (load() and the end-to-end tests use this).
+        `authority`: an Authority or its to_dict() form."""
         from kanoon_bridge.query.analyzer import QueryAnalyzer
 
-        statute_index = store.load("statutes_zone")
-        precedent_index = store.load("precedents_zone")
-        facets = store.load("facets")
         analyzer = QueryAnalyzer.load(cfg, vocabulary=precedent_index.whole.vocabulary())
         engine = cls(cfg=cfg, analyzer=analyzer, statute_index=statute_index,
-                     precedent_index=precedent_index, facets=facets)
-
-        if store.exists("authority", "json"):
+                     precedent_index=precedent_index, facets=facets, tiers=tiers)
+        if authority is not None:
             from kanoon_bridge.rank.authority import Authority
 
-            engine.authority = Authority.from_dict(store.load("authority", "json"), facets.metas, cfg)
-        if store.exists("statute_terms", "json"):
+            engine.authority = Authority.from_dict(authority, facets.metas, cfg) if isinstance(authority, dict) else authority
+        if statute_terms is not None:
             from kanoon_bridge.rank.statute_bridge import StatuteBridge
 
-            engine.bridge = StatuteBridge(facets=facets, statute_terms=store.load("statute_terms", "json"),
+            engine.bridge = StatuteBridge(facets=facets, statute_terms=statute_terms,
                                           top_n=cfg.statute_bridge.top_statutes, boost=cfg.statute_bridge.boost,
                                           normalizer=analyzer.text_res.normalizer)
-        if store.exists("tiers"):
-            engine.tiers = store.load("tiers")
         if cfg.dense.enabled:
             from kanoon_bridge.rank.dense import DenseRetriever
 
@@ -136,6 +147,12 @@ class SearchEngine:
         t0 = clock()
         aq: AnalyzedQuery = self.analyzer.analyze(query)
         terms = aq.weighted_terms()
+        for term in opt.drop_terms or []:
+            terms.pop(term, None)
+        for term, w in (opt.extra_terms or {}).items():
+            terms[term] = max(terms.get(term, 0.0), w)
+        if opt.drop_terms or opt.extra_terms:
+            aq.trace.append(("feedback", f"dropped {opt.drop_terms or []}, added {sorted(opt.extra_terms or {})}"))
         t["analyze"] = clock() - t0
 
         # --- statutes -------------------------------------------------------------
@@ -166,6 +183,15 @@ class SearchEngine:
         # --- precedents: lexical, dense, fusion -----------------------------------
         t0 = clock()
         prec_cands = self._precedent_filter(query)
+        if opt.restrict_states:
+            binding = self.facets.filter(doc_type=DocType.PRECEDENT.value, states=list(opt.restrict_states))
+            prec_cands = binding if prec_cands is None else prec_cands & binding
+            aq.trace.append(("facet", f"precedents binding in {', '.join(opt.restrict_states)}: {len(binding)}"))
+        if opt.require_terms:
+            sel = self.boolean_candidates(opt.require_terms)
+            prec_cands = sel if prec_cands is None else prec_cands & sel
+            aq.trace.append(("boolean", " AND ".join("(" + " OR ".join(c) + ")" for c in opt.require_terms)
+                             + f" -> {len(sel)} docs"))
         if opt.candidate_mode != "all" and self.tiers is not None:
             sel = self.tiers.candidates(list(terms), self.cfg.tiers.min_results_before_tier2,
                                         use_champions=opt.candidate_mode == "champions",
@@ -220,6 +246,21 @@ class SearchEngine:
 
         return SearchResult(query=aq, statutes=statutes, precedents=precedents,
                             timings_ms={k: v * 1000 for k, v in t.items()})
+
+    def boolean_candidates(self, cnf: list[list[str]]) -> set[str]:
+        """AND of OR-clauses over analysed terms, by postings union/intersection (rarest clause
+        first, so the running intersection stays small)."""
+        whole = self.precedent_index.whole
+        clauses = [set().union(*(whole.docs_with(t) for t in clause)) for clause in cnf if clause]
+        if not clauses:
+            return set()
+        clauses.sort(key=len)
+        out = clauses[0]
+        for c in clauses[1:]:
+            out = out & c
+            if not out:
+                break
+        return out
 
     def _precedent_filter(self, query: Query) -> set[str] | None:
         """Hard filters from the query (court:, type:, explicit date range). State is NOT a hard

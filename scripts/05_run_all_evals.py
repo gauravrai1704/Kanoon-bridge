@@ -85,11 +85,10 @@ def main() -> None:
         ablation.run_language_ablation(engine=engine, ev=ev)
     if not args.skip_efficiency and "e1_ilpcsr" in sets:
         efficiency.compare_modes(min(args.limit or 10**9, ev.efficiency.n_queries), engine, ev)
-    if not args.skip_agent and "e1_ilpcsr" in sets:
-        try:
-            agent_eval.compare_agent("e1_ilpcsr", engine, args.limit, ev)
-        except NotImplementedError as err:
-            print(f"agent: skipped ({err})")
+    if not args.skip_agent:
+        for name in ("e1_ilpcsr", "e6_jurisdiction"):
+            if name in sets and load_test_set(name, ev=ev, limit=args.limit).judged:
+                agent_eval.compare_agent(name, engine, args.limit, ev)
     if not args.skip_rag:
         try:
             agent_eval.evaluate_rag(engine=engine, generator=args.rag_generator, ev=ev, limit=args.limit)
