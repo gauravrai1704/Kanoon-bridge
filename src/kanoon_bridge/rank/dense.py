@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Iterable
+import json
 
 import numpy as np
 
@@ -28,8 +29,8 @@ from kanoon_bridge.schema import Document
 @dataclass
 class DenseRetriever:
     cfg: Config
-    model: object | None = None                     # sentence_transformers.SentenceTransformer (or any .encode())
-    matrix: np.ndarray | None = None                # paragraph embeddings, L2-normalised
+    model: object | None = None
+    matrix: np.ndarray | None = None
     para_doc: list[str] = field(default_factory=list)
     _rows: dict[str, np.ndarray] = field(default_factory=dict)   # doc -> its paragraph row indices
 
@@ -75,46 +76,129 @@ class DenseRetriever:
         self._rows = {d: np.asarray(r) for d, r in rows.items()}
 
     @classmethod
-    def load(cls, cfg: Config | None = None, name: str = "precedents", model=None) -> "DenseRetriever":
-        """Load pre-computed paragraph embeddings (scripts/04_encode_dense.py); the model itself
-        is loaded lazily on the first query (or pass `model`)."""
-        import json
-
+    def load(
+        cls,
+        cfg: Config | None = None,
+        name: str = "precedents",
+    ) -> "DenseRetriever":
+        """Load the model and pre-computed embeddings."""
         cfg = cfg or load_config()
-        npy, ids = cls._paths(cfg, name)
-        if not npy.exists():
-            raise FileNotFoundError(f"{npy} not found - run scripts/04_encode_dense.py first (make dense)")
-        r = cls(cfg=cfg, model=model, matrix=np.load(npy))
-        r.para_doc = json.loads(ids.read_text(encoding="utf-8"))
-        r._index_rows()
-        return r
 
-    def encode_corpus(self, docs: Iterable[Document], name: str = "precedents", batch_size: int = 32) -> None:
-        """Encode every zone paragraph (each cut to dense.max_paragraph_tokens words) and save
-        <name>.npy + <name>_ids.json. Called once by scripts/04_encode_dense.py."""
-        import json
+        from sentence_transformers import SentenceTransformer
 
-        max_words = int(self.cfg.dense.get("max_paragraph_tokens", 512))
-        texts, owners = [], []
+        retriever = cls(cfg=cfg)
+        retriever.model = SentenceTransformer(cfg.dense.model)
+        retriever.model.max_seq_length = cfg.dense.max_paragraph_tokens
+        embeddings_dir = cfg.paths.embeddings
+        matrix_path = embeddings_dir / f"{name}.npy"
+        ids_path = embeddings_dir / f"{name}_ids.json"
+
+        retriever.matrix = np.load(matrix_path).astype(np.float32)
+
+        with open(ids_path, encoding="utf-8") as f:
+            retriever.para_doc = json.load(f)
+
+        if len(retriever.matrix) != len(retriever.para_doc):
+            raise ValueError(
+                f"Embedding/ID count mismatch: "
+                f"{len(retriever.matrix)} embeddings vs "
+                f"{len(retriever.para_doc)} document IDs"
+            )
+
+        return retriever
+
+    def encode_corpus(
+        self,
+        docs: Iterable[Document],
+        name: str = "precedents",
+        batch_size: int = 32,
+    ) -> None:
+        """Encode every paragraph and save normalized embeddings."""
+        if self.model is None:
+            from sentence_transformers import SentenceTransformer
+
+            self.model = SentenceTransformer(self.cfg.dense.model)
+            self.model.max_seq_length = self.cfg.dense.max_paragraph_tokens
+
+        texts: list[str] = []
+        para_doc: list[str] = []
+
         for doc in docs:
-            for para in doc.paragraphs:
-                words = para.text.split()
-                if words:
-                    texts.append(" ".join(words[:max_words]))
-                    owners.append(doc.doc_id)
-        self.matrix = self._encode(texts, "passage", batch_size) if texts else np.zeros((0, 1), dtype=np.float32)
-        self.para_doc = owners
-        self._index_rows()
-        npy, ids = self._paths(self.cfg, name)
-        npy.parent.mkdir(parents=True, exist_ok=True)
-        np.save(npy, self.matrix)
-        ids.write_text(json.dumps(owners), encoding="utf-8")
+            for paragraph in doc.paragraphs:
+                text = paragraph.text.strip()
 
-    def score(self, text: str, candidates: set[str] | None = None) -> dict[str, float]:
-        """MaxP: cosine of the query with each paragraph; a document scores its best paragraph."""
-        if self.matrix is None or not len(self.para_doc):
-            return {}
-        q = self._encode([text], "query")[0]
-        sims = self.matrix @ q
-        docs = self._rows if candidates is None else {d: r for d, r in self._rows.items() if d in candidates}
-        return {d: float(sims[rows].max()) for d, rows in docs.items()}
+                if not text:
+                    continue
+
+                texts.append(f"passage: {text}")
+                para_doc.append(doc.doc_id)
+
+        if not texts:
+            raise ValueError("No non-empty paragraphs found")
+
+        embeddings = self.model.encode(
+            texts,
+            batch_size=batch_size,
+            normalize_embeddings=True,
+            show_progress_bar=True,
+        )
+
+        self.matrix = np.asarray(embeddings, dtype=np.float32)
+        self.para_doc = para_doc
+
+        embeddings_dir = self.cfg.paths.embeddings
+        embeddings_dir.mkdir(parents=True, exist_ok=True)
+
+        np.save(
+            embeddings_dir / f"{name}.npy",
+            self.matrix,
+        )
+
+        with open(
+            embeddings_dir / f"{name}_ids.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(
+                self.para_doc,
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+    def score(
+        self,
+        text: str,
+        candidates: set[str] | None = None,
+    ) -> dict[str, float]:
+        """Return MaxP cosine score for each document."""
+        if self.model is None:
+            raise RuntimeError("DenseRetriever model is not loaded")
+
+        if self.matrix is None or not self.para_doc:
+            raise RuntimeError("Dense embeddings are not loaded")
+
+        query_embedding = self.model.encode(
+            [f"query: {text}"],
+            normalize_embeddings=True,
+        )[0]
+
+        # Both vectors are L2-normalized, so dot product = cosine similarity.
+        paragraph_scores = self.matrix @ np.asarray(
+            query_embedding,
+            dtype=np.float32,
+        )
+
+        best: dict[str, float] = {}
+
+        for i, doc_id in enumerate(self.para_doc):
+            if candidates is not None and doc_id not in candidates:
+                continue
+
+            score = float(paragraph_scores[i])
+
+            # MaxP: a document receives the score of its best paragraph.
+            if doc_id not in best or score > best[doc_id]:
+                best[doc_id] = score
+
+        return best
