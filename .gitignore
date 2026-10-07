@@ -14,7 +14,9 @@ venv/
 data/raw/
 data/processed/
 results/runs/
-results/tables/
+# results/tables/ is committed so readers see our numbers, except the RAG answers,
+# which quote IL-PCSR judgment text (CC-BY-NC-SA)
+results/tables/rag_answers.jsonl
 results/sample/
 *.npy
 *.pt

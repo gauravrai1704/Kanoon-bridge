@@ -1,0 +1,7 @@
+set,system,P@5,nDCG@10,MAP,MRR,binding_share@5
+e1q_ilpcsr_short,full,0.0291,0.0736,0.0585,0.0919,
+e1q_ilpcsr_short,full+ltr_short,0.0448,0.0948,0.076,0.1086,
+e4_multilingual,full,0.152,0.508,0.461,0.4864,
+e4_multilingual,full+ltr_short,0.152,0.508,0.461,0.4864,
+e6_jurisdiction,full,0.675,0.6568,0.6295,0.9,0.925
+e6_jurisdiction,full+ltr_short,0.37,0.351,0.3314,0.4309,1.0

@@ -1,0 +1,9 @@
+set,qrels,system,MAP,nDCG@10,P@5
+e4_multilingual,team,baseline,0.3947,0.4531,0.1347
+e4_multilingual,team,full,0.461,0.508,0.152
+e4_multilingual,ai,baseline,0.3968,0.4581,0.2587
+e4_multilingual,ai,full,0.4762,0.5282,0.3067
+e6_jurisdiction,team,baseline,0.2778,0.3665,0.34
+e6_jurisdiction,team,full,0.6295,0.6568,0.675
+e6_jurisdiction,ai,baseline,0.6501,0.8078,0.86
+e6_jurisdiction,ai,full,0.7155,0.7583,0.8
