@@ -159,6 +159,31 @@ make dense                           # = python scripts/04_encode_dense.py → d
 
 It encodes every zone paragraph once and scores a document by its best paragraph (MaxP). The model is `dense.model`, NLLB-E5. Check the exact Hugging Face id before a long run. If the model can't be loaded, the encoder falls back to `dense.fallback_model` (multilingual-e5-base) and says so. On a CPU, expect hours for ~3k long judgments; a free Colab GPU takes well under an hour. If `dense.enabled` is true but the embeddings are missing, search warns and runs without the dense channel.
 
+### On a free Colab T4: dense channel + post-2024 High Court judgments (one notebook)
+
+`notebooks/colab_gpu_run.ipynb` does everything that needs a GPU or network access we did not
+have: it downloads post-2024 High Court criminal judgments (eCourts open data on AWS, CC-BY-4.0)
+and plots the IPC → BNS citation shift, adds them to the corpus, encodes the dense channel on the
+GPU, tunes the typed-question fusion with dense on **val**, retrains both LTR models and re-runs
+every evaluation (so the ablation gets real `+dense` / `+qpp` rows). Put `kanoon-bridge.zip` and
+the IL-PCSR parquets in `MyDrive/kanoon/`, choose a T4 runtime, Run all (about 2–2.5 h), then
+unzip `MyDrive/kanoon/colab_results.zip` over the project folder.
+
+The same steps by hand:
+
+```bash
+pip install -e ".[dev,dense,hc]"
+python scripts/11_hc_judgments.py fetch --years 2023 2024 2025 --per-month 30
+python scripts/11_hc_judgments.py shift        # results/tables/citation_shift.csv + figure
+python scripts/11_hc_judgments.py ingest       # -> data/processed/hc_docs.jsonl (picked up by 01)
+python scripts/11_hc_judgments.py testset      # E10
+make build && python scripts/04_encode_dense.py && python scripts/apply_tuning.py dense-on
+python scripts/09_tune_on_val.py --short && python scripts/apply_tuning.py short
+python scripts/06_train_ltr.py && python scripts/06_train_ltr.py --short
+python scripts/07_make_test_sets.py && python scripts/05_run_all_evals.py
+python scripts/12_second_judge.py agree && python scripts/10_report_figures.py
+```
+
 Sanity check:
 
 ```bash

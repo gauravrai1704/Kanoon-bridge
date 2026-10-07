@@ -19,6 +19,10 @@ paths:
   ilpcsr_dir: data/raw/ilpcsr            # local export of the HF dataset (scripts/00_fetch_data.py)
   bns_dir: data/raw/bns-study-platform    # git clone with BNS bare-act JSON + IPC references
   crosswalk_pdf: data/raw/crosswalk/comparison_summary_BNS_to_IPC.pdf   # optional second source
+  procedure_dir: data/raw/indian-legal-mcp   # git clone: BNSS + BSA bare acts, CrPC + IEA text (MIT)
+  crpc_bnss: data/crosswalk/crpc_bnss.csv     # aligned by ingest/align_codes.py
+  iea_bsa: data/crosswalk/iea_bsa.csv
+  provision_ids: data/crosswalk/provision_ids.csv   # shared ids for CrPC/BNSS and IEA/BSA sections
 
 ilpcsr:
   hf_name: Exploration-Lab/IL-PCSR       # gated: accept terms + `huggingface-cli login`
@@ -86,6 +90,11 @@ dense:
 fusion:
   alpha_default: 0.7              # weight of lexical score when QPP is off
   qpp_gated: true
+
+fusion_short:                     # typed questions (< ngram.min_query_words words): BM25F + trigram + dense
+  trigram: 0.6                    # fixed weight of the trigram channel (queries of 3+ words), tuned on val
+  dense_max: 0.5                  # dense weight = dense_max * (1 - QPP confidence of the lexical list)
+  min_lexical: 0.3                # the lexical channel never drops below this
 
 tiers:
   tier1_authority_quantile: 0.8   # top 20% by authority go to tier 1

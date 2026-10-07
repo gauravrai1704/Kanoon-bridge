@@ -55,7 +55,7 @@ ACT_PATTERNS: list[tuple[str, str]] = [
     (r"income[\s-]+tax\s+act", "ita"),
     (r"dowry\s+prohibition", "dpa"),
 ]
-_CODE_ENUM = {"ipc": Code.IPC, "bns": Code.BNS, "crpc": Code.CRPC, "bnss": Code.BNSS}
+_CODE_ENUM = {"ipc": Code.IPC, "bns": Code.BNS, "crpc": Code.CRPC, "bnss": Code.BNSS, "iea": Code.IEA, "bsa": Code.BSA}
 _SECTION_RE = re.compile(r"\b(?:section|sec\.?|s\.|article|art\.?|rule|order)\s*(\d+[a-z]*(?:\s?\(\s?[0-9a-z]+\s?\))*)", re.I)
 _YEAR_RE = re.compile(r",?\s*\b(1[89]\d\d|20\d\d)\b")
 

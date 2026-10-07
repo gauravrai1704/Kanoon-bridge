@@ -19,6 +19,8 @@ added after it. Split/merge mappings give weights below 1.0 (see `to_offences`).
 Data files (see data/crosswalk/README.md for the formats)
     data/crosswalk/offence_ids.csv   offence_id, label, ipc_sections, bns_sections, keywords
     data/crosswalk/ipc_bns.csv       ipc_section, bns_section, relation, note
+    data/crosswalk/provision_ids.csv offence_id, label, old_code, new_code, old_sections, new_sections
+                                     (CrPC->BNSS and IEA->BSA, aligned by ingest/align_codes.py)
 
 API: load, to_offences, offences_for, sections_of, equivalents, normalize_tokens, label.
 """
@@ -33,6 +35,9 @@ from kanoon_bridge.config import Config, load_config, project_path
 from kanoon_bridge.text.tokenize import SECTION_PREFIX
 
 OFFENCE_PREFIX = "off:"
+
+# replaced code -> replacement (and back); all three changed on 1 July 2024
+OTHER_CODE = {"ipc": "bns", "bns": "ipc", "crpc": "bnss", "bnss": "crpc", "iea": "bsa", "bsa": "iea"}
 
 
 @dataclass
@@ -75,6 +80,17 @@ class VersionNormalizer:
                     norm.section_to_offences[f"ipc:{s}"].append(oid)
                 for s in bns:
                     norm.section_to_offences[f"bns:{s}"].append(oid)
+        prov = cfg.paths.get("provision_ids")
+        if prov and project_path(prov).exists():          # CrPC<->BNSS, IEA<->BSA (ingest/align_codes.py)
+            with open(project_path(prov), encoding="utf-8") as f:
+                for row in csv.DictReader(_skip_comments(f)):
+                    oid = row["offence_id"].strip().lower()
+                    old_c, new_c = row["old_code"].strip(), row["new_code"].strip()
+                    olds, news = _split(row.get("old_sections", "")), _split(row.get("new_sections", ""))
+                    norm.offences[oid] = {"label": row.get("label", ""), old_c: olds, new_c: news, "keywords": []}
+                    for code, secs in ((old_c, olds), (new_c, news)):
+                        for s in secs:
+                            norm.section_to_offences[f"{code}:{s}"].append(oid)
         if cw_path.exists():
             with open(cw_path, encoding="utf-8") as f:
                 for row in csv.DictReader(_skip_comments(f)):
@@ -94,11 +110,12 @@ class VersionNormalizer:
 
         Exact sub-section first ('ipc:376(1)'), then the base section ('bns:103(2)' -> 'bns:103').
         A section in k offences gets weight 1/k each. Unknown code ('?:302') -> [] (collision.py
-        resolves those first). Sections of other Acts (CrPC, Constitution, ...) -> [].
+        resolves those first). CrPC/BNSS and IEA/BSA sections map to shared provision ids the
+        same way; sections of other Acts (Constitution, NDPS, ...) -> [].
         """
         ref = section_ref.lower().removeprefix(SECTION_PREFIX)
         code, _, section = ref.partition(":")
-        if code not in ("ipc", "bns") or not section:
+        if code not in OTHER_CODE or not section:
             return []
         offs = self.section_to_offences.get(ref) or self.section_to_offences.get(f"{code}:{_base(section)}") or []
         offs = list(dict.fromkeys(offs))
@@ -121,7 +138,7 @@ class VersionNormalizer:
         """
         ref = section_ref.lower().removeprefix(SECTION_PREFIX)
         code = ref.partition(":")[0]
-        other = {"ipc": "bns", "bns": "ipc"}.get(code)
+        other = OTHER_CODE.get(code)
         if other is None:
             return []
         out: list[str] = []

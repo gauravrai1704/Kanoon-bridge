@@ -60,6 +60,8 @@ class SearchOptions:
     drop_terms: list[str] | None = None             # analysed terms removed from the query
     # --- result-list options -----------------------------------------------------------
     ltr: bool = False                  # re-rank with the learned linear model (rank/ltr.py), if trained
+    ltr_short: bool = False            # also re-rank TYPED questions with ltr_short.json (off by default:
+                                       # it learns citation popularity, +31% MAP on E1q but -47% nDCG on E6)
     collapse_duplicates: bool = False  # show one judgment per near-duplicate group (index/dedup.py)
 
     @classmethod
@@ -94,7 +96,8 @@ class SearchEngine:
     bridge: object | None = None           # rank.statute_bridge.StatuteBridge
     dense: object | None = None            # rank.dense.DenseRetriever
     tiers: object | None = None            # index.tiers.TieredIndex
-    ltr: object | None = None              # rank.ltr.LinearRanker (scripts/06_train_ltr.py)
+    ltr: object | None = None              # rank.ltr.LinearRanker for case queries (scripts/06_train_ltr.py)
+    ltr_short: object | None = None        # rank.ltr.LinearRanker for typed questions (06_train_ltr.py --short)
     near_dups: dict | None = None          # doc_id -> group representative (index/dedup.py)
     ngram_statutes: object | None = None   # rank.ngram.NgramIndex over statutes
     ngram_precedents: object | None = None # rank.ngram.NgramIndex over precedents
@@ -120,6 +123,15 @@ class SearchEngine:
                 import warnings
 
                 warnings.warn(f"learning-to-rank model ignored: {err}")
+        if store.exists("ltr_short", "json"):
+            from kanoon_bridge.rank.ltr import LinearRanker
+
+            try:
+                engine.ltr_short = LinearRanker.from_dict(store.load("ltr_short", "json"))
+            except ValueError as err:
+                import warnings
+
+                warnings.warn(f"short-query learning-to-rank model ignored: {err}")
         if store.exists("near_duplicates", "json"):
             engine.near_dups = store.load("near_duplicates", "json")
         for which in ("statutes", "precedents"):
@@ -230,10 +242,14 @@ class SearchEngine:
         statute_cands = None
         if opt.code_filter and aq.code_in_force in (Code.IPC, Code.BNS):
             # drop only the superseded penal code; other Acts (CrPC, Constitution, ...) stay
-            superseded = (Code.BNS if aq.code_in_force == Code.IPC else Code.IPC).value
+            # drop the superseded codes (IPC/CrPC/IEA after 1 July 2024, BNS/BNSS/BSA before); other Acts stay
+            superseded = ["bns", "bnss", "bsa"] if aq.code_in_force == Code.IPC else ["ipc", "crpc", "iea"]
             all_statutes = self.facets.filter(doc_type=DocType.STATUTE.value)
-            statute_cands = all_statutes - self.facets.filter(doc_type=DocType.STATUTE.value, code=superseded)
-            aq.trace.append(("statute_filter", f"excluded {superseded.upper()} sections (code in force: {aq.code_in_force.value.upper()})"))
+            for code in superseded:
+                all_statutes = all_statutes - self.facets.filter(doc_type=DocType.STATUTE.value, code=code)
+            statute_cands = all_statutes
+            aq.trace.append(("statute_filter", f"excluded {'/'.join(c.upper() for c in superseded)} sections "
+                                               f"(in force: {aq.code_in_force.value.upper()} family)"))
         if query.filters.get("code"):                      # explicit code:bns / code:ipc filter
             wanted = self.facets.filter(doc_type=DocType.STATUTE.value, code=query.filters["code"])
             statute_cands = wanted if statute_cands is None else statute_cands & wanted
@@ -303,30 +319,62 @@ class SearchEngine:
         # are comparable across queries; ranking by relevance alone is unchanged
         top_lex = max(lexical.values(), default=0.0) or 1.0
         relevance = {d: s / top_lex for d, s in lexical.items()}
-        if use_ngram and self.ngram_precedents is not None:
-            ng = self.ngram_precedents.score(query.text, prec_cands, top=300)
-            for d, v in ng.items():
-                components.setdefault(d, {})["ngram"] = v
-            relevance = self._mix(relevance, ng, self.cfg.ngram.beta)
-            aq.trace.append(("ngram", f"{len(ng)} precedents share word {self.ngram_precedents.n}-grams; beta {self.cfg.ngram.beta}"))
-
+        case_query = self._is_case_query(query)
+        dense: dict[str, float] = {}
         if opt.dense and self.dense is not None:
-            from kanoon_bridge.rank.fusion import fuse
-
             dense = self.dense.score(aq.transliterated or query.text, prec_cands)
-            alpha = self.cfg.fusion.alpha_default
-            if opt.qpp:
-                from kanoon_bridge.rank import qpp
+            for d, v in dense.items():
+                components.setdefault(d, {})["dense"] = v
+        conf = None
+        if opt.qpp:
+            from kanoon_bridge.rank import qpp
 
-                idx = self.precedent_index
-                f = qpp.pre_retrieval(list(terms), {x: idx.whole.idf(x) for x in terms},
-                                      {x: idx.df(x) for x in terms}, idx.n_docs)
-                f = qpp.post_retrieval(f, sorted(lexical.values(), reverse=True))
-                alpha = qpp.alpha_from_qpp(f, alpha)
-            relevance = fuse(lexical, dense, alpha)
-            for d, s in dense.items():
-                components.setdefault(d, {})["dense"] = s
-            aq.trace.append(("alpha", f"{alpha:.2f}"))
+            idx = self.precedent_index
+            f = qpp.pre_retrieval(list(terms), {x: idx.whole.idf(x) for x in terms},
+                                  {x: idx.df(x) for x in terms}, idx.n_docs)
+            f = qpp.post_retrieval(f, sorted(lexical.values(), reverse=True))
+            conf = qpp.confidence(f)
+
+        if case_query:
+            # a pasted judgment: trigram phrasing dominates (beta tuned on val); dense joins by QPP
+            if use_ngram and self.ngram_precedents is not None:
+                ng = self.ngram_precedents.score(query.text, prec_cands, top=300)
+                for d, v in ng.items():
+                    components.setdefault(d, {})["ngram"] = v
+                relevance = self._mix(relevance, ng, self.cfg.ngram.beta)
+                aq.trace.append(("ngram", f"{len(ng)} precedents share word {self.ngram_precedents.n}-grams; "
+                                          f"beta {self.cfg.ngram.beta}"))
+            if dense:
+                from kanoon_bridge.rank.fusion import fuse
+
+                alpha = self.cfg.fusion.alpha_default if conf is None else 0.4 + 0.5 * conf
+                relevance = fuse(relevance, dense, alpha)
+                aq.trace.append(("alpha", f"{alpha:.2f}"))
+        else:
+            # a typed question: BM25F + trigram + dense, weights gated by QPP confidence in the
+            # lexical list (confident -> lean on BM25F; weak -> let dense carry more)
+            fs = self.cfg.get("fusion_short", {}) or {}
+            ng = {}
+            # a query that cites a section ("cases under section 103 BNS") is matched through its
+            # offence ids; its word trigrams ("cases under section") carry no topic, so no trigram channel
+            if (opt.ngram and self.ngram_precedents is not None and fs.get("trigram", 0) > 0
+                    and len(query.text.split()) >= 3 and not aq.sections):
+                ng = self.ngram_precedents.score(query.text, prec_cands, top=300)
+                for d, v in ng.items():
+                    components.setdefault(d, {})["ngram"] = v
+            w_dense = fs.get("dense_max", 0.5) * (1 - (0.5 if conf is None else conf)) if dense else 0.0
+            w_ng = fs.get("trigram", 0.0) if ng else 0.0
+            w_lex = max(fs.get("min_lexical", 0.3), 1.0 - w_dense - w_ng)
+            total = w_lex + w_dense + w_ng
+            if ng or dense:
+                tn = max(ng.values(), default=0.0) or 1.0
+                td = max(dense.values(), default=0.0) or 1.0
+                lo_d = min(dense.values(), default=0.0)
+                relevance = {d: (w_lex * relevance.get(d, 0.0) + w_ng * ng.get(d, 0.0) / tn
+                                 + w_dense * ((dense.get(d, lo_d) - lo_d) / ((td - lo_d) or 1.0) if dense else 0.0)) / total
+                             for d in set(relevance) | set(ng) | set(dense)}
+                aq.trace.append(("fusion", f"lexical {w_lex / total:.2f} + trigram {w_ng / total:.2f} + dense "
+                                           f"{w_dense / total:.2f}" + (f" (QPP confidence {conf:.2f})" if conf is not None else "")))
 
         for d, b in boosts.items():
             if d in relevance:
@@ -344,15 +392,18 @@ class SearchEngine:
                 final[d] = net_score(rel, g, lam)
                 components.setdefault(d, {})["authority"] = g
         # --- learning-to-rank re-ranking of the head (rank/ltr.py) -------------------
-        # the model is trained on IL-PCSR val, i.e. on whole judgments as queries: apply it only to
-        # queries of that kind (a short typed question has a different feature distribution)
-        if opt.ltr and self.ltr is not None and final and self._is_case_query(query):
-            head = to_scored(top_k(final, max(self.ltr.depth, opt.top_k)), DocType.PRECEDENT, components)
-            learned = self.ltr.score(head, aq, self)
+        # two learned models: one trained on whole judgments as queries (ltr.json), one on typed-
+        # question proxies (ltr_short.json); each re-ranks only queries of its own kind
+        # the short model learned from facts excerpts with no section citation; a query citing a
+        # section is outside what it saw, so it keeps the hand-set combination
+        ranker = self.ltr if case_query else (None if aq.sections or not opt.ltr_short else self.ltr_short)
+        if opt.ltr and ranker is not None and final:
+            head = to_scored(top_k(final, max(ranker.depth, opt.top_k)), DocType.PRECEDENT, components)
+            learned = ranker.score(head, aq, self)
             final = {h.doc_id: float(v) for h, v in zip(head, learned)}
             for d, v in final.items():
                 components.setdefault(d, {})["ltr"] = v
-            aq.trace.append(("ltr", f"re-ranked the top {len(head)} with learned weights"))
+            aq.trace.append(("ltr", f"re-ranked the top {len(head)} with the {'case' if case_query else 'short-query'} model"))
 
         # --- near-duplicate collapse (index/dedup.py) ----------------------------------
         ranked = top_k(final, opt.top_k)

@@ -33,7 +33,8 @@ def rocchio_options(engine, aq, docs, relevant: list[str], non_relevant: list[st
     pos = feedback_terms(relevant, docs, analyze, whole.idf)
     neg = feedback_terms(non_relevant or [], docs, analyze, whole.idf) if gamma > 0 else {}
     query_terms = aq.weighted_terms()
-    superseded = {Code.IPC: "sec:bns:", Code.BNS: "sec:ipc:"}.get(aq.code_in_force)
+    superseded = {Code.IPC: ("sec:bns:", "sec:bnss:", "sec:bsa:"),
+                  Code.BNS: ("sec:ipc:", "sec:crpc:", "sec:iea:")}.get(aq.code_in_force)
     combined = {t: w / max(1, len(relevant)) - gamma * neg.get(t, 0.0) / max(1, len(non_relevant or []))
                 for t, w in pos.items()}
     extra = []

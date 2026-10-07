@@ -96,9 +96,11 @@ def mean_ap(w: np.ndarray, data: list[tuple[np.ndarray, np.ndarray, int]]) -> fl
 
 def coordinate_ascent(data: list[tuple[np.ndarray, np.ndarray, int]], init: np.ndarray | None = None,
                       rounds: int = 4, deltas=(-2.0, -1.0, -0.5, -0.25, -0.1, -0.05, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0),
-                      fixed: tuple[int, ...] = (0,)) -> tuple[np.ndarray, float]:
+                      fixed: tuple[int, ...] = (0,), nonneg: tuple[int, ...] = ()) -> tuple[np.ndarray, float]:
     """Maximise MAP one weight at a time (line search over `deltas`); weight 0 (lexical) is fixed
-    at 1 so the scale is identified. Returns (weights, training MAP)."""
+    at 1 so the scale is identified. Weights in `nonneg` are kept >= 0 (a sign known a priori:
+    citing the asked-for offence or binding the user is never evidence against). Returns
+    (weights, training MAP)."""
     w = np.array(init if init is not None else _default_init(), dtype=np.float64)
     best = mean_ap(w, data)
     for _ in range(rounds):
@@ -108,6 +110,8 @@ def coordinate_ascent(data: list[tuple[np.ndarray, np.ndarray, int]], init: np.n
                 continue
             base = w[j]
             for d in deltas:
+                if j in nonneg and base + d < 0:
+                    continue
                 w[j] = base + d
                 m = mean_ap(w, data)
                 if m > best + 1e-9:
@@ -116,6 +120,9 @@ def coordinate_ascent(data: list[tuple[np.ndarray, np.ndarray, int]], init: np.n
         if not improved:
             break
     return w, best
+
+
+NONNEG = tuple(FEATURES.index(f) for f in ("bridge", "offence_match", "binding"))
 
 
 def _default_init() -> np.ndarray:

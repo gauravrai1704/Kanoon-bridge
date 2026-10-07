@@ -39,6 +39,10 @@ _CODE_WORDS: list[tuple[str, Code]] = [
     (r"cr\.?\s?p\.?\s?c\.?", Code.CRPC),
     (r"bharatiya\s+nagarik\s+suraksha\s+sanhita", Code.BNSS),
     (r"b\.?\s?n\.?\s?s\.?\s?s\.?", Code.BNSS),
+    (r"(?:indian\s+)?evidence\s+act", Code.IEA),
+    (r"i\.?\s?e\.?\s?a\.?(?![a-z])", Code.IEA),
+    (r"bharatiya\s+sakshya\s+adhiniyam", Code.BSA),
+    (r"b\.?\s?s\.?\s?a\.?(?![a-z])", Code.BSA),
 ]
 _CODE_RE = "|".join(f"(?:{p})" for p, _ in _CODE_WORDS)
 

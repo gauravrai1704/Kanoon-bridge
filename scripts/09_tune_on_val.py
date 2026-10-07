@@ -3,6 +3,7 @@
     python scripts/09_tune_on_val.py               # ~5 min; prints MAP per setting, best last
     python scripts/09_tune_on_val.py --limit 200
     python scripts/09_tune_on_val.py --ngram       # beta of the trigram channel (precedents, statutes)
+    python scripts/09_tune_on_val.py --short       # typed questions: trigram (and dense_max) weights
 
 Only val queries are used (the test split is never seen while tuning). Copy the winning values
 into configs/default.yaml (zones.*, bm25.b), then retrain LTR (make ltr) because its features
@@ -24,6 +25,7 @@ PROFILES = {
     "facts+reasoning":   {"facts": 1.5, "arguments": 0.6, "ratio": 1.5, "decision": 0.6, "other": 0.3},
 }
 B_VALUES = (0.5, 0.7, 0.85, 0.95, 1.0)
+TRI_GRID = (0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9)
 
 
 def main() -> None:
@@ -32,9 +34,14 @@ def main() -> None:
     ap.add_argument("--profiles", nargs="*", help="subset of PROFILES (default: all)")
     ap.add_argument("--b", nargs="*", type=float, help="subset of b values (default: all)")
     ap.add_argument("--ngram", action="store_true", help="tune ngram.beta / ngram.beta_statutes instead")
+    ap.add_argument("--short", action="store_true", help="tune fusion_short.trigram (and dense_max with dense)")
+    ap.add_argument("--trigram", nargs="*", type=float, help="--short: subset of trigram weights")
     args = ap.parse_args()
     if args.ngram:
         tune_ngram(args.limit)
+        return
+    if args.short:
+        tune_short(args.limit, args.trigram)
         return
 
     from kanoon_bridge.config import load_config, project_path
@@ -102,6 +109,46 @@ def tune_ngram(limit: int) -> None:
         engine.cfg.ngram[key] = best["beta"]
         print("best", best, flush=True)
     write_table(rows, project_path(ev.outputs.tables) / "tuning_ngram_val.csv")
+
+
+def tune_short(limit: int, tri_grid=None) -> None:
+    """Typed-question proxies (40-word facts excerpts) of VAL: grid over the trigram weight, and
+    over dense_max when a dense channel is loaded (Colab)."""
+    import itertools
+
+    from kanoon_bridge.config import load_config, project_path
+    from kanoon_bridge.eval import metrics
+    from kanoon_bridge.eval.ablation import write_table
+    from kanoon_bridge.eval.run_eval import _ilpcsr_queries, ranked_ids, run_queries
+    from kanoon_bridge.ingest import load_ilpcsr
+    from kanoon_bridge.search import SearchEngine, SearchOptions
+
+    ev = load_config("eval.yaml")
+    engine = SearchEngine.load()
+    engine.ltr_short = None                              # tune the fusion itself, not the re-ranker
+    queries = _ilpcsr_queries("val", engine.cfg, short=True)[:limit]
+    raw = load_ilpcsr.load_qrels("val", "precedent", engine.cfg)
+    qrels = {q.query_id: raw.get(q.query_id, {}) for q in queries}
+    opt = SearchOptions(ngram=True, dense=engine.dense is not None, qpp=True)
+    rows = []
+    dense_grid = (0.0, 0.25, 0.5, 0.75) if engine.dense is not None else (engine.cfg.fusion_short.dense_max,)
+    for tri, dm in itertools.product(tri_grid or TRI_GRID, dense_grid):
+        engine.cfg.fusion_short.trigram = tri
+        engine.cfg.fusion_short.dense_max = dm
+        run = ranked_ids(run_queries(engine, queries, opt, "precedent", ev.depth))
+        m = metrics.mean_over_queries(run, qrels, metrics.average_precision)
+        rows.append({"trigram": tri, "dense_max": dm, "dense": engine.dense is not None, "MAP_val": round(m, 4)})
+        print(f"trigram={tri:<5} dense_max={dm:<5} MAP(val short, {len(queries)} q) = {m:.4f}", flush=True)
+    out = project_path(ev.outputs.tables) / "tuning_short_val.csv"
+    if out.exists() and tri_grid:                        # partial grid: merge with earlier rows
+        from kanoon_bridge.eval.plots import read_table
+
+        seen = {(r["trigram"], r["dense_max"]) for r in rows}
+        rows += [{**r, "MAP_val": float(r["MAP_val"])} for r in read_table(out)
+                 if (float(r["trigram"]), float(r["dense_max"])) not in seen and str(r["dense"]) == str(engine.dense is not None)]
+    rows.sort(key=lambda r: -float(r["MAP_val"]))
+    write_table(rows, out)
+    print("best:", rows[0], "-> copy into configs/default.yaml fusion_short")
 
 
 if __name__ == "__main__":

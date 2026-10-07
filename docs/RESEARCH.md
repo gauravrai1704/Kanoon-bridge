@@ -39,6 +39,14 @@ systems.
 | **Learning to rank** | Linear model trained by coordinate ascent directly on MAP: Metzler & Croft, *Information Retrieval* 2007 (UMass Amherst). Pairwise alternative: Joachims, KDD 2002 (Cornell). The offence-match feature reflects LeCaRD's "key element" relevance (Ma et al., SIGIR 2021, Tsinghua) | `rank/ltr.py`, `scripts/06_train_ltr.py` | 5-fold CV on val; ablation "+ltr" |
 | Tiered index and champion lists | Static quality ordering (IIR §7.1) | `index/tiers.py` | efficiency (latency vs Recall@20) |
 
+### Added on 7 October
+
+| Feature | Technique and source | File |
+| --- | --- | --- |
+| **CrPC→BNSS and Evidence Act→BSA bridge** with the same shared-id design | No open machine-readable mapping exists, so sections are aligned by IR: tf-idf (uni+bigram) cosine of body (0.65) and title (0.35), best match above 0.30, a reverse pass for merged sections, connected components → provision ids. Spot checks against known pairs: 24/25 CrPC (the miss is a section absent from the source), 25/25 Evidence Act. | `ingest/align_codes.py` |
+| **QPP-gated three-way fusion for typed questions** | BM25F + word-trigram BM25 + dense; the dense weight grows as the lexical list's QPP confidence falls (Shtok et al. NQC, TOIS 2012; weighted score fusion as in CombSUM, Fox & Shaw, TREC 1994), trigram weight tuned on val | `search.py` |
+| **Separate LTR model for typed questions** | Coordinate ascent (Metzler & Croft, IR 2007) on val-split 40-word proxies, with bridge / offence_match / binding kept ≥ 0. A negative result we report: it learns citation popularity (authority weight ≈ 5), so it helps citation-judged E1q and hurts topically judged E6; it is an option (`SearchOptions.ltr_short`), not part of `full`. Never applied to a query citing a section (outside its training data) | `rank/ltr.py`, `scripts/06_train_ltr.py --short` |
+
 ## 3. Results and interaction
 
 | Feature | Technique and source | File | Measured by |
@@ -79,7 +87,10 @@ systems.
 | **Typo robustness** | Simulated known-item queries (Azzopardi, de Rijke & Balog, SIGIR 2007); Damerau error model | `eval/typos.py` |
 | Efficiency | Latency and Recall@20 vs exhaustive scoring | `eval/efficiency.py` |
 | Agent vs core; RAG support / version errors / abstention | | `eval/agent_eval.py` |
-| Inter-judge agreement for hand-built sets | Cohen's κ | `eval/agreement.py` |
+| Inter-judge agreement for E4 and E6 | Cohen's κ (binary and graded) over pooled (need, document) pairs; pool = union of baseline and full top 10 + the first judge's relevant docs (TREC-style pooling). Second judge: blind AI sub-agents (declared) | `scripts/12_second_judge.py` |
+| Typed-question proxies (E1q) | First 40 words of the facts zone of each IL-PCSR test judgment; same qrels as E1 (simulated queries, Azzopardi et al. SIGIR 2007) | `eval/run_eval.py` |
+| E8 / E9 procedure and evidence | E3 / E7 designs on CrPC↔BNSS and Evidence Act↔BSA | `scripts/07_make_test_sets.py` |
+| Citation-language shift, E10 | Monthly share of IPC vs BNS citations in post-2024 High Court criminal judgments (eCourts open data, CC-BY-4.0); BNS-era judgments asked for in IPC numbers | `scripts/11_hc_judgments.py` |
 
 ## What is new here
 

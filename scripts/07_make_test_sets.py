@@ -92,29 +92,16 @@ def _offence_words(label: str) -> str:
 # --------------------------------------------------------------------------- E3
 
 
-def make_e3(norm, docs, limit: int | None, rng: random.Random, min_cases: int = 3):
+LABEL = {"ipc": "IPC", "bns": "BNS", "crpc": "CrPC", "bnss": "BNSS", "iea": "Evidence Act", "bsa": "BSA"}
+
+
+def make_e3(norm, docs, limit: int | None, rng: random.Random, min_cases: int = 3,
+            pairs=(("ipc", "bns"),), prefix: str = "E3"):
     """Section-only queries for precedents, asked in the old and the new numbering."""
-    cited: dict[str, set[str]] = {}
-    for d in docs:
-        if d.doc_type.value != "precedent":
-            continue
-        for ref in d.statutes_cited:
-            if ref.startswith("ipc:"):
-                base = re.match(r"ipc:(\d+[a-z]*)", ref)
-                cited.setdefault(base.group(1) if base else ref[4:], set()).add(d.doc_id)
-    vague = ("explanation", "definition", "general")
     control, crossed, qrels = [], [], []
-    for num, cases in sorted(cited.items(), key=lambda kv: (len(kv[0]), kv[0])):
-        eq = [e for e in norm.equivalents(f"ipc:{num}") if e.startswith("bns:")]
-        labels = [norm.label(o).lower() for o in norm.offences_for(f"ipc:{num}")]
-        if len(cases) < min_cases or not eq or any(v in lab for lab in labels for v in vague):
-            continue
-        bns = eq[0].split(":", 1)[1]
-        base = {"lang": "en", "state": None, "ipc": f"ipc:{num}", "bns": eq[0], "generated": True}
-        control.append({"id": f"E3C-{num}", "text": f"cases under section {num} IPC", "variant": "ipc", **base})
-        crossed.append({"id": f"E3-{num}", "text": f"cases under section {bns} BNS", "variant": "bns", **base})
-        for q in (f"E3C-{num}", f"E3-{num}"):
-            qrels += [(q, d, 1) for d in sorted(cases)]
+    for old, new in pairs:
+        c, x, q = _e3_pair(norm, docs, min_cases, old, new, prefix)
+        control, crossed, qrels = control + c, crossed + x, qrels + q
     if limit and len(crossed) > limit:
         keep = set(rng.sample(range(len(crossed)), limit))
         control = [r for i, r in enumerate(control) if i in keep]
@@ -124,23 +111,55 @@ def make_e3(norm, docs, limit: int | None, rng: random.Random, min_cases: int = 
     return control, crossed, qrels
 
 
+def _e3_pair(norm, docs, min_cases: int, old: str, new: str, prefix: str):
+    cited: dict[str, set[str]] = {}
+    for d in docs:
+        if d.doc_type.value != "precedent":
+            continue
+        for ref in d.statutes_cited:
+            if ref.startswith(old + ":"):
+                base = re.match(rf"{old}:(\d+[a-z]*)", ref)
+                cited.setdefault(base.group(1) if base else ref[len(old) + 1:], set()).add(d.doc_id)
+    vague = ("explanation", "definition", "general", "short title")
+    control, crossed, qrels = [], [], []
+    tag = "" if old == "ipc" else f"{old}-"
+    for num, cases in sorted(cited.items(), key=lambda kv: (len(kv[0]), kv[0])):
+        eq = [e for e in norm.equivalents(f"{old}:{num}") if e.startswith(new + ":")]
+        labels = [norm.label(o).lower() for o in norm.offences_for(f"{old}:{num}")]
+        if len(cases) < min_cases or not eq or any(v in lab for lab in labels for v in vague):
+            continue
+        nn = eq[0].split(":", 1)[1]
+        base = {"lang": "en", "state": None, "old": f"{old}:{num}", "new": eq[0], "generated": True}
+        if old == "ipc":
+            base.update({"ipc": f"ipc:{num}", "bns": eq[0]})
+        cid, xid = f"{prefix}C-{tag}{num}", f"{prefix}-{tag}{num}"
+        control.append({"id": cid, "text": f"cases under section {num} {LABEL[old]}", "variant": old, **base})
+        crossed.append({"id": xid, "text": f"cases under section {nn} {LABEL[new]}", "variant": new, **base})
+        for q in (cid, xid):
+            qrels += [(q, d, 1) for d in sorted(cases)]
+    return control, crossed, qrels
+
+
 # --------------------------------------------------------------------------- E7
 
 
-def make_e7(norm, by_ref, limit: int | None, rng: random.Random):
+def make_e7(norm, by_ref, limit: int | None, rng: random.Random, pair=("ipc", "bns"), prefix: str = "E7"):
     rows, qrels = [], []
+    old_c, new_c = pair
     for oid, info in sorted(norm.offences.items()):
         label = info.get("label") or ""
-        ipc = [f"ipc:{s}" for s in info.get("ipc", [])]
-        bns = [f"bns:{s}" for s in info.get("bns", [])]
+        if old_c not in info or new_c not in info:
+            continue
+        ipc = [f"{old_c}:{s}" for s in info.get(old_c, [])]
+        bns = [f"{new_c}:{s}" for s in info.get(new_c, [])]
         ipc_docs = sorted({d for r in ipc for d in by_ref.get(r, [])})
         bns_docs = sorted({d for r in bns for d in by_ref.get(r, [])})
         words = _offence_words(label)
         if not ipc_docs or not bns_docs or len(words.split()) < 1 or len(words) < 6:
             continue
         slug = oid.removeprefix("off:")
-        for when, docs, code in ((BEFORE, ipc_docs, "ipc"), (AFTER, bns_docs, "bns")):
-            qid = f"E7-{slug}-{code}"
+        for when, docs, code in ((BEFORE, ipc_docs, old_c), (AFTER, bns_docs, new_c)):
+            qid = f"{prefix}-{slug}-{code}"
             rows.append({"id": qid, "text": words, "lang": "en", "state": None, "incident_date": when,
                          "expected_code": code, "offence": oid, "generated": True})
             qrels += [(qid, d, 2) for d in docs]
@@ -186,7 +205,7 @@ def make_e2(norm, by_ref, limit: int | None, rng: random.Random):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sets", nargs="*", default=["e2", "e3", "e7"], choices=["e2", "e3", "e7"])
+    ap.add_argument("--sets", nargs="*", default=["e2", "e3", "e7", "e8"], choices=["e2", "e3", "e7", "e8"])
     ap.add_argument("--limit", type=int, help="cap per set (E3: queries, E7: offences, E2: numbers)")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--sample", action="store_true")
@@ -211,6 +230,18 @@ def main() -> None:
         control, crossed, qrels = make_e3(norm, list(read_documents(docs_path)), args.limit, rng)
         write_set("e3_control", control, [x for x in qrels if x[0].startswith("E3C-")], out)
         write_set("e3_cross_version", crossed, [x for x in qrels if not x[0].startswith("E3C-")], out)
+    if "e8" in args.sets:
+        # CrPC->BNSS and Evidence Act->BSA: the E3 and E7 designs applied to the procedure codes
+        docs_all = list(read_documents(docs_path))
+        control, crossed, qrels = make_e3(norm, docs_all, args.limit, rng, min_cases=2,
+                                          pairs=(("crpc", "bnss"), ("iea", "bsa")), prefix="E8")
+        write_set("e8_procedure_control", control, [x for x in qrels if x[0].startswith("E8C-")], out)
+        write_set("e8_procedure_cross_version", crossed, [x for x in qrels if not x[0].startswith("E8C-")], out)
+        rows, qrels = [], []
+        for pair in (("crpc", "bnss"), ("iea", "bsa")):
+            r, q = make_e7(norm, by_ref, args.limit, rng, pair=pair, prefix="E9")
+            rows, qrels = rows + r, qrels + q
+        write_set("e9_procedure_temporal", rows, qrels, out)
     if "e7" in args.sets:
         rows, qrels = make_e7(norm, by_ref, args.limit, rng)
         write_set("e7_temporal", rows, qrels, out)

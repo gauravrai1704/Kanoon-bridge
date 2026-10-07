@@ -1,0 +1,700 @@
+# Shared ids for CrPC<->BNSS and IEA<->BSA sections (ingest/align_codes.py)
+offence_id,label,old_code,new_code,old_sections,new_sections
+off:bnss1_short_title_extent_and_commencement,"Short title, extent and commencement",crpc,bnss,1,1
+off:bnss2_definitions,Definitions,crpc,bnss,2,2
+off:bnss3_construction_of_references,Construction of references,crpc,bnss,3,3
+off:bnss4_trial_of_offences_under_bharatiya_nyaya_sanhita,"Trial of offences under Bharatiya Nyaya Sanhita, 2023 and other laws",crpc,bnss,4,4
+off:bnss5_saving,Saving,crpc,bnss,5,5
+off:bnss6_classes_of_criminal_courts,Classes of Criminal Courts,crpc,bnss,6,6
+off:bnss7_territorial_divisions,Territorial divisions,crpc,bnss,7,7
+off:bnss8_court_of_session,Court of Session,crpc,bnss,9,8
+off:bnss9_courts_of_judicial_magistrates,Courts of Judicial Magistrates,crpc,bnss,11;16,9
+off:bnss10_chief_judicial_magistrate_and_additional_chief_j,"Chief Judicial Magistrate and Additional Chief Judicial Magistrate, etc",crpc,bnss,12;17,10
+off:bnss11_special_judicial_magistrates,Special Judicial Magistrates,crpc,bnss,13;18,11
+off:bnss12_local_jurisdiction_of_judicial_magistrates,Local Jurisdiction of Judicial Magistrates,crpc,bnss,14,12
+off:bnss13_subordination_of_judicial_magistrates,Subordination of Judicial Magistrates,crpc,bnss,10;15;19,13
+off:bnss14_executive_magistrates,Executive Magistrates,crpc,bnss,20,14
+off:bnss15_special_executive_magistrates,Special Executive Magistrates,crpc,bnss,21,15
+off:bnss16_local_jurisdiction_of_executive,Local Jurisdiction of Executive,crpc,bnss,22,16
+off:bnss17_subordination_of_executive_magistrates,Subordination of Executive Magistrates,crpc,bnss,23,17
+off:bnss18_public_prosecutors,Public Prosecutors,crpc,bnss,24,18
+off:bnss19_assistant_public_prosecutors,Assistant Public Prosecutors,crpc,bnss,25,19
+off:bnss20_directorate_of_prosecution,Directorate of Prosecution,crpc,bnss,25a,20
+off:bnss21_courts_by_which_offences_are_triable,Courts by which offences are triable,crpc,bnss,26,21
+off:bnss22_sentences_which_high_courts_and_sessions_judges,Sentences which High Courts and Sessions Judges may pass,crpc,bnss,28,22
+off:bnss23_sentences_which_magistrates_may_pass,Sentences which Magistrates may pass,crpc,bnss,29,23
+off:bnss24_sentence_of_imprisonment_in_default_of_fine,Sentence of imprisonment in default of fine,crpc,bnss,30,24
+off:bnss25_sentence_in_cases_of_conviction_of_several_offen,Sentence in cases of conviction of several offences at one trial,crpc,bnss,31,25
+off:bnss26_mode_of_conferring_powers,Mode of conferring powers,crpc,bnss,32,26
+off:bnss27_powers_of_officers_appointed,Powers of officers appointed,crpc,bnss,33,27
+off:bnss28_withdrawal_of_powers,Withdrawal of powers,crpc,bnss,34,28
+off:bnss29_powers_of_judges_and_magistrates_exercisable_by,Powers of Judges and Magistrates exercisable by their successors-in office,crpc,bnss,35,29
+off:bnss30_powers_of_superior_officers_of_police,Powers of superior officers of police,crpc,bnss,36,30
+off:bnss31_public_when_to_assist_magistrates_and_police,Public when to assist Magistrates and police,crpc,bnss,37,31
+off:bnss32_aid_to_person_other_than_police_officer_executin,"Aid to person, other than police officer, executing warrant",crpc,bnss,38,32
+off:bnss33_public_to_give_information_of_certain_offences,Public to give information of certain offences,crpc,bnss,39,33
+off:bnss34_duty_of_officers_employed_in_connection_with_aff,Duty of officers employed in connection with affairs of a village to make certain,crpc,bnss,40,34
+off:bnss35_when_police_may_arrest_without_warrant,When police may arrest without warrant,crpc,bnss,41,35
+off:bnss36_procedure_of_arrest_and_duties_of_officer_making,Procedure of arrest and duties of officer making arrest,crpc,bnss,,36
+off:bnss37_designated_police_officer,Designated police officer,crpc,bnss,,37
+off:bnss38_right_of_arrested_person_to_meet_an_advocate_of,Right of arrested person to meet an advocate of his choice during interrogation,crpc,bnss,,38
+off:bnss39_arrest_on_refusal_to_give_name_and_residence,Arrest on refusal to give name and residence,crpc,bnss,42,39
+off:bnss40_arrest_by_private_person_and_procedure_on_such_a,Arrest by private person and procedure on such arrest,crpc,bnss,43,40
+off:bnss41_arrest_by_magistrate,Arrest by Magistrate,crpc,bnss,44,41
+off:bnss42_protection_of_members_of_armed_forces_from_arres,Protection of members of Armed Forces from arrest,crpc,bnss,45,42
+off:bnss43_arrest_how_made,Arrest how made,crpc,bnss,46,43
+off:bnss44_search_of_place_entered_by_person_sought_to_be_a,Search of place entered by person sought to be arrested,crpc,bnss,47,44
+off:bnss45_pursuit_of_offenders_into_other_jurisdictions,Pursuit of offenders into other jurisdictions,crpc,bnss,48,45
+off:bnss46_no_unnecessary_restraint,No unnecessary restraint,crpc,bnss,49,46
+off:bnss47_person_arrested_to_be_informed_of_grounds_of_arr,Person arrested to be informed of grounds of arrest and of right to bail,crpc,bnss,50,47
+off:bnss48_obligation_of_person_making_arrest_to_inform_abo,"Obligation of person making arrest to inform about arrest, etc., to relative or friend",crpc,bnss,50a,48
+off:bnss49_search_of_arrested_person,Search of arrested person,crpc,bnss,51,49
+off:bnss50_power_to_seize_offensive_weapons,Power to seize offensive weapons,crpc,bnss,52,50
+off:bnss51_examination_of_accused_by_medical_practitioner_a,Examination of accused by medical practitioner at request of police officer,crpc,bnss,53,51
+off:bnss52_examination_of_person_accused_of_rape_by_medical,Examination of person accused of rape by medical practitioner,crpc,bnss,53a,52
+off:bnss53_examination_of_arrested_person_by_medical_office,Examination of arrested person by medical officer,crpc,bnss,54,53
+off:bnss54_identification_of_person_arrested,Identification of person arrested,crpc,bnss,54a,54
+off:bnss55_procedure_when_police_officer_deputes_subordinat,Procedure when police officer deputes subordinate to arrest without warrant,crpc,bnss,55,55
+off:bnss56_health_and_safety_of_arrested_person,Health and safety of arrested person,crpc,bnss,,56
+off:bnss57_person_arrested_to_be_taken_before_magistrate_or,Person arrested to be taken before Magistrate or officer in charge of police station,crpc,bnss,56,57
+off:bnss58_person_arrested_not_to_be_detained_more_than_twe,Person arrested not to be detained more than twenty-four hours,crpc,bnss,57;58,58;59
+off:bnss60_discharge_of_person_apprehended,Discharge of person apprehended,crpc,bnss,59,60
+off:bnss61_power_on_escape_to_pursue_and_retake,"Power, on escape, to pursue and retake",crpc,bnss,60,61
+off:bnss62_arrest_to_be_made_strictly_according_to_sanhita,Arrest to be made strictly according to Sanhita,crpc,bnss,,62
+off:bnss63_form_of_summons,Form of summons,crpc,bnss,61,63
+off:bnss64_summons_how_served,Summons how served,crpc,bnss,62,64
+off:bnss65_service_of_summons_on_corporate_bodies_firms_and,"Service of summons on corporate bodies, firms, and societies",crpc,bnss,63,65
+off:bnss66_service_when_persons_summoned_cannot_be_found,Service when persons summoned cannot be found,crpc,bnss,64,66
+off:bnss67_procedure_when_service_cannot_be_effected_as_bef,Procedure when service cannot be effected as before provided,crpc,bnss,65,67
+off:bnss68_service_on_government_servant,Service on Government servant,crpc,bnss,66,68
+off:bnss69_service_of_summons_outside_local_limits,Service of summons outside local limits,crpc,bnss,67,69
+off:bnss70_proof_of_service_in_such_cases_and_when_serving,Proof of service in such cases and when serving officer not present,crpc,bnss,68,70
+off:bnss71_service_of_summons_on_witness,Service of summons on witness,crpc,bnss,69,71
+off:bnss72_form_of_warrant_of_arrest_and_duration,Form of warrant of arrest and duration,crpc,bnss,70,72
+off:bnss73_power_to_direct_security_to_be_taken,Power to direct security to be taken,crpc,bnss,71,73
+off:bnss74_warrants_to_whom_directed,Warrants to whom directed,crpc,bnss,72,74
+off:bnss75_warrant_may_be_directed_to_any_person,Warrant may be directed to any person,crpc,bnss,73,75
+off:bnss76_warrant_directed_to_police_officer,Warrant directed to police officer,crpc,bnss,74,76
+off:bnss77_notification_of_substance_of_warrant,Notification of substance of warrant,crpc,bnss,75,77
+off:bnss78_person_arrested_to_be_brought_before_court_witho,Person arrested to be brought before Court without delay,crpc,bnss,76,78
+off:bnss79_where_warrant_may_be_executed,Where warrant may be executed,crpc,bnss,77,79
+off:bnss80_warrant_forwarded_for_execution_outside_jurisdic,Warrant forwarded for execution outside jurisdiction,crpc,bnss,78,80
+off:bnss81_warrant_directed_to_police_officer_for_execution,Warrant directed to police officer for execution outside jurisdiction,crpc,bnss,79,81
+off:bnss82_procedure_on_arrest_of_person_against_whom_warra,Procedure on arrest of person against whom warrant issued,crpc,bnss,80,82
+off:bnss83_procedure_by_magistrate_before_whom_such_person,Procedure by Magistrate before whom such person arrested is brought,crpc,bnss,81,83
+off:bnss84_proclamation_for_person_absconding,Proclamation for person absconding,crpc,bnss,82,84
+off:bnss85_attachment_of_property_of_person_absconding,Attachment of property of person absconding,crpc,bnss,83,85
+off:bnss86_identification_and_attachment_of_property_of_pro,Identification and attachment of property of proclaimed person,crpc,bnss,,86
+off:bnss87_claims_and_objections_to_attachment,Claims and objections to attachment,crpc,bnss,84,87
+off:bnss88_release_sale_and_restoration_of_attached_propert,"Release, sale and restoration of attached property",crpc,bnss,85,88
+off:bnss89_appeal_from_order_rejecting_application_for_rest,Appeal from order rejecting application for restoration of attached property,crpc,bnss,86,89
+off:bnss90_issue_of_warrant_in_lieu_of_or_in_addition_to_su,"Issue of warrant in lieu of, or in addition to, summons",crpc,bnss,87,90
+off:bnss91_power_to_take_bond_or_bail_bond_for_appearance,Power to take bond or bail bond for appearance,crpc,bnss,88,91
+off:bnss92_arrest_on_breach_of_bond_or_bail_bond_for_appear,Arrest on breach of bond or bail bond for appearance,crpc,bnss,89,92
+off:bnss93_provisions_of_this_chapter_generally_applicable,Provisions of this Chapter generally applicable to summons and warrants of arrest,crpc,bnss,90,93
+off:bnss94_summons_to_produce_document_or_other_thing,Summons to produce document or other thing,crpc,bnss,91,94
+off:bnss95_procedure_as_to_letters,Procedure as to letters,crpc,bnss,92,95
+off:bnss96_when_search_warrant_may_be_issued,When search-warrant may be issued,crpc,bnss,93,96
+off:bnss97_search_of_place_suspected_to_contain_stolen_prop,"Search of place suspected to contain stolen property, forged documents, etc",crpc,bnss,94,97
+off:bnss98_power_to_declare_certain_publications_forfeited,Power to declare certain publications forfeited and to issue search-warrants for,crpc,bnss,95,98
+off:bnss99_application_to_high_court_to_set_aside_declarati,Application to High Court to set aside declaration of forfeiture,crpc,bnss,96,99
+off:bnss100_search_for_persons_wrongfully_confined,Search for persons wrongfully confined,crpc,bnss,97,100
+off:bnss101_power_to_compel_restoration_of_abducted_females,Power to compel restoration of abducted females,crpc,bnss,98,101
+off:bnss102_direction_etc_of_search_warrants,"Direction, etc., of search-warrants",crpc,bnss,99,102
+off:bnss103_persons_in_charge_of_closed_place_to_allow_searc,Persons in charge of closed place to allow search,crpc,bnss,100,103
+off:bnss104_disposal_of_things_found_in_search_beyond_jurisd,Disposal of things found in search beyond jurisdiction,crpc,bnss,101,104
+off:bnss105_recording_of_search_and_seizure_through_audio_vi,Recording of search and seizure through audio-video electronic means,crpc,bnss,,105
+off:bnss106_power_of_police_officer_to_seize_certain_propert,Power of police officer to seize certain property,crpc,bnss,102,106
+off:bnss107_attachment_forfeiture_or_restoration_of_property,"Attachment, forfeiture or restoration of property",crpc,bnss,105h,107;120
+off:bnss108_magistrate_may_direct_search_in_his_presence,Magistrate may direct search in his presence,crpc,bnss,103,108
+off:bnss109_power_to_impound_document_etc_produced,"Power to impound document, etc., produced",crpc,bnss,104,109
+off:bnss110_reciprocal_arrangements_regarding_processes,Reciprocal arrangements regarding processes,crpc,bnss,,110
+off:bnss111_definitions,Definitions,crpc,bnss,105a,111
+off:bnss112_letter_of_request_to_competent_authority_for_inv,Letter of request to competent authority for investigation in a country or place outside,crpc,bnss,166a,112
+off:bnss113_letter_of_request_from_a_country_or_place_outsid,Letter of request from a country or place outside India to a Court or an authority for,crpc,bnss,166b,113
+off:bnss114_assistance_in_securing_transfer_of_persons,Assistance in securing transfer of persons,crpc,bnss,105b,114
+off:bnss115_assistance_in_relation_to_orders_of_attachment_o,Assistance in relation to orders of attachment or forfeiture of property,crpc,bnss,105c,115
+off:bnss116_identifying_unlawfully_acquired_property,Identifying unlawfully acquired property,crpc,bnss,105d,116
+off:bnss117_seizure_or_attachment_of_property,Seizure or attachment of property,crpc,bnss,105e,117
+off:bnss118_management_of_properties_seized_or_forfeited_und,Management of properties seized or forfeited under this Chapter,crpc,bnss,105f,118
+off:bnss119_notice_of_forfeiture_of_property,Notice of forfeiture of property,crpc,bnss,105g,119
+off:bnss121_fine_in_lieu_of_forfeiture,Fine in lieu of forfeiture,crpc,bnss,105i,121
+off:bnss122_certain_transfers_to_be_null_and_void,Certain transfers to be null and void,crpc,bnss,105j,122
+off:bnss123_procedure_in_respect_of_letter_of_request,Procedure in respect of letter of request,crpc,bnss,105k,123
+off:bnss124_application_of_this_chapter,Application of this Chapter,crpc,bnss,105l,124
+off:bnss125_security_for_keeping_peace_on_conviction,Security for keeping peace on conviction,crpc,bnss,106,125
+off:bnss126_security_for_keeping_peace_in_other_cases,Security for keeping peace in other cases,crpc,bnss,107,126
+off:bnss127_security_for_good_behaviour_from_persons_dissemi,Security for good behaviour from persons disseminating certain matters,crpc,bnss,108,127
+off:bnss128_security_for_good_behaviour_from_suspected_perso,Security for good behaviour from suspected persons,crpc,bnss,109,128
+off:bnss129_security_for_good_behaviour_from_habitual_offend,Security for good behaviour from habitual offenders,crpc,bnss,110,129
+off:bnss130_order_to_be_made,Order to be made,crpc,bnss,111,130
+off:bnss131_procedure_in_respect_of_person_present_in_court,Procedure in respect of person present in Court,crpc,bnss,112,131
+off:bnss132_summons_or_warrant_in_case_of_person_not_so_pres,Summons or warrant in case of person not so present,crpc,bnss,113,132
+off:bnss133_copy_of_order_to_accompany_summons_or_warrant,Copy of order to accompany summons or warrant,crpc,bnss,114,133
+off:bnss134_power_to_dispense_with_personal_attendance,Power to dispense with personal attendance,crpc,bnss,115,134
+off:bnss135_inquiry_as_to_truth_of_information,Inquiry as to truth of information,crpc,bnss,116,135
+off:bnss136_order_to_give_security,Order to give security,crpc,bnss,117,136
+off:bnss137_discharge_of_person_informed_against,Discharge of person informed against,crpc,bnss,118,137
+off:bnss138_commencement_of_period_for_which_security_is_req,Commencement of period for which security is required,crpc,bnss,119,138
+off:bnss139_contents_of_bond,Contents of bond,crpc,bnss,120,139
+off:bnss140_power_to_reject_sureties,Power to reject sureties,crpc,bnss,121,140
+off:bnss141_imprisonment_in_default_of_security,Imprisonment in default of security,crpc,bnss,122,141
+off:bnss142_power_to_release_persons_imprisoned_for_failing,Power to release persons imprisoned for failing to give security,crpc,bnss,123,142
+off:bnss143_security_for_unexpired_period_of_bond,Security for unexpired period of bond,crpc,bnss,124,143
+off:bnss144_order_for_maintenance_of_wives_children_and_pare,"Order for maintenance of wives, children and parents",crpc,bnss,125,144
+off:bnss145_procedure,Procedure,crpc,bnss,126,145
+off:bnss146_alteration_in_allowance,Alteration in allowance,crpc,bnss,127,146
+off:bnss147_enforcement_of_order_of_maintenance,Enforcement of order of maintenance,crpc,bnss,128,147
+off:bnss148_dispersal_of_assembly_by_use_of_civil_force,Dispersal of assembly by use of civil force,crpc,bnss,129,148
+off:bnss149_use_of_armed_forces_to_disperse_assembly,Use of armed forces to disperse assembly,crpc,bnss,130,149
+off:bnss150_power_of_certain_armed_force_officers_to_dispers,Power of certain armed force officers to disperse assembly,crpc,bnss,131,150
+off:bnss151_protection_against_prosecution_for_acts_done_und,"Protection against prosecution for acts done under sections 148, 149 and 150",crpc,bnss,132,151
+off:bnss152_conditional_order_for_removal_of_nuisance,Conditional order for removal of nuisance,crpc,bnss,133,152
+off:bnss153_service_or_notification_of_order,Service or notification of order,crpc,bnss,134,153
+off:bnss154_person_to_whom_order_is_addressed_to_obey_or_sho,Person to whom order is addressed to obey or show cause,crpc,bnss,135,154
+off:bnss155_penalty_for_failure_to_comply_with_section,Penalty for failure to comply with section 154,crpc,bnss,136,155
+off:bnss156_procedure_where_existence_of_public_right_is_den,Procedure where existence of public right is denied,crpc,bnss,137,156
+off:bnss157_procedure_where_person_against_whom_order_is_mad,Procedure where person against whom order is made under section 152 appears to show,crpc,bnss,138,157
+off:bnss158_power_of_magistrate_to_direct_local_investigatio,Power of Magistrate to direct local investigation and examination of an expert,crpc,bnss,139,158
+off:bnss159_power_of_magistrate_to_furnish_written_instructi,"Power of Magistrate to furnish written instructions, etc",crpc,bnss,140,159
+off:bnss160_procedure_on_order_being_made_absolute_and_conse,Procedure on order being made absolute and consequences of disobedience,crpc,bnss,141,160
+off:bnss161_injunction_pending_inquiry,Injunction pending inquiry,crpc,bnss,142,161
+off:bnss162_magistrate_may_prohibit_repetition_or_continuanc,Magistrate may prohibit repetition or Continuance of public nuisance,crpc,bnss,143,162
+off:bnss163_power_to_issue_order_in_urgent_cases_of_nuisance,Power to issue order in urgent cases of nuisance or apprehended danger,crpc,bnss,144,163
+off:bnss164_procedure_where_dispute_concerning_land_or_water,Procedure where dispute concerning land or water is likely to cause breach of,crpc,bnss,145,164
+off:bnss165_power_to_attach_subject_of_dispute_and_to_appoin,Power to attach subject of dispute and to appoint receiver,crpc,bnss,146,165
+off:bnss166_dispute_concerning_right_of_use_of_land_or_water,Dispute concerning right of use of land or water,crpc,bnss,147,166
+off:bnss167_local_inquiry,Local inquiry,crpc,bnss,148,167
+off:bnss168_police_to_prevent_cognizable_offences,Police to prevent cognizable offences,crpc,bnss,149,168
+off:bnss169_information_of_design_to_commit_cognizable_offen,Information of design to commit cognizable offences,crpc,bnss,150,169
+off:bnss170_arrest_to_prevent_commission_of_cognizable_offen,Arrest to prevent commission of cognizable offences,crpc,bnss,151,170
+off:bnss171_prevention_of_injury_to_public_property,Prevention of injury to public property,crpc,bnss,152,171
+off:bnss172_persons_bound_to_conform_to_lawful_directions_of,Persons bound to conform to lawful directions of police,crpc,bnss,,172
+off:bnss173_information_in_cognizable_cases,Information in cognizable cases,crpc,bnss,154,173
+off:bnss174_information_as_to_non_cognizable_cases_and_inves,Information as to non-cognizable cases and investigation of such cases,crpc,bnss,155,174
+off:bnss175_police_officer_s_power_to_investigate_cognizable,Police officer’s power to investigate cognizable case,crpc,bnss,156,175
+off:bnss176_procedure_for_investigation,Procedure for investigation,crpc,bnss,157,176
+off:bnss177_report_how_submitted,Report how submitted,crpc,bnss,158,177
+off:bnss178_power_to_hold_investigation_or_preliminary_inqui,Power to hold investigation or preliminary inquiry,crpc,bnss,159,178
+off:bnss179_police_officer_s_power_to_require_attendance_of,Police officer's power to require attendance of witnesses,crpc,bnss,160,179
+off:bnss180_examination_of_witnesses_by_police,Examination of witnesses by police,crpc,bnss,161,180
+off:bnss181_statements_to_police_and_use_thereof,Statements to police and use thereof,crpc,bnss,162,181
+off:bnss182_no_inducement_to_be_offered,No inducement to be offered,crpc,bnss,163,182
+off:bnss183_recording_of_confessions_and_statements,Recording of confessions and statements,crpc,bnss,164,183
+off:bnss184_medical_examination_of_victim_of_rape,Medical examination of victim of rape,crpc,bnss,164a,184
+off:bnss185_search_by_police_officer,Search by police officer,crpc,bnss,165,185
+off:bnss186_when_officer_in_charge_of_police_station_may_req,When officer in charge of police station may require another to issue search-warrant,crpc,bnss,166,186
+off:bnss187_procedure_when_investigation_cannot_be_completed,Procedure when investigation cannot be completed in twenty-four hours,crpc,bnss,167,187
+off:bnss188_report_of_investigation_by_subordinate_police_of,Report of investigation by subordinate police officer,crpc,bnss,168,188
+off:bnss189_release_of_accused_when_evidence_deficient,Release of accused when evidence deficient,crpc,bnss,169,189
+off:bnss190_cases_to_be_sent_to_magistrate_when_evidence_is,"Cases to be sent to Magistrate, when evidence is sufficient",crpc,bnss,170,190
+off:bnss191_complainant_and_witnesses_not_to_be_required_to,Complainant and witnesses not to be required to accompany police officer and not to be,crpc,bnss,171,191
+off:bnss192_diary_of_proceedings_in_investigation,Diary of proceedings in investigation,crpc,bnss,172,192
+off:bnss193_report_of_police_officer_on_completion_of_invest,Report of police officer on completion of investigation,crpc,bnss,173,193
+off:bnss194_police_to_enquire_and_report_on_suicide_etc,"Police to enquire and report on suicide, etc",crpc,bnss,174,194
+off:bnss195_power_to_summon_persons,Power to summon persons,crpc,bnss,175,195
+off:bnss196_inquiry_by_magistrate_into_cause_of_death,Inquiry by Magistrate into cause of death,crpc,bnss,176,196
+off:bnss197_ordinary_place_of_inquiry_and_trial,Ordinary place of inquiry and trial,crpc,bnss,177,197
+off:bnss198_place_of_inquiry_or_trial,Place of inquiry or trial,crpc,bnss,178,198
+off:bnss199_offence_triable_where_act_is_done_or_consequence,Offence triable where act is done or consequence ensues,crpc,bnss,179,199
+off:bnss200_place_of_trial_where_act_is_an_offence_by_reason,Place of trial where act is an offence by reason of relation to other offence,crpc,bnss,180,200
+off:bnss201_place_of_trial_in_case_of_certain_offences,Place of trial in case of certain offences,crpc,bnss,181,201
+off:bnss202_offences_committed_by_means_of_electronic_commun,"Offences committed by means of electronic communications, letters, etc",crpc,bnss,182,202
+off:bnss203_offence_committed_on_journey_or_voyage,Offence committed on journey or voyage,crpc,bnss,183,203
+off:bnss204_place_of_trial_for_offences_triable_together,Place of trial for offences triable together,crpc,bnss,184,204
+off:bnss205_power_to_order_cases_to_be_tried_in_different_se,Power to order cases to be tried in different sessions divisions,crpc,bnss,185,205
+off:bnss206_high_court_to_decide_in_case_of_doubt_district_w,"High Court to decide, in case of doubt, district where inquiry or trial shall take place",crpc,bnss,186,206
+off:bnss207_power_to_issue_summons_or_warrant_for_offence_co,Power to issue summons or warrant for offence committed beyond local jurisdiction,crpc,bnss,187,207
+off:bnss208_offence_committed_outside_india,Offence committed outside India,crpc,bnss,188,208
+off:bnss209_receipt_of_evidence_relating_to_offences_committ,Receipt of evidence relating to offences committed outside India,crpc,bnss,189,209
+off:bnss210_cognizance_of_offences_by_magistrate,Cognizance of offences by Magistrate,crpc,bnss,190,210
+off:bnss211_transfer_on_application_of_accused,Transfer on application of accused,crpc,bnss,191,211
+off:bnss212_making_over_of_cases_to_magistrates,Making over of cases to Magistrates,crpc,bnss,192,212
+off:bnss213_cognizance_of_offences_by_court_of_session,Cognizance of offences by Court of Session,crpc,bnss,193,213
+off:bnss214_additional_sessions_judges_to_try_cases_made_ove,Additional Sessions Judges to try cases made over to them,crpc,bnss,194,214
+off:bnss215_prosecution_for_contempt_of_lawful_authority_of,"Prosecution for contempt of lawful authority of public servants, for offences against public",crpc,bnss,195,215
+off:bnss216_procedure_for_witnesses_in_case_of_threatening_e,"Procedure for witnesses in case of threatening, etc",crpc,bnss,,216
+off:bnss217_prosecution_for_offences_against_state_and_for_c,Prosecution for offences against State and for criminal conspiracy to commit such,crpc,bnss,196,217
+off:bnss218_prosecution_of_judges_and_public_servants,Prosecution of Judges and public servants,crpc,bnss,197,218
+off:bnss219_prosecution_for_offences_against_marriage,Prosecution for offences against marriage,crpc,bnss,198,219
+off:bnss220_prosecution_of_offences_under_section_of_bharati,"Prosecution of offences under section 85 of Bharatiya Nyaya Sanhita, 2023",crpc,bnss,198a,220
+off:bnss221_cognizance_of_offence,Cognizance of offence,crpc,bnss,198b,221
+off:bnss222_prosecution_for_defamation,Prosecution for defamation,crpc,bnss,199,222
+off:bnss223_examination_of_complainant,Examination of complainant,crpc,bnss,200,223
+off:bnss224_procedure_by_magistrate_not_competent_to_take_co,Procedure by Magistrate not competent to take cognizance of case,crpc,bnss,201,224
+off:bnss225_postponement_of_issue_of_process,Postponement of issue of process,crpc,bnss,202,225
+off:bnss226_dismissal_of_complaint,Dismissal of complaint,crpc,bnss,203,226
+off:bnss227_issue_of_process,Issue of process,crpc,bnss,204,227
+off:bnss228_magistrate_may_dispense_with_personal_attendance,Magistrate may dispense with personal attendance of accused,crpc,bnss,205,228
+off:bnss229_special_summons_in_cases_of_petty_offence,Special summons in cases of petty offence,crpc,bnss,206,229
+off:bnss230_supply_to_accused_of_copy_of_police_report_and_o,Supply to accused of copy of police report and other documents,crpc,bnss,207,230
+off:bnss231_supply_of_copies_of_statements_and_documents_to,Supply of copies of statements and documents to accused in other cases triable by Court of,crpc,bnss,208,231
+off:bnss232_commitment_of_case_to_court_of_session_when_offe,Commitment of case to Court of Session when offence is triable exclusively by it,crpc,bnss,209,232
+off:bnss233_procedure_to_be_followed_when_there_is_a_complai,Procedure to be followed when there is a complaint case and police investigation in respect,crpc,bnss,210,233
+off:bnss234_contents_of_charge,Contents of charge,crpc,bnss,211,234
+off:bnss235_particulars_as_to_time_place_and_person,"Particulars as to time, place and person",crpc,bnss,212,235
+off:bnss236_when_manner_of_committing_offence_must_be_stated,When manner of committing offence must be stated,crpc,bnss,213,236
+off:bnss237_words_in_charge_taken_in_sense_of_law_under_whic,Words in charge taken in sense of law under which offence is punishable,crpc,bnss,214,237
+off:bnss238_effect_of_errors,Effect of errors,crpc,bnss,215,238
+off:bnss239_court_may_alter_charge,Court may alter charge,crpc,bnss,216,239
+off:bnss240_recall_of_witnesses_when_charge_altered,Recall of witnesses when charge altered,crpc,bnss,217,240
+off:bnss241_separate_charges_for_distinct_offences,Separate charges for distinct offences,crpc,bnss,218,241
+off:bnss242_offences_of_same_kind_within_year_may_be_charged,Offences of same kind within year may be charged together,crpc,bnss,219,242
+off:bnss243_trial_for_more_than_one_offence,Trial for more than one offence,crpc,bnss,220,243
+off:bnss244_where_it_is_doubtful_what_offence_has_been_commi,Where it is doubtful what offence has been committed,crpc,bnss,221,244
+off:bnss245_when_offence_proved_included_in_offence_charged,When offence proved included in offence charged,crpc,bnss,222,245
+off:bnss246_what_persons_may_be_charged_jointly,What persons may be charged jointly,crpc,bnss,223,246
+off:bnss247_withdrawal_of_remaining_charges_on_conviction_on,Withdrawal of remaining charges on conviction on one of several charges,crpc,bnss,224,247
+off:bnss248_trial_to_be_conducted_by_public_prosecutor,Trial to be conducted by Public Prosecutor,crpc,bnss,225,248
+off:bnss249_opening_case_for_prosecution,Opening case for prosecution,crpc,bnss,226,249
+off:bnss250_discharge,Discharge,crpc,bnss,227,250
+off:bnss251_framing_of_charge,Framing of charge,crpc,bnss,228,251
+off:bnss252_conviction_on_plea_of_guilty,Conviction on plea of guilty,crpc,bnss,229;241,252;264
+off:bnss253_date_for_prosecution_evidence,Date for prosecution evidence,crpc,bnss,230,253
+off:bnss254_evidence_for_prosecution,Evidence for prosecution,crpc,bnss,231,254
+off:bnss255_acquittal,Acquittal,crpc,bnss,232,255
+off:bnss256_entering_upon_defence,Entering upon defence,crpc,bnss,233,256
+off:bnss257_arguments,Arguments,crpc,bnss,234,257
+off:bnss258_judgment_of_acquittal_or_conviction,Judgment of acquittal or conviction,crpc,bnss,235,258
+off:bnss259_previous_conviction,Previous conviction,crpc,bnss,236,259
+off:bnss260_procedure_in_cases_instituted_under_sub_section,Procedure in cases instituted under sub-section (2) of section 222,crpc,bnss,237,260
+off:bnss261_compliance_with_section,Compliance with section 230,crpc,bnss,238,261
+off:bnss262_when_accused_shall_be_discharged,When accused shall be discharged,crpc,bnss,239,262
+off:bnss263_framing_of_charge,Framing of charge,crpc,bnss,240,263
+off:bnss265_evidence_for_prosecution,Evidence for prosecution,crpc,bnss,242,265
+off:bnss266_evidence_for_defence,Evidence for defence,crpc,bnss,243,266
+off:bnss267_evidence_for_prosecution,Evidence for prosecution,crpc,bnss,244,267
+off:bnss268_when_accused_shall_be_discharged,When accused shall be discharged,crpc,bnss,245,268
+off:bnss269_procedure_where_accused_is_not_discharged,Procedure where accused is not discharged,crpc,bnss,246,269
+off:bnss270_evidence_for_defence,Evidence for defence,crpc,bnss,247,270
+off:bnss271_acquittal_or_conviction,Acquittal or conviction,crpc,bnss,248,271
+off:bnss272_absence_of_complainant,Absence of complainant,crpc,bnss,249,272
+off:bnss273_compensation_for_accusation_without_reasonable_c,Compensation for accusation without reasonable cause,crpc,bnss,250,273
+off:bnss274_substance_of_accusation_to_be_stated,Substance of accusation to be stated,crpc,bnss,251,274
+off:bnss275_conviction_on_plea_of_guilty,Conviction on plea of guilty,crpc,bnss,252,275
+off:bnss276_conviction_on_plea_of_guilty_in_absence_of_accus,Conviction on plea of guilty in absence of accused in petty cases,crpc,bnss,253,276
+off:bnss277_procedure_when_not_convicted,Procedure when not convicted,crpc,bnss,254,277
+off:bnss278_acquittal_or_conviction,Acquittal or conviction,crpc,bnss,255,278
+off:bnss279_non_appearance_or_death_of_complainant,Non-appearance or death of complainant,crpc,bnss,256,279
+off:bnss280_withdrawal_of_complaint,Withdrawal of complaint,crpc,bnss,257,280
+off:bnss281_power_to_stop_proceedings_in_certain_cases,Power to stop proceedings in certain cases,crpc,bnss,258,281
+off:bnss282_power_of_court_to_convert_summonscases_into_warr,Power of Court to convert summonscases into warrant-cases,crpc,bnss,259,282
+off:bnss283_power_to_try_summarily,Power to try summarily,crpc,bnss,260,283
+off:bnss284_summary_trial_by_magistrate_of_second_class,Summary trial by Magistrate of second class,crpc,bnss,261,284
+off:bnss285_procedure_for_summary_trials,Procedure for summary trials,crpc,bnss,262,285
+off:bnss286_record_in_summary_trials,Record in summary trials,crpc,bnss,263;355,286
+off:bnss287_judgment_in_cases_tried_summarily,Judgment in cases tried summarily,crpc,bnss,264,287
+off:bnss288_language_of_record_and_judgment,Language of record and judgment,crpc,bnss,,288
+off:bnss289_application_of_chapter,Application of Chapter,crpc,bnss,265a,289
+off:bnss290_application_for_plea_bargaining,Application for plea bargaining,crpc,bnss,265b,290
+off:bnss291_guidelines_for_mutually_satisfactory_disposition,Guidelines for mutually satisfactory disposition,crpc,bnss,265c,291
+off:bnss292_report_of_mutually_satisfactory_disposition_to_b,Report of mutually satisfactory disposition to be submitted before Court,crpc,bnss,265d,292
+off:bnss293_disposal_of_case,Disposal of case,crpc,bnss,265e,293
+off:bnss294_judgment_of_court,Judgment of Court,crpc,bnss,265f,294
+off:bnss295_finality_of_judgment,Finality of judgment,crpc,bnss,265g,295
+off:bnss296_power_of_court_in_plea_bargaining,Power of Court in plea bargaining,crpc,bnss,265h,296
+off:bnss297_period_of_detention_undergone_by_accused_to_be_s,Period of detention undergone by accused to be set off against sentence of imprisonment,crpc,bnss,265i,297
+off:bnss298_savings,Savings,crpc,bnss,265j,298
+off:bnss299_statements_of_accused_not_to_be_used,Statements of accused not to be used,crpc,bnss,265k,299
+off:bnss300_non_application_of_chapter,Non-application of Chapter,crpc,bnss,265l,300
+off:bnss301_definitions,Definitions,crpc,bnss,266,301
+off:bnss302_power_to_require_attendance_of_prisoners,Power to require attendance of prisoners,crpc,bnss,267,302
+off:bnss303_power_of_state_government_or_central_government,Power of State Government or Central Government to exclude certain persons from,crpc,bnss,268,303
+off:bnss304_officer_in_charge_of_prison_to_abstain_from_carr,Officer in charge of prison to abstain from carrying out order in certain,crpc,bnss,269,304
+off:bnss305_prisoner_to_be_brought_to_court_in_custody,Prisoner to be brought to Court in custody,crpc,bnss,270,305
+off:bnss306_power_to_issue_commission_for_examination_of_wit,Power to issue commission for examination of witness in prison,crpc,bnss,271,306
+off:bnss307_language_of_courts,Language of Courts,crpc,bnss,272,307
+off:bnss308_evidence_to_be_taken_in_presence_of_accused,Evidence to be taken in presence of accused,crpc,bnss,273,308
+off:bnss309_record_in_summonscases_and_inquiries,Record in summonscases and inquiries,crpc,bnss,274,309
+off:bnss310_record_in_warrant_cases,Record in warrant-cases,crpc,bnss,275,310
+off:bnss311_record_in_trial_before_court_of_session,Record in trial before Court of Session,crpc,bnss,276,311
+off:bnss312_language_of_record_of_evidence,Language of record of evidence,crpc,bnss,277,312
+off:bnss313_procedure_in_regard_to_such_evidence_when_comple,Procedure in regard to such evidence when completed,crpc,bnss,278,313
+off:bnss314_interpretation_of_evidence_to_accused_or_his_adv,Interpretation of evidence to accused or his advocate,crpc,bnss,279,314
+off:bnss315_remarks_respecting_demeanour_of_witness,Remarks respecting demeanour of witness,crpc,bnss,280,315
+off:bnss316_record_of_examination_of_accused,Record of examination of accused,crpc,bnss,281,316
+off:bnss317_interpreter_to_be_bound_to_interpret_truthfully,Interpreter to be bound to interpret truthfully,crpc,bnss,282,317
+off:bnss318_record_in_high_court,Record in High Court,crpc,bnss,283,318
+off:bnss319_when_attendance_of_witness_may_be_dispensed_with,When attendance of witness may be dispensed with and commission issued,crpc,bnss,284,319
+off:bnss320_commission_to_whom_to_be_issued,Commission to whom to be issued,crpc,bnss,285,320
+off:bnss321_execution_of_commissions,Execution of commissions,crpc,bnss,286,321
+off:bnss322_parties_may_examine_witnesses,Parties may examine witnesses,crpc,bnss,287,322
+off:bnss323_return_of_commission,Return of commission,crpc,bnss,288,323
+off:bnss324_adjournment_of_proceeding,Adjournment of proceeding,crpc,bnss,289,324
+off:bnss325_execution_of_foreign_commissions,Execution of foreign commissions,crpc,bnss,290,325
+off:bnss326_deposition_of_medical_witness,Deposition of medical witness,crpc,bnss,291,326
+off:bnss327_identification_report_of_magistrate,Identification report of Magistrate,crpc,bnss,291a,327
+off:bnss328_evidence_of_officers_of_mint,Evidence of officers of Mint,crpc,bnss,292,328
+off:bnss329_reports_of_certain_government_scientific_experts,Reports of certain Government scientific experts,crpc,bnss,293,329
+off:bnss330_no_formal_proof_of_certain_documents,No formal proof of certain documents,crpc,bnss,294,330
+off:bnss331_affidavit_in_proof_of_conduct_of_public_servants,Affidavit in proof of conduct of public servants,crpc,bnss,295,331
+off:bnss332_evidence_of_formal_character_on_affidavit,Evidence of formal character on affidavit,crpc,bnss,296,332
+off:bnss333_authorities_before_whom_affidavits_may_be_sworn,Authorities before whom affidavits may be sworn,crpc,bnss,297,333
+off:bnss334_previous_conviction_or_acquittal_how_proved,Previous conviction or acquittal how proved,crpc,bnss,298,334
+off:bnss335_record_of_evidence_in_absence_of_accused,Record of evidence in absence of accused,crpc,bnss,299,335
+off:bnss336_evidence_of_public_servants_experts_police_offic,"Evidence of public servants, experts, police officers in certain cases",crpc,bnss,,336
+off:bnss337_person_once_convicted_or_acquitted_not_to_be_tri,Person once convicted or acquitted not to be tried for same offence,crpc,bnss,300,337
+off:bnss338_appearance_by_public_prosecutors,Appearance by Public Prosecutors,crpc,bnss,301,338
+off:bnss339_permission_to_conduct_prosecution,Permission to conduct prosecution,crpc,bnss,302,339
+off:bnss340_right_of_person_against_whom_proceedings_are_ins,Right of person against whom proceedings are instituted to be defended,crpc,bnss,303,340
+off:bnss341_legal_aid_to_accused_at_state_expense_in_certain,Legal aid to accused at State expense in certain cases,crpc,bnss,304,341
+off:bnss342_procedure_when_corporation_or_registered_society,Procedure when corporation or registered society is an accused,crpc,bnss,305,342
+off:bnss343_tender_of_pardon_to_accomplice,Tender of pardon to accomplice,crpc,bnss,306,343
+off:bnss344_power_to_direct_tender_of_pardon,Power to direct tender of pardon,crpc,bnss,307,344
+off:bnss345_trial_of_person_not_complying_with_conditions_of,Trial of person not complying with conditions of pardon,crpc,bnss,308,345
+off:bnss346_power_to_postpone_or_adjourn_proceedings,Power to postpone or adjourn proceedings,crpc,bnss,309,346
+off:bnss347_local_inspection,Local inspection,crpc,bnss,310,347
+off:bnss348_power_to_summon_material_witness_or_examine_pers,"Power to summon material witness, or examine person present",crpc,bnss,311,348
+off:bnss349_power_of_magistrate_to_order_person_to_give_spec,"Power of Magistrate to order person to give specimen signatures or handwriting, etc",crpc,bnss,311a,349
+off:bnss350_expenses_of_complainants_and_witnesses,Expenses of complainants and witnesses,crpc,bnss,312,350
+off:bnss351_power_to_examine_accused,Power to examine accused,crpc,bnss,313,351
+off:bnss352_oral_arguments_and_memorandum_of_arguments,Oral arguments and memorandum of arguments,crpc,bnss,314,352
+off:bnss353_accused_person_to_be_competent_witness,Accused person to be competent witness,crpc,bnss,315,353
+off:bnss354_no_influence_to_be_used_to_induce_disclosure,No influence to be used to induce disclosure,crpc,bnss,316,354
+off:bnss355_provision_for_inquiries_and_trial_being_held_in,Provision for inquiries and trial being held in absence of accused in certain cases,crpc,bnss,317,355
+off:bnss356_inquiry_trial_or_judgment_in_absentia_of_proclai,"Inquiry, trial or judgment in absentia of proclaimed offender",crpc,bnss,,356
+off:bnss357_procedure_where_accused_does_not_understand_proc,Procedure where accused does not understand proceedings,crpc,bnss,318,357
+off:bnss358_power_to_proceed_against_other_persons_appearing,Power to proceed against other persons appearing to be guilty of offence,crpc,bnss,319,358
+off:bnss359_compounding_of_offences,Compounding of offences,crpc,bnss,320,359
+off:bnss360_withdrawal_from_prosecution,Withdrawal from prosecution,crpc,bnss,321,360
+off:bnss361_procedure_in_cases_which_magistrate_cannot_dispo,Procedure in cases which Magistrate cannot dispose of,crpc,bnss,322,361
+off:bnss362_procedure_when_after_commencement_of_inquiry_or,"Procedure when after commencement of inquiry or trial, Magistrate finds case should be",crpc,bnss,323,362
+off:bnss363_trial_of_persons_previously_convicted_of_offence,"Trial of persons previously convicted of offences against coinage, stamp-law or",crpc,bnss,324,363
+off:bnss364_procedure_when_magistrate_cannot_pass_sentence_s,Procedure when Magistrate cannot pass sentence sufficiently severe,crpc,bnss,325,364
+off:bnss365_conviction_or_commitment_on_evidence_partly_reco,Conviction or commitment on evidence partly recorded by one Magistrate and partly by,crpc,bnss,326,365
+off:bnss366_court_to_be_open,Court to be open,crpc,bnss,327,366
+off:bnss367_procedure_in_case_of_accused_being_person_of_uns,Procedure in case of accused being person of unsound mind,crpc,bnss,328,367
+off:bnss368_procedure_in_case_of_person_of_unsound_mind_trie,Procedure in case of person of unsound mind tried before Court,crpc,bnss,329,368
+off:bnss369_release_of_person_of_unsound_mind_pending_invest,Release of person of unsound mind pending investigation or trial,crpc,bnss,330,369
+off:bnss370_resumption_of_inquiry_or_trial,Resumption of inquiry or trial,crpc,bnss,331,370
+off:bnss371_procedure_on_accused_appearing_before_magistrate,Procedure on accused appearing before Magistrate or Court,crpc,bnss,332,371
+off:bnss372_when_accused_appears_to_have_been_of_sound_mind,When accused appears to have been of sound mind,crpc,bnss,333,372
+off:bnss373_judgment_of_acquittal_on_ground_of_unsoundness_o,Judgment of acquittal on ground of unsoundness of mind,crpc,bnss,334,373
+off:bnss374_person_acquitted_on_ground_of_unsoundness_of_min,Person acquitted on ground of unsoundness of mind to be detained in safe custody,crpc,bnss,335,374
+off:bnss375_power_of_state_government_to_empower_officer_in,Power of State Government to empower officer in charge to discharge,crpc,bnss,336,375
+off:bnss376_procedure_where_prisoner_of_unsound_mind_is_repo,Procedure where prisoner of unsound mind is reported capable of making his defence,crpc,bnss,337,376
+off:bnss377_procedure_where_person_of_unsound_mind_detained,Procedure where person of unsound mind detained is declared fit to be released,crpc,bnss,338,377
+off:bnss378_delivery_of_person_of_unsound_mind_to_care_of_re,Delivery of person of unsound mind to care of relative or friend,crpc,bnss,339,378
+off:bnss379_procedure_in_cases_mentioned_in_section,Procedure in cases mentioned in section 215,crpc,bnss,340,379
+off:bnss380_appeal,Appeal,crpc,bnss,341,380
+off:bnss381_power_to_order_costs,Power to order costs,crpc,bnss,342,381
+off:bnss382_procedure_of_magistrate_taking_cognizance,Procedure of Magistrate taking cognizance,crpc,bnss,343,382
+off:bnss383_summary_procedure_for_trial_for_giving_false_evi,Summary procedure for trial for giving false evidence,crpc,bnss,344,383
+off:bnss384_procedure_in_certain_cases_of_contempt,Procedure in certain cases of contempt,crpc,bnss,345,384
+off:bnss385_procedure_where_court_considers_that_case_should,Procedure where Court considers that case should not be dealt with under,crpc,bnss,346,385
+off:bnss386_when_registrar_or_sub_registrar_to_be_deemed_a_c,When Registrar or Sub-Registrar to be deemed a Civil Court,crpc,bnss,347,386
+off:bnss387_discharge_of_offender_on_submission_of_apology,Discharge of offender on submission of apology,crpc,bnss,348,387
+off:bnss388_imprisonment_or_committal_of_person_refusing_to,Imprisonment or committal of person refusing to answer or produce document,crpc,bnss,349,388
+off:bnss389_summary_procedure_for_punishment_for_non_attenda,Summary procedure for punishment for non-attendance by a witness in obedience to,crpc,bnss,350,389
+off:bnss390_appeals_from_convictions_under_sections_and,"Appeals from convictions under sections 383, 384, 388 and 389",crpc,bnss,351,390
+off:bnss391_certain_judges_and_magistrates_not_to_try_certai,Certain Judges and Magistrates not to try certain offences when committed before,crpc,bnss,352,391
+off:bnss392_judgment,Judgment,crpc,bnss,353,392
+off:bnss393_language_and_contents_of_judgment,Language and contents of judgment,crpc,bnss,354,393
+off:bnss394_order_for_notifying_address_of_previously_convic,Order for notifying address of previously convicted offender,crpc,bnss,356,394
+off:bnss395_order_to_pay_compensation,Order to pay compensation,crpc,bnss,357,395
+off:bnss396_victim_compensation_scheme,Victim compensation scheme,crpc,bnss,357a,396
+off:bnss397_treatment_of_victims,Treatment of victims,crpc,bnss,357c,397
+off:bnss398_witness_protection_scheme,Witness protection scheme,crpc,bnss,,398
+off:bnss399_compensation_to_persons_groundlessly_arrested,Compensation to persons groundlessly arrested,crpc,bnss,358,399
+off:bnss400_order_to_pay_costs_in_non_cognizable_cases,Order to pay costs in non-cognizable cases,crpc,bnss,359,400
+off:bnss401_order_to_release_on_probation_of_good_conduct_or,Order to release on probation of good conduct or after admonition,crpc,bnss,360,401
+off:bnss402_special_reasons_to_be_recorded_in_certain_cases,Special reasons to be recorded in certain cases,crpc,bnss,361,402
+off:bnss403_court_not_to_alter_judgment,Court not to alter judgment,crpc,bnss,362,403
+off:bnss404_copy_of_judgment_to_be_given_to_accused_and_othe,Copy of judgment to be given to accused and other persons,crpc,bnss,363,404
+off:bnss405_judgment_when_to_be_translated,Judgment when to be translated,crpc,bnss,364,405
+off:bnss406_court_of_session_to_send_copy_of_finding_and_sen,Court of Session to send copy of finding and sentence to District Magistrate,crpc,bnss,365,406
+off:bnss407_sentence_of_death_to_be_submitted_by_court_of_se,Sentence of death to be submitted by Court of Session for confirmation,crpc,bnss,366,407
+off:bnss408_power_to_direct_further_inquiry_to_be_made_or_ad,Power to direct further inquiry to be made or additional evidence to be taken,crpc,bnss,367,408
+off:bnss409_power_of_high_court_to_confirm_sentence_or_annul,Power of High Court to confirm sentence or annul conviction,crpc,bnss,368,409
+off:bnss410_confirmation_or_new_sentence_to_be_signed_by_two,Confirmation or new sentence to be signed by two Judges,crpc,bnss,369,410
+off:bnss411_procedure_in_case_of_difference_of_opinion,Procedure in case of difference of opinion,crpc,bnss,370,411
+off:bnss412_procedure_in_cases_submitted_to_high_court_for_c,Procedure in cases submitted to High Court for confirmation,crpc,bnss,371,412
+off:bnss413_no_appeal_to_lie_unless_otherwise_provided,No appeal to lie unless otherwise provided,crpc,bnss,372,413
+off:bnss414_appeal_from_orders_requiring_security_or_refusal,Appeal from orders requiring security or refusal to accept or rejecting surety for keeping,crpc,bnss,373,414
+off:bnss415_appeals_from_convictions,Appeals from convictions,crpc,bnss,374,415
+off:bnss416_no_appeal_in_certain_cases_when_accused_pleads_g,No appeal in certain cases when accused pleads guilty,crpc,bnss,375,416
+off:bnss417_no_appeal_in_petty_cases,No appeal in petty cases,crpc,bnss,376,417
+off:bnss418_appeal_by_state_government_against_sentence,Appeal by State Government against sentence,crpc,bnss,377,418
+off:bnss419_appeal_in_case_of_acquittal,Appeal in case of acquittal,crpc,bnss,378,419
+off:bnss420_appeal_against_conviction_by_high_court_in_certa,Appeal against conviction by High Court in certain cases,crpc,bnss,379,420
+off:bnss421_special_right_of_appeal_in_certain_cases,Special right of appeal in certain cases,crpc,bnss,380,421
+off:bnss422_appeal_to_court_of_session_how_heard,Appeal to Court of Session how heard,crpc,bnss,381,422
+off:bnss423_petition_of_appeal,Petition of appeal,crpc,bnss,382,423
+off:bnss424_procedure_when_appellant_in_jail,Procedure when appellant in jail,crpc,bnss,383,424
+off:bnss425_summary_dismissal_of_appeal,Summary dismissal of appeal,crpc,bnss,384,425
+off:bnss426_procedure_for_hearing_appeals_not_dismissed_summ,Procedure for hearing appeals not dismissed summarily,crpc,bnss,385,426
+off:bnss427_powers_of_appellate_court,Powers of Appellate Court,crpc,bnss,386,427
+off:bnss428_judgments_of_subordinate_appellate_court,Judgments of subordinate Appellate Court,crpc,bnss,387,428
+off:bnss429_order_of_high_court_on_appeal_to_be_certified_to,Order of High Court on appeal to be certified to lower Court,crpc,bnss,388,429
+off:bnss430_suspension_of_sentence_pending_appeal_release_of,Suspension of sentence pending appeal; release of appellant on bail,crpc,bnss,389,430
+off:bnss431_arrest_of_accused_in_appeal_from_acquittal,Arrest of accused in appeal from acquittal,crpc,bnss,390,431
+off:bnss432_appellate_court_may_take_further_evidence_or_dir,Appellate Court may take further evidence or direct it to be taken,crpc,bnss,391,432
+off:bnss433_procedure_where_judges_of_court_of_appeal_are_eq,Procedure where Judges of Court of appeal are equally divided,crpc,bnss,392,433
+off:bnss434_finality_of_judgments_and_orders_on_appeal,Finality of judgments and orders on appeal,crpc,bnss,393,434
+off:bnss435_abatement_of_appeals,Abatement of appeals,crpc,bnss,394,435
+off:bnss436_reference_to_high_court,Reference to High Court,crpc,bnss,395,436
+off:bnss437_disposal_of_case_according_to_decision_of_high_c,Disposal of case according to decision of High Court,crpc,bnss,396,437
+off:bnss438_calling_for_records_to_exercise_powers_of_revisi,Calling for records to exercise powers of revision,crpc,bnss,397,438
+off:bnss439_power_to_order_inquiry,Power to order inquiry,crpc,bnss,398,439
+off:bnss440_sessions_judge_s_powers_of_revision,Sessions Judge's powers of revision,crpc,bnss,399,440
+off:bnss441_power_of_additional_sessions_judge,Power of Additional Sessions Judge,crpc,bnss,400,441
+off:bnss442_high_court_s_powers_of_revision,High Court's powers of revision,crpc,bnss,401,442
+off:bnss443_power_of_high_court_to_withdraw_or_transfer_revi,Power of High Court to withdraw or transfer revision cases,crpc,bnss,402,443
+off:bnss444_option_of_court_to_hear_parties,Option of Court to hear parties,crpc,bnss,403,444
+off:bnss445_high_court_s_order_to_be_certified_to_lower_cour,High Court's order to be certified to lower Court,crpc,bnss,405,445
+off:bnss446_power_of_supreme_court_to_transfer_cases_and_app,Power of Supreme Court to transfer cases and appeals,crpc,bnss,406,446
+off:bnss447_power_of_high_court_to_transfer_cases_and_appeal,Power of High Court to transfer cases and appeals,crpc,bnss,407,447
+off:bnss448_power_of_sessions_judge_to_transfer_cases_and_ap,Power of Sessions Judge to transfer cases and appeals,crpc,bnss,408,448
+off:bnss449_withdrawal_of_cases_and_appeals_by_sessions_judg,Withdrawal of cases and appeals by Sessions Judges,crpc,bnss,409,449
+off:bnss450_withdrawal_of_cases_by_judicial_magistrates,Withdrawal of cases by Judicial Magistrates,crpc,bnss,410,450
+off:bnss451_making_over_or_withdrawal_of_cases_by_executive,Making over or withdrawal of cases by Executive Magistrates,crpc,bnss,411,451
+off:bnss452_reasons_to_be_recorded,Reasons to be recorded,crpc,bnss,412,452
+off:bnss453_execution_of_order_passed_under_section,Execution of order passed under section 409,crpc,bnss,413,453
+off:bnss454_execution_of_sentence_of_death_passed_by_high_co,Execution of sentence of death passed by High Court,crpc,bnss,414,454
+off:bnss455_postponement_of_execution_of_sentence_of_death_i,Postponement of execution of sentence of death in case of appeal to Supreme,crpc,bnss,415,455
+off:bnss456_commutation_of_sentence_of_death_on_pregnant_wom,Commutation of sentence of death on pregnant woman,crpc,bnss,416,456
+off:bnss457_power_to_appoint_place_of_imprisonment,Power to appoint place of imprisonment,crpc,bnss,417,457
+off:bnss458_execution_of_sentence_of_imprisonment,Execution of sentence of imprisonment,crpc,bnss,418,458
+off:bnss459_direction_of_warrant_for_execution,Direction of warrant for execution,crpc,bnss,419,459
+off:bnss460_warrant_with_whom_to_be_lodged,Warrant with whom to be lodged,crpc,bnss,420,460
+off:bnss461_warrant_for_levy_of_fine,Warrant for levy of fine,crpc,bnss,421,461
+off:bnss462_effect_of_such_warrant,Effect of such warrant,crpc,bnss,422,462
+off:bnss463_warrant_for_levy_of_fine_issued_by_a_court_in_an,Warrant for levy of fine issued by a Court in any territory to which this Sanhita does not,crpc,bnss,423,463
+off:bnss464_suspension_of_execution_of_sentence_of_imprisonm,Suspension of execution of sentence of imprisonment,crpc,bnss,424,464
+off:bnss465_who_may_issue_warrant,Who may issue warrant,crpc,bnss,425,465
+off:bnss466_sentence_on_escaped_convict_when_to_take_effect,Sentence on escaped convict when to take effect,crpc,bnss,426,466
+off:bnss467_sentence_on_offender_already_sentenced_for_anoth,Sentence on offender already sentenced for another offence,crpc,bnss,427,467
+off:bnss468_period_of_detention_undergone_by_accused_to_be_s,Period of detention undergone by accused to be set off against sentence of imprisonment,crpc,bnss,428,468
+off:bnss469_saving,Saving,crpc,bnss,429,469
+off:bnss470_return_of_warrant_on_execution_of_sentence,Return of warrant on execution of sentence,crpc,bnss,430,470
+off:bnss471_money_ordered_to_be_paid_recoverable_as_a_fine,Money ordered to be paid recoverable as a fine,crpc,bnss,431,471
+off:bnss472_mercy_petition_in_death_sentence_cases,Mercy petition in death sentence cases,crpc,bnss,,472
+off:bnss473_power_to_suspend_or_remit_sentences,Power to suspend or remit sentences,crpc,bnss,432,473
+off:bnss474_power_to_commute_sentence,Power to commute sentence,crpc,bnss,433,474
+off:bnss475_restriction_on_powers_of_remission_or_commutatio,Restriction on powers of remission or commutation in certain cases,crpc,bnss,433a,475
+off:bnss476_concurrent_power_of_central_government_in_case_o,Concurrent power of Central Government in case of death sentences,crpc,bnss,434,476
+off:bnss477_state_government_to_act_after_concurrence_with_c,State Government to act after concurrence with Central Government in certain cases,crpc,bnss,435,477
+off:bnss478_in_what_cases_bail_to_be_taken,In what cases bail to be taken,crpc,bnss,436,478
+off:bnss479_maximum_period_for_which_under_trial_prisoner_ca,Maximum period for which under trial prisoner can be detained,crpc,bnss,436a,479
+off:bnss480_when_bail_may_be_taken_in_case_of_non_bailable_o,When bail may be taken in case of non-bailable offence,crpc,bnss,437,480
+off:bnss481_bail_to_require_accused_to_appear_before_next_ap,Bail to require accused to appear before next Appellate Court,crpc,bnss,,481
+off:bnss482_direction_for_grant_of_bail_to_person_apprehendi,Direction for grant of bail to person apprehending arrest,crpc,bnss,438,482
+off:bnss483_special_powers_of_high_court_or_court_of_session,Special powers of High Court or Court of Session regarding bail,crpc,bnss,439,483
+off:bnss484_amount_of_bond_and_reduction_thereof,Amount of bond and reduction thereof,crpc,bnss,440,484
+off:bnss485_bond_of_accused_and_sureties,Bond of accused and sureties,crpc,bnss,441,485
+off:bnss486_declaration_by_sureties,Declaration by sureties,crpc,bnss,441a,486
+off:bnss487_discharge_from_custody,Discharge from custody,crpc,bnss,442,487
+off:bnss488_power_to_order_sufficient_bail_when_that_first_t,Power to order sufficient bail when that first taken is insufficient,crpc,bnss,443,488
+off:bnss489_discharge_of_sureties,Discharge of sureties,crpc,bnss,444,489
+off:bnss490_deposit_instead_of_recognizance,Deposit instead of recognizance,crpc,bnss,445,490
+off:bnss491_procedure_when_bond_has_been_forfeited,Procedure when bond has been forfeited,crpc,bnss,446,491
+off:bnss492_cancellation_of_bond_and_bail_bond,Cancellation of bond and bail bond,crpc,bnss,446a,492
+off:bnss493_procedure_in_case_of_insolvency_or_death_of_sure,Procedure in case of insolvency or death of surety or when a bond is forfeited,crpc,bnss,447,493
+off:bnss494_bond_required_from_child,Bond required from child,crpc,bnss,448,494
+off:bnss495_appeal_from_orders_under_section,Appeal from orders under section 491,crpc,bnss,449,495
+off:bnss496_power_to_direct_levy_of_amount_due_on_certain_re,Power to direct levy of amount due on certain recognizances,crpc,bnss,450,496
+off:bnss497_order_for_custody_and_disposal_of_property_pendi,Order for custody and disposal of property pending trial in certain cases,crpc,bnss,451,497
+off:bnss498_order_for_disposal_of_property_at_conclusion_of,Order for disposal of property at conclusion of trial,crpc,bnss,452,498
+off:bnss499_payment_to_innocent_purchaser_of_money_found_on,Payment to innocent purchaser of money found on accused,crpc,bnss,453,499
+off:bnss500_appeal_against_orders_under_section_or_section,Appeal against orders under section 498 or section 499,crpc,bnss,454,500
+off:bnss501_destruction_of_libellous_and_other_matter,Destruction of libellous and other matter,crpc,bnss,455,501
+off:bnss502_power_to_restore_possession_of_immovable_propert,Power to restore possession of immovable property,crpc,bnss,456,502
+off:bnss503_procedure_by_police_upon_seizure_of_property,Procedure by police upon seizure of property,crpc,bnss,457,503
+off:bnss504_procedure_where_no_claimant_appears_within_six_m,Procedure where no claimant appears within six months,crpc,bnss,458,504
+off:bnss505_power_to_sell_perishable_property,Power to sell perishable property,crpc,bnss,459,505
+off:bnss506_irregularities_which_do_not_vitiate_proceedings,Irregularities which do not vitiate proceedings,crpc,bnss,460,506
+off:bnss507_irregularities_which_vitiate_proceedings,Irregularities which vitiate proceedings,crpc,bnss,461,507
+off:bnss508_proceedings_in_wrong_place,Proceedings in wrong place,crpc,bnss,462,508
+off:bnss509_non_compliance_with_provisions_of_section_or_sec,Non-compliance with provisions of section 183 or section 316,crpc,bnss,463,509
+off:bnss510_effect_of_omission_to_frame_or_absence_of_or_err,"Effect of omission to frame, or absence of, or error in, charge",crpc,bnss,464,510
+off:bnss511_finding_or_sentence_when_reversible_by_reason_of,"Finding or sentence when reversible by reason of error, omission or irregularity",crpc,bnss,465,511
+off:bnss512_defect_or_error_not_to_make_attachment_unlawful,Defect or error not to make attachment unlawful,crpc,bnss,466,512
+off:bnss513_definitions,Definitions,crpc,bnss,467,513
+off:bnss514_bar_to_taking_cognizance_after_lapse_of_period_o,Bar to taking cognizance after lapse of period of limitation,crpc,bnss,468,514
+off:bnss515_commencement_of_period_of_limitation,Commencement of period of limitation,crpc,bnss,469,515
+off:bnss516_exclusion_of_time_in_certain_cases,Exclusion of time in certain cases,crpc,bnss,470,516
+off:bnss517_exclusion_of_date_on_which_court_is_closed,Exclusion of date on which Court is closed,crpc,bnss,471,517
+off:bnss518_continuing_offence,Continuing offence,crpc,bnss,472,518
+off:bnss519_extension_of_period_of_limitation_in_certain_cas,Extension of period of limitation in certain cases,crpc,bnss,473,519
+off:bnss520_trials_before_high_courts,Trials before High Courts,crpc,bnss,474,520
+off:bnss521_delivery_to_commanding_officers_of_persons_liabl,Delivery to commanding officers of persons liable to be tried by Court-martial,crpc,bnss,475,521
+off:bnss522_forms,Forms,crpc,bnss,476,522
+off:bnss523_power_of_high_court_to_make_rules,Power of High Court to make rules,crpc,bnss,477,523
+off:bnss524_power_to_alter_functions_allocated_to_executive,Power to alter functions allocated to Executive Magistrate in certain cases,crpc,bnss,478,524
+off:bnss525_cases_in_which_judge_or_magistrate_is_personally,Cases in which Judge or Magistrate is personally interested,crpc,bnss,479,525
+off:bnss526_practising_advocate_not_to_sit_as_magistrate_in,Practising advocate not to sit as Magistrate in certain Courts,crpc,bnss,480,526
+off:bnss527_public_servant_concerned_in_sale_not_to_purchase,Public servant concerned in sale not to purchase or bid for property,crpc,bnss,481,527
+off:bnss528_saving_of_inherent_powers_of_high_court,Saving of inherent powers of High Court,crpc,bnss,482,528
+off:bnss529_duty_of_high_court_to_exercise_continuous_superi,Duty of High Court to exercise continuous superintendence over Courts,crpc,bnss,483,529
+off:bnss530_trial_and_proceedings_to_be_held_in_electronic_m,Trial and proceedings to be held in electronic mode,crpc,bnss,,530
+off:bnss531_repeal_and_savings,Repeal and savings,crpc,bnss,484,531
+off:bsa1_short_title_application_and_commencement,"Short title, application and commencement",iea,bsa,1,1
+off:bsa2_definitions,Definitions,iea,bsa,3,2
+off:bsa3_evidence_may_be_given_of_facts_in_issue_and_rele,Evidence may be given of facts in issue and relevant facts,iea,bsa,5,3
+off:bsa4_relevancy_of_facts_forming_part_of_same_transact,Relevancy of facts forming part of same transaction,iea,bsa,6,4
+off:bsa5_facts_which_are_occasion_cause_or_effect_of_fact,"Facts which are occasion, cause or effect of facts in issue or relevant facts",iea,bsa,7,5
+off:bsa6_motive_preparation_and_previous_or_subsequent_co,"Motive, preparation and previous or subsequent conduct",iea,bsa,8,6
+off:bsa7_facts_necessary_to_explain_or_introduce_fact_in,Facts necessary to explain or introduce fact in issue or relevant facts,iea,bsa,9,7
+off:bsa8_things_said_or_done_by_conspirator_in_reference,Things said or done by conspirator in reference to common design,iea,bsa,10,8
+off:bsa9_when_facts_not_otherwise_relevant_become_relevan,When facts not otherwise relevant become relevant,iea,bsa,11,9
+off:bsa10_facts_tending_to_enable_court_to_determine_amoun,Facts tending to enable Court to determine amount are relevant in suits for damages,iea,bsa,12,10
+off:bsa11_facts_relevant_when_right_or_custom_is_in_questi,Facts relevant when right or custom is in question,iea,bsa,13,11
+off:bsa12_facts_showing_existence_of_state_of_mind_or_of_b,"Facts showing existence of state of mind, or of body or bodily feeling",iea,bsa,14,12
+off:bsa13_facts_bearing_on_question_whether_act_was_accide,Facts bearing on question whether act was accidental or intentional,iea,bsa,15,13
+off:bsa14_existence_of_course_of_business_when_relevant,Existence of course of business when relevant,iea,bsa,16,14
+off:bsa15_admission_defined,Admission defined,iea,bsa,17,15
+off:bsa16_admission_by_party_to_proceeding_or_his_agent,Admission by party to proceeding or his agent,iea,bsa,18,16
+off:bsa17_admissions_by_persons_whose_position_must_be_pro,Admissions by persons whose position must be proved as against party to suit,iea,bsa,19,17
+off:bsa18_admissions_by_persons_expressly_referred_to_by_p,Admissions by persons expressly referred to by party to suit,iea,bsa,20,18
+off:bsa19_proof_of_admissions_against_persons_making_them,"Proof of admissions against persons making them, and by or on their behalf",iea,bsa,21,19
+off:bsa20_when_oral_admissions_as_to_contents_of_documents,When oral admissions as to contents of documents are relevant,iea,bsa,22;22a,20
+off:bsa21_admissions_in_civil_cases_when_relevant,Admissions in civil cases when relevant,iea,bsa,23,21
+off:bsa22_confession_caused_by_inducement_threat_coercion,"Confession caused by inducement, threat, coercion or promise, when irrelevant in criminal",iea,bsa,24;28;29,22
+off:bsa23_confession_to_police_officer,Confession to police officer,iea,bsa,25;26;27,23
+off:bsa24_consideration_of_proved_confession_affecting_per,Consideration of proved confession affecting person making it and others jointly under trial,iea,bsa,30,24
+off:bsa25_admissions_not_conclusive_proof_but_may_estop,"Admissions not conclusive proof, but may estop",iea,bsa,31,25
+off:bsa26_cases_in_which_statement_of_relevant_fact_by_per,"Cases in which statement of relevant fact by person who is dead or cannot be found, etc., is",iea,bsa,32,26
+off:bsa27_relevancy_of_certain_evidence_for_proving_in_sub,"Relevancy of certain evidence for proving, in subsequent proceeding, truth of facts therein",iea,bsa,33,27
+off:bsa28_entries_in_books_of_account_when_relevant,Entries in books of account when relevant,iea,bsa,34,28
+off:bsa29_relevancy_of_entry_in_public_record_or_an_electr,Relevancy of entry in public record or an electronic record made in performance of duty,iea,bsa,35,29
+off:bsa30_relevancy_of_statements_in_maps_charts_and_plans,"Relevancy of statements in maps, charts and plans",iea,bsa,36,30
+off:bsa31_relevancy_of_statement_as_to_fact_of_public_natu,Relevancy of statement as to fact of public nature contained in certain Acts or,iea,bsa,37,31
+off:bsa32_relevancy_of_statements_as_to_any_law_contained,Relevancy of statements as to any law contained in law books including electronic or digital,iea,bsa,38,32
+off:bsa33_what_evidence_to_be_given_when_statement_forms_p,"What evidence to be given when statement forms part of a conversation, document,",iea,bsa,39,33
+off:bsa34_previous_judgments_relevant_to_bar_a_second_suit,Previous judgments relevant to bar a second suit or trial,iea,bsa,40,34
+off:bsa35_relevancy_of_certain_judgments_in_probate_etc_ju,"Relevancy of certain judgments in probate, etc., jurisdiction",iea,bsa,41,35
+off:bsa36_relevancy_and_effect_of_judgments_orders_or_decr,"Relevancy and effect of judgments, orders or decrees, other than those mentioned in",iea,bsa,42,36
+off:bsa37_judgments_etc_other_than_those_mentioned_in_sect,"Judgments, etc., other than those mentioned in sections 34, 35 and 36 when relevant",iea,bsa,43,37
+off:bsa38_fraud_or_collusion_in_obtaining_judgment_or_inco,"Fraud or collusion in obtaining judgment, or incompetency of Court, may be proved",iea,bsa,44,38
+off:bsa39_opinions_of_experts,Opinions of experts,iea,bsa,45,39
+off:bsa40_facts_bearing_upon_opinions_of_experts,Facts bearing upon opinions of experts,iea,bsa,46,40
+off:bsa41_opinion_as_to_handwriting_and_signature_when_rel,"Opinion as to handwriting and signature, when relevant",iea,bsa,47;47a,41
+off:bsa42_opinion_as_to_existence_of_general_custom_or_rig,"Opinion as to existence of general custom or right, when relevant",iea,bsa,48,42
+off:bsa43_opinion_as_to_usages_tenets_etc_when_relevant,"Opinion as to usages, tenets, etc., when relevant",iea,bsa,49,43
+off:bsa44_opinion_on_relationship_when_relevant,"Opinion on relationship, when relevant",iea,bsa,50,44
+off:bsa45_grounds_of_opinion_when_relevant,"Grounds of opinion, when relevant",iea,bsa,51,45
+off:bsa46_in_civil_cases_character_to_prove_conduct_impute,"In civil cases character to prove conduct imputed, irrelevant",iea,bsa,52,46
+off:bsa47_in_criminal_cases_previous_good_character_releva,In criminal cases previous good character relevant,iea,bsa,53,47
+off:bsa48_evidence_of_character_or_previous_sexual_experie,Evidence of character or previous sexual experience not relevant in certain cases,iea,bsa,53a,48
+off:bsa49_previous_bad_character_not_relevant_except_in_re,"Previous bad character not relevant, except in reply",iea,bsa,54,49
+off:bsa50_character_as_affecting_damages,Character as affecting damages,iea,bsa,55,50
+off:bsa51_fact_judicially_noticeable_need_not_be_proved,Fact judicially noticeable need not be proved,iea,bsa,56,51
+off:bsa52_facts_of_which_court_shall_take_judicial_notice,Facts of which Court shall take judicial notice,iea,bsa,57,52
+off:bsa53_facts_admitted_need_not_be_proved,Facts admitted need not be proved,iea,bsa,58,53
+off:bsa54_proof_of_facts_by_oral_evidence,Proof of facts by oral evidence,iea,bsa,59,54
+off:bsa55_oral_evidence_to_be_direct,Oral evidence to be direct,iea,bsa,60,55
+off:bsa56_proof_of_contents_of_documents,Proof of contents of documents,iea,bsa,61,56
+off:bsa57_primary_evidence,Primary evidence,iea,bsa,62,57
+off:bsa58_secondary_evidence,Secondary evidence,iea,bsa,63,58
+off:bsa59_proof_of_documents_by_primary_evidence,Proof of documents by primary evidence,iea,bsa,64,59
+off:bsa60_cases_in_which_secondary_evidence_relating_to_do,Cases in which secondary evidence relating to documents may be given,iea,bsa,65,60
+off:bsa61_electronic_or_digital_record,Electronic or digital record,iea,bsa,,61
+off:bsa62_special_provisions_as_to_evidence_relating_to_el,Special provisions as to evidence relating to electronic record,iea,bsa,65a,62
+off:bsa63_admissibility_of_electronic_records,Admissibility of electronic records,iea,bsa,65b,63
+off:bsa64_rules_as_to_notice_to_produce,Rules as to notice to produce,iea,bsa,66,64
+off:bsa65_proof_of_signature_and_handwriting_of_person_all,Proof of signature and handwriting of person alleged to have signed or written document,iea,bsa,67,65
+off:bsa66_proof_as_to_electronic_signature,Proof as to electronic signature,iea,bsa,67a,66
+off:bsa67_proof_of_execution_of_document_required_by_law_t,Proof of execution of document required by law to be attested,iea,bsa,68,67
+off:bsa68_proof_where_no_attesting_witness_found,Proof where no attesting witness found,iea,bsa,69,68
+off:bsa69_admission_of_execution_by_party_to_attested_docu,Admission of execution by party to attested document,iea,bsa,70,69
+off:bsa70_proof_when_attesting_witness_denies_execution,Proof when attesting witness denies execution,iea,bsa,71,70
+off:bsa71_proof_of_document_not_required_by_law_to_be_atte,Proof of document not required by law to be attested,iea,bsa,72,71
+off:bsa72_comparison_of_signature_writing_or_seal_with_oth,"Comparison of signature, writing or seal with others admitted or proved",iea,bsa,73,72
+off:bsa73_proof_as_to_verification_of_digital_signature,Proof as to verification of digital signature,iea,bsa,73a,73
+off:bsa74_public_and_private_documents,Public and private documents,iea,bsa,74;75,74
+off:bsa75_certified_copies_of_public_documents,Certified copies of public documents,iea,bsa,76,75
+off:bsa76_proof_of_documents_by_production_of_certified_co,Proof of documents by production of certified copies,iea,bsa,77,76
+off:bsa77_proof_of_other_official_documents,Proof of other official documents,iea,bsa,78,77
+off:bsa78_presumption_as_to_genuineness_of_certified_copie,Presumption as to genuineness of certified copies,iea,bsa,79,78
+off:bsa79_presumption_as_to_documents_produced_as_record_o,"Presumption as to documents produced as record of evidence, etc",iea,bsa,80,79
+off:bsa80_presumption_as_to_gazettes_newspapers_and_other,"Presumption as to Gazettes, newspapers, and other documents",iea,bsa,81,80
+off:bsa81_presumption_as_to_gazettes_in_electronic_or_digi,Presumption as to Gazettes in electronic or digital record,iea,bsa,81a,81
+off:bsa82_presumption_as_to_maps_or_plans_made_by_authorit,Presumption as to maps or plans made by authority of Government,iea,bsa,83,82
+off:bsa83_presumption_as_to_collections_of_laws_and_report,Presumption as to collections of laws and reports of decisions,iea,bsa,84,83
+off:bsa84_presumption_as_to_powers_of_attorney,Presumption as to powers-of-attorney,iea,bsa,85,84
+off:bsa85_presumption_as_to_electronic_agreements,Presumption as to electronic agreements,iea,bsa,85a,85
+off:bsa86_presumption_as_to_electronic_records_and_electro,Presumption as to electronic records and electronic signatures,iea,bsa,85b,86
+off:bsa87_presumption_as_to_electronic_signature_certifica,Presumption as to Electronic Signature Certificates,iea,bsa,85c,87
+off:bsa88_presumption_as_to_certified_copies_of_foreign_ju,Presumption as to certified copies of foreign judicial records,iea,bsa,86,88
+off:bsa89_presumption_as_to_books_maps_and_charts,"Presumption as to books, maps and charts",iea,bsa,87,89
+off:bsa90_presumption_as_to_electronic_messages,Presumption as to electronic messages,iea,bsa,88;88a,90
+off:bsa91_presumption_as_to_due_execution_etc_of_documents,"Presumption as to due execution, etc., of documents not produced",iea,bsa,89,91
+off:bsa92_presumption_as_to_documents_thirty_years_old,Presumption as to documents thirty years old,iea,bsa,90,92
+off:bsa93_presumption_as_to_electronic_records_five_years,Presumption as to electronic records five years old,iea,bsa,90a,93
+off:bsa94_evidence_of_terms_of_contracts_grants_and_other,"Evidence of terms of contracts, grants and other dispositions of property reduced to form of",iea,bsa,91,94
+off:bsa95_exclusion_of_evidence_of_oral_agreement,Exclusion of evidence of oral agreement,iea,bsa,92,95
+off:bsa96_exclusion_of_evidence_to_explain_or_amend_ambigu,Exclusion of evidence to explain or amend ambiguous document,iea,bsa,93,96
+off:bsa97_exclusion_of_evidence_against_application_of_doc,Exclusion of evidence against application of document to existing facts,iea,bsa,94,97
+off:bsa98_evidence_as_to_document_unmeaning_in_reference_t,Evidence as to document unmeaning in reference to existing facts,iea,bsa,95,98
+off:bsa99_evidence_as_to_application_of_language_which_can,Evidence as to application of language which can apply to one only of several persons,iea,bsa,96,99
+off:bsa100_evidence_as_to_application_of_language_to_one_of,"Evidence as to application of language to one of two sets of facts, to neither of which the",iea,bsa,97,100
+off:bsa101_evidence_as_to_meaning_of_illegible_characters_e,"Evidence as to meaning of illegible characters, etc",iea,bsa,98,101
+off:bsa102_who_may_give_evidence_of_agreement_varying_terms,Who may give evidence of agreement varying terms of document,iea,bsa,99,102
+off:bsa103_saving_of_provisions_of_indian_succession_act_re,Saving of provisions of Indian Succession Act relating to wills,iea,bsa,100,103
+off:bsa104_burden_of_proof,Burden of proof,iea,bsa,101,104
+off:bsa105_on_whom_burden_of_proof_lies,On whom burden of proof lies,iea,bsa,102,105
+off:bsa106_burden_of_proof_as_to_particular_fact,Burden of proof as to particular fact,iea,bsa,103,106
+off:bsa107_burden_of_proving_fact_to_be_proved_to_make_evid,Burden of proving fact to be proved to make evidence admissible,iea,bsa,104,107
+off:bsa108_burden_of_proving_that_case_of_accused_comes_wit,Burden of proving that case of accused comes within exceptions,iea,bsa,105,108
+off:bsa109_burden_of_proving_fact_especially_within_knowled,Burden of proving fact especially within knowledge,iea,bsa,106,109
+off:bsa110_burden_of_proving_death_of_person_known_to_have,Burden of proving death of person known to have been alive within thirty years,iea,bsa,107,110
+off:bsa111_burden_of_proving_that_person_is_alive_who_has_n,Burden of proving that person is alive who has not been heard of for seven years,iea,bsa,108,111
+off:bsa112_burden_of_proof_as_to_relationship_in_the_cases,"Burden of proof as to relationship in the cases of partners, landlord and tenant, principal",iea,bsa,109,112
+off:bsa113_burden_of_proof_as_to_ownership,Burden of proof as to ownership,iea,bsa,110,113
+off:bsa114_proof_of_good_faith_in_transactions_where_one_pa,Proof of good faith in transactions where one party is in relation of active confidence,iea,bsa,111,114
+off:bsa115_presumption_as_to_certain_offences,Presumption as to certain offences,iea,bsa,111a,115
+off:bsa116_birth_during_marriage_conclusive_proof_of_legiti,"Birth during marriage, conclusive proof of legitimacy",iea,bsa,112,116
+off:bsa117_presumption_as_to_abetment_of_suicide_by_a_marri,Presumption as to abetment of suicide by a married woman,iea,bsa,113a,117
+off:bsa118_presumption_as_to_dowry_death,Presumption as to dowry death,iea,bsa,113b,118
+off:bsa119_court_may_presume_existence_of_certain_facts,Court may presume existence of certain facts,iea,bsa,114,119
+off:bsa120_presumption_as_to_absence_of_consent_in_certain,Presumption as to absence of consent in certain prosecution for rape,iea,bsa,114a,120
+off:bsa121_estoppel,Estoppel,iea,bsa,115,121
+off:bsa122_estoppel_of_tenant_and_of_licensee_of_person_in,Estoppel of tenant and of licensee of person in possession,iea,bsa,116,122
+off:bsa123_estoppel_of_acceptor_of_bill_of_exchange_bailee,"Estoppel of acceptor of bill of exchange, bailee or licensee",iea,bsa,117,123
+off:bsa124_who_may_testify,Who may testify,iea,bsa,118,124
+off:bsa125_witness_unable_to_communicate_verbally,Witness unable to communicate verbally,iea,bsa,119,125
+off:bsa126_competency_of_husband_and_wife_as_witnesses_in_c,Competency of husband and wife as witnesses in certain cases,iea,bsa,120,126
+off:bsa127_judges_and_magistrates,Judges and Magistrates,iea,bsa,121,127
+off:bsa128_communications_during_marriage,Communications during marriage,iea,bsa,122,128
+off:bsa129_evidence_as_to_affairs_of_state,Evidence as to affairs of State,iea,bsa,123,129
+off:bsa130_official_communications,Official communications,iea,bsa,124,130
+off:bsa131_information_as_to_commission_of_offences,Information as to commission of offences,iea,bsa,125,131
+off:bsa132_professional_communications,Professional communications,iea,bsa,126,132
+off:bsa133_privilege_not_waived_by_volunteering_evidence,Privilege not waived by volunteering evidence,iea,bsa,128,133
+off:bsa134_confidential_communication_with_legal_advisers,Confidential communication with legal advisers,iea,bsa,129,134
+off:bsa135_production_of_title_deeds_of_witness_not_a_party,Production of title-deeds of witness not a party,iea,bsa,130,135
+off:bsa136_production_of_documents_or_electronic_records_wh,"Production of documents or electronic records which another person, having possession,",iea,bsa,131,136
+off:bsa137_witness_not_excused_from_answering_on_ground_tha,Witness not excused from answering on ground that answer will criminate,iea,bsa,132,137
+off:bsa138_accomplice,Accomplice,iea,bsa,133,138
+off:bsa139_number_of_witnesses,Number of witnesses,iea,bsa,134,139
+off:bsa140_order_of_production_and_examination_of_witnesses,Order of production and examination of witnesses,iea,bsa,135,140
+off:bsa141_judge_to_decide_as_to_admissibility_of_evidence,Judge to decide as to admissibility of evidence,iea,bsa,136,141
+off:bsa142_examination_of_witnesses,Examination of witnesses,iea,bsa,137,142
+off:bsa143_order_of_examinations,Order of examinations,iea,bsa,138,143
+off:bsa144_cross_examination_of_person_called_to_produce_a,Cross-examination of person called to produce a document,iea,bsa,139,144
+off:bsa145_witnesses_to_character,Witnesses to character,iea,bsa,140,145
+off:bsa146_leading_questions,Leading questions,iea,bsa,141;142,146
+off:bsa147_evidence_as_to_matters_in_writing,Evidence as to matters in writing,iea,bsa,144,147
+off:bsa148_cross_examination_as_to_previous_statements_in_w,Cross-examination as to previous statements in writing,iea,bsa,145,148
+off:bsa149_questions_lawful_in_cross_examination,Questions lawful in cross-examination,iea,bsa,146,149
+off:bsa150_when_witness_to_be_compelled_to_answer,When witness to be compelled to answer,iea,bsa,147,150
+off:bsa151_court_to_decide_when_question_shall_be_asked_and,Court to decide when question shall be asked and when witness compelled to,iea,bsa,148,151
+off:bsa152_question_not_to_be_asked_without_reasonable_grou,Question not to be asked without reasonable grounds,iea,bsa,149,152
+off:bsa153_procedure_of_court_in_case_of_question_being_ask,Procedure of Court in case of question being asked without reasonable,iea,bsa,150,153
+off:bsa154_indecent_and_scandalous_questions,Indecent and scandalous questions,iea,bsa,151,154
+off:bsa155_questions_intended_to_insult_or_annoy,Questions intended to insult or annoy,iea,bsa,152,155
+off:bsa156_exclusion_of_evidence_to_contradict_answers_to_q,Exclusion of evidence to contradict answers to questions testing veracity,iea,bsa,153,156
+off:bsa157_question_by_party_to_his_own_witness,Question by party to his own witness,iea,bsa,154,157
+off:bsa158_impeaching_credit_of_witness,Impeaching credit of witness,iea,bsa,155,158
+off:bsa159_questions_tending_to_corroborate_evidence_of_rel,"Questions tending to corroborate evidence of relevant fact, admissible",iea,bsa,156,159
+off:bsa160_former_statements_of_witness_may_be_proved_to_co,Former statements of witness may be proved to corroborate later testimony as to,iea,bsa,157,160
+off:bsa161_what_matters_may_be_proved_in_connection_with_pr,What matters may be proved in connection with proved statement relevant under,iea,bsa,158,161
+off:bsa162_refreshing_memory,Refreshing memory,iea,bsa,159,162
+off:bsa163_testimony_to_facts_stated_in_document_mentioned,Testimony to facts stated in document mentioned in section 162,iea,bsa,160,163
+off:bsa164_right_of_adverse_party_as_to_writing_used_to_ref,Right of adverse party as to writing used to refresh memory,iea,bsa,161,164
+off:bsa165_production_of_documents,Production of documents,iea,bsa,162,165
+off:bsa166_giving_as_evidence_of_document_called_for_and_pr,"Giving, as evidence, of document called for and produced on notice",iea,bsa,163,166
+off:bsa167_using_as_evidence_of_document_production_of_whic,"Using, as evidence, of document production of which was refused on",iea,bsa,164,167
+off:bsa168_judge_s_power_to_put_questions_or_order_producti,Judge’s power to put questions or order production,iea,bsa,165,168
+off:bsa169_no_new_trial_for_improper_admission_or_rejection,No new trial for improper admission or rejection of evidence,iea,bsa,167,169
+off:bsa170_repeal_and_savings,Repeal and savings,iea,bsa,,170

@@ -80,14 +80,36 @@ def query_from_judgment(doc: Document) -> Query:
                  incident_date=doc.decision_date)
 
 
-def _ilpcsr_queries(split: str, cfg: Config) -> list[Query]:
+SHORT_WORDS = 40
+_MASK = __import__("re").compile(r"\[[A-Z?_ /]+\]")
+
+
+def short_query_from_judgment(doc: Document, words: int = SHORT_WORDS) -> Query | None:
+    """A typed-question proxy: the first `words` words of the judgment's facts (masks removed),
+    with its state and date. Gold stays the judgment's citations (precedents it relied on)."""
+    facts = " ".join(p.text for p in doc.paragraphs if p.zone == "facts") or " ".join(p.text for p in doc.paragraphs[:3])
+    toks = _MASK.sub(" ", facts).split()
+    if len(toks) < 12:
+        return None
+    q = query_from_judgment(doc)
+    # plain words only: quotes, brackets, "/" and upper-case AND/OR/NOT are query syntax to the parser
+    text = " ".join(toks[:words])
+    text = __import__("re").sub(r'["()\[\]/]', " ", text)
+    text = __import__("re").sub(r"\b(AND|OR|NOT)\b", lambda m: m.group(1).lower(), text)
+    q.text = " ".join(text.split())
+    return q
+
+
+def _ilpcsr_queries(split: str, cfg: Config, short: bool = False) -> list[Query]:
     from kanoon_bridge.ingest import load_ilpcsr, metadata
 
     table = metadata.CourtTable.load(cfg)
     out = []
     for doc in load_ilpcsr.load_queries(split, cfg):
         metadata.enrich(doc, table)
-        out.append(query_from_judgment(doc))
+        q = short_query_from_judgment(doc) if short else query_from_judgment(doc)
+        if q is not None:
+            out.append(q)
     return out
 
 
@@ -110,15 +132,18 @@ def load_test_set(name: str, cfg: Config | None = None, ev: Config | None = None
 
     if spec.queries.startswith("ilpcsr_"):
         split = spec.queries.removeprefix("ilpcsr_")
-        queries = _ilpcsr_queries(split, cfg)[:limit]
+        short = split.endswith("_short")
+        split = split.removesuffix("_short")
+        queries = _ilpcsr_queries(split, cfg, short=short)[:limit]
         qrels = _restrict(load_ilpcsr.load_qrels(split, target, cfg), queries)
         val = None
         if spec.get("val") and ev.get("ilpcsr_protocol", True):
-            vsplit = spec.val.removeprefix("ilpcsr_")
-            vq = _ilpcsr_queries(vsplit, cfg)[:limit]
+            vsplit = spec.val.removeprefix("ilpcsr_").removesuffix("_short")
+            vq = _ilpcsr_queries(vsplit, cfg, short=short)[:limit]
             val = TestSet(f"{name}:val", vq, _restrict(load_ilpcsr.load_qrels(vsplit, target, cfg), vq),
-                          target, max_query_terms=ev.get("e1_max_query_terms"))
-        return TestSet(name, queries, qrels, target, val=val, max_query_terms=ev.get("e1_max_query_terms"))
+                          target, max_query_terms=None if short else ev.get("e1_max_query_terms"))
+        return TestSet(name, queries, qrels, target, val=val,
+                       max_query_terms=None if short else ev.get("e1_max_query_terms"))
 
     rows = _read_rows(project_path(spec.queries))[:limit]
     queries = [Query.from_dict(r) for r in rows]

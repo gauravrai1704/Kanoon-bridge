@@ -42,6 +42,8 @@ def _note(engine, step: dict) -> str:
         missing.append("no statute terms")
     if step.get("ltr") and getattr(engine, "ltr", None) is None:
         missing.append("no ltr model (run scripts/06_train_ltr.py)")
+    if step.get("ltr_short") and getattr(engine, "ltr_short", None) is None:
+        missing.append("no short-query ltr model (06_train_ltr.py --short)")
     return "; ".join(missing)
 
 

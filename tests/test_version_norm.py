@@ -29,7 +29,33 @@ def test_equivalents_cross_code():
 
 def test_other_acts_and_unknown_pass_through():
     n = norm()
-    assert n.to_offences("crpc:438") == [] and n.to_offences("?:302") == []
+    assert n.to_offences("constitution:21") == [] and n.to_offences("?:302") == []
+
+
+def test_procedure_and_evidence_are_bridged():
+    n = norm()
+    if not n.offences_for("crpc:438"):
+        import pytest
+
+        pytest.skip("provision_ids.csv not built (scripts/01_build_corpus.py with the indian-legal-mcp checkout)")
+    assert n.equivalents("crpc:438") == ["bnss:482"] and n.equivalents("bnss:482") == ["crpc:438"]
+    assert n.equivalents("iea:65b") == ["bsa:63"]
+    assert n.offences_for("crpc:438") == n.offences_for("bnss:482")
+
+
+def test_align_codes_on_toy_acts():
+    from kanoon_bridge.ingest.align_codes import Section, align, build_provision_ids, spot_check
+
+    old = [Section("438", "Direction for grant of bail to person apprehending arrest", "when any person has reason to believe that he may be arrested on accusation of having committed a non-bailable offence he may apply"),
+           Section("154", "Information in cognizable cases", "every information relating to the commission of a cognizable offence if given orally to an officer in charge of a police station")]
+    new = [Section("173", "Information in cognizable cases", "every information relating to the commission of a cognizable offence irrespective of the area where the offence is committed may be given orally or by electronic communication to an officer in charge of a police station"),
+           Section("482", "Direction for grant of bail to person apprehending arrest", "when any person has reason to believe that he may be arrested on an accusation of having committed a non-bailable offence he may apply"),
+           Section("530", "Trial and proceedings to be held in electronic mode", "all trials inquiries and proceedings may be held in electronic mode by use of electronic communication")]
+    rows = align(old, new)
+    assert spot_check(rows, [("438", "482"), ("154", "173")])["accuracy"] == 1.0
+    assert any(r["new"] == "530" and r["relation"] == "new" for r in rows)
+    ids = build_provision_ids(rows, "crpc", "bnss")
+    assert any(r["old_sections"] == "438" and r["new_sections"] == "482" for r in ids)
 
 
 def test_normalize_tokens_appends_offence():

@@ -77,7 +77,8 @@ def reformulate(aq: AnalyzedQuery, fused: dict[str, float], docs, plan: Plan,
     top = sorted(fused, key=fused.get, reverse=True)[:top_n]
     centroid = feedback_terms(top, docs, analyze, idf)
     query_terms = aq.weighted_terms()
-    superseded = {Code.IPC: "sec:bns:", Code.BNS: "sec:ipc:"}.get(aq.code_in_force)
+    superseded = {Code.IPC: ("sec:bns:", "sec:bnss:", "sec:bsa:"),
+                  Code.BNS: ("sec:ipc:", "sec:crpc:", "sec:iea:")}.get(aq.code_in_force)
     candidates = []
     for t, w in centroid.most_common():
         if t in query_terms or t.isdigit() or len(t) < 3:

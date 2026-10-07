@@ -28,6 +28,8 @@ HEADLINE = [  # set, metric, label, higher is better
     ("e1_ilpcsr", "MAP", "E1 precedents (IL-PCSR test) · MAP"),
     ("e1s_ilpcsr_statutes", "MAP", "E1 statutes (IL-PCSR test) · MAP"),
     ("e3_cross_version", "MAP", "E3 BNS-worded queries · MAP"),
+    ("e8_procedure_cross_version", "MAP", "E8 BNSS / BSA-worded queries · MAP"),
+    ("e9_procedure_temporal", "MAP", "E9 CrPC↔BNSS, IEA↔BSA by date · MAP"),
     ("e4_multilingual", "MAP", "E4 en / hi / Hinglish · MAP"),
     ("e6_jurisdiction", "nDCG@10", "E6 jurisdiction (graded) · nDCG@10"),
     ("e7_temporal", "code_accuracy@1", "E7 right code at rank 1"),
@@ -74,7 +76,8 @@ def fig_main(main, out):
 
 
 def fig_ablation(rows, out):
-    rows = [r for r in rows if r.get("MAP") not in (None, "")]
+    # +ltr_short only touches typed questions: identical to +ltr on whole-judgment queries
+    rows = [r for r in rows if r.get("MAP") not in (None, "") and r["step"] != "+ltr_short"]
     names = [r["step"] for r in rows]
     maps = [float(r["MAP"]) for r in rows]
     gains = [maps[0]] + [maps[i] - maps[i - 1] for i in range(1, len(maps))]
@@ -97,28 +100,28 @@ def fig_ablation(rows, out):
     plt.close(fig)
 
 
-def fig_e3(main, out):
-    vals = {(sys, s): _val(main, s, sys, "MAP") for sys in ("baseline", "full") for s in ("e3_control", "e3_cross_version")}
+def fig_e3(main, out, control="e3_control", cross="e3_cross_version", old="IPC", new="BNS", tag="E3"):
+    vals = {(sys, s): _val(main, s, sys, "MAP") for sys in ("baseline", "full") for s in (control, cross)}
     if None in vals.values():
         return False
     fig, ax = plt.subplots(figsize=(7.6, 3.6))
     xs = [0, 1, 3, 4]
-    keys = [("baseline", "e3_control"), ("baseline", "e3_cross_version"), ("full", "e3_control"), ("full", "e3_cross_version")]
+    keys = [("baseline", control), ("baseline", cross), ("full", control), ("full", cross)]
     cols = [GREY, GREY, BLUE, BLUE]
     alphas = [1.0, 0.55, 1.0, 0.55]
     for x, k, c, a in zip(xs, keys, cols, alphas):
         ax.bar(x, vals[k], color=c, alpha=a, width=0.85)
         ax.text(x, vals[k] + 0.01, f"{vals[k]:.2f}", ha="center", va="bottom", fontsize=10, color=INK)
-        ax.text(x, -0.035, "IPC wording" if k[1] == "e3_control" else "BNS wording", ha="center", va="top", fontsize=9, color=MUTED)
-    ax.text(0.5, -0.11, "BM25, text as written", ha="center", va="top", fontsize=10, color=INK, fontweight="bold")
-    ax.text(3.5, -0.11, "Kanoon-Bridge", ha="center", va="top", fontsize=10, color=BLUE, fontweight="bold")
+        ax.text(x, -0.035, f"{old}\nwording" if k[1] == control else f"{new}\nwording", ha="center", va="top", fontsize=9, color=MUTED)
+    ax.text(0.5, -0.15, "BM25, text as written", ha="center", va="top", fontsize=10, color=INK, fontweight="bold")
+    ax.text(3.5, -0.15, "Kanoon-Bridge", ha="center", va="top", fontsize=10, color=BLUE, fontweight="bold")
     ax.set_xticks([])
     ax.set_ylim(0, max(vals.values()) * 1.25)
     ax.set_ylabel("MAP", color=MUTED)
-    drop_b = vals[("baseline", "e3_control")] - vals[("baseline", "e3_cross_version")]
-    gap_f = vals[("full", "e3_control")] - vals[("full", "e3_cross_version")]
-    ax.set_title(f"E3: asking in BNS numbers costs BM25 {drop_b:.2f} MAP; Kanoon-Bridge loses {gap_f:.2f}")
-    fig.subplots_adjust(bottom=0.2)
+    drop_b = vals[("baseline", control)] - vals[("baseline", cross)]
+    gap_f = vals[("full", control)] - vals[("full", cross)]
+    ax.set_title(f"{tag}: asking in {new} numbers costs BM25 {drop_b:.2f} MAP; Kanoon-Bridge loses {gap_f:.2f}")
+    fig.subplots_adjust(bottom=0.26)
     fig.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(fig)
     return True
@@ -140,7 +143,7 @@ def fig_language(main, lang, out):
             ax.text(x, v + 0.004, f"{v:.2f}", ha="center", va="bottom", fontsize=8.5, color=INK)
     ax.set_xticks([li * (len(steps) + 1.2) + (len(steps) - 1) / 2 for li in range(3)], [n for _, n in langs])
     ax.tick_params(axis="x", length=0)
-    ax.set_ylabel("P@5 (E4, 20 needs per language)", color=MUTED)
+    ax.set_ylabel("P@5 (E4, 50 needs per language)", color=MUTED)
     ax.set_ylim(0, 0.3)
     ax.legend(title="analyser steps switched on", frameon=False, fontsize=8.5, title_fontsize=8.5, ncol=4,
               loc="upper center", bbox_to_anchor=(0.5, 1.02))
@@ -167,6 +170,9 @@ def main() -> None:
         made.append("fig_ablation.png")
     if fig_e3(main_rows, out / "fig_e3.png"):
         made.append("fig_e3.png")
+    if fig_e3(main_rows, out / "fig_e8.png", "e8_procedure_control", "e8_procedure_cross_version",
+              "CrPC / IEA", "BNSS / BSA", "E8"):
+        made.append("fig_e8.png")
     lang = read_table(tables / "language_e4.csv") if (tables / "language_e4.csv").exists() else []
     if fig_language(main_rows, lang, out / "fig_language.png"):
         made.append("fig_language.png")

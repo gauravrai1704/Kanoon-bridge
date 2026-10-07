@@ -23,7 +23,7 @@ pip install -e ".[dev]"
 mkdir -p data/raw/ilpcsr && cp /path/to/raw/ilpcsr/*.parquet data/raw/ilpcsr/
 make build          # corpus + indexes + citation graph + LTR model, about 6 minutes
 make web            # http://localhost:8000
-make test           # 156 tests
+make test           # 163 tests
 ```
 
 The BNS sections (`data/raw/bns-study-platform`) and the government crosswalk PDF are
@@ -34,15 +34,22 @@ our run are already in `results/tables/` and `results/figures/`.
 
 | Set | Metric | BM25 baseline | Kanoon-Bridge |
 | --- | --- | --- | --- |
-| E1 precedents (627 judgments) | MAP / F1@k / MRR | 0.220 / 0.151 / 0.316 | **0.418 / 0.311 / 0.560** |
-| E1 statutes | MAP / F1@k / MRR | 0.156 / 0.120 / 0.307 | **0.210 / 0.185 / 0.436** |
-| E3 asked in BNS numbers | MAP | 0.006 | **0.673** |
-| E4 English / Hindi / Hinglish | MAP | 0.456 | **0.570** |
-| E6 jurisdiction | nDCG@10 | 0.366 | **0.719** |
-| E7 right code at rank 1 | accuracy | 0.475 | **0.945** |
-| E2 colliding numbers | wrong-offence hits in top 10 | 7.9% | **0%** |
+| E1 precedents (627 judgments) | MAP / F1@k / MRR | 0.220 / 0.151 / 0.316 | **0.414 / 0.308 / 0.560** |
+| E1 statutes | MAP / F1@k / MRR | 0.149 / 0.118 / 0.281 | **0.220 / 0.189 / 0.449** |
+| E1q typed-question proxies (40 words) | MAP | 0.051 | 0.059 (0.076 with the short-query LTR) |
+| E3 asked in BNS numbers | MAP | 0.006 | **0.655** |
+| E8 asked in BNSS / BSA numbers | MAP | 0.005 | **0.654** |
+| E9 CrPC vs BNSS, IEA vs BSA by date | MAP | 0.630 | **0.859** |
+| E4 English / Hindi / Hinglish (50 needs) | MAP | 0.395 | **0.461** |
+| E6 jurisdiction | nDCG@10 | 0.366 | **0.657** |
+| E7 right code at rank 1 | accuracy | 0.475 | **0.955** |
+| E2 colliding numbers | wrong-offence hits in top 10 | 7.5% | **0%** |
 
-All differences except E2's MAP are significant (paired randomization test, Holm-corrected).
+All differences except E2's MAP and E1q are significant (paired randomization test, Holm-corrected).
+Second judge (blind AI sub-agents, declared): Cohen's κ = 0.54 on E4 and −0.16 on E6
+(`results/tables/agreement.csv`; see the report for why E6's citation-based gold disagrees).
+The dense channel and the post-2024 High Court judgments are run on a Colab T4 with
+`notebooks/colab_gpu_run.ipynb`.
 Full tables: `results/tables/main_results.csv`, `significance.csv`, `ablation_e1_ilpcsr.csv`.
 Report and video script: `docs/report/`.
 

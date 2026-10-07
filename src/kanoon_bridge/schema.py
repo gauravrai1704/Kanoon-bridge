@@ -35,7 +35,9 @@ class Code(str, Enum):
     IPC = "ipc"                    # Indian Penal Code, 1860 (in force until 30 Jun 2024)
     BNS = "bns"                    # Bharatiya Nyaya Sanhita, 2023 (from 1 Jul 2024)
     CRPC = "crpc"
-    BNSS = "bnss"
+    BNSS = "bnss"                  # Bharatiya Nagarik Suraksha Sanhita, 2023 (replaces CrPC)
+    IEA = "iea"                    # Indian Evidence Act, 1872
+    BSA = "bsa"                    # Bharatiya Sakshya Adhiniyam, 2023 (replaces IEA)
     OTHER = "other"                # any other Act
     UNKNOWN = "?"
 

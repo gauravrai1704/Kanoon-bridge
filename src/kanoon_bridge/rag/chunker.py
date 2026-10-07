@@ -52,7 +52,7 @@ def _best_paragraph(doc, qterms: set[str]):
 def statute_label(doc) -> str:
     """'BNS Section 103 - Punishment for murder' when the section ref is known, else the title."""
     ref = (getattr(doc, "meta", None) or {}).get("ref") or ""
-    if ":" in ref and ref.split(":", 1)[0] in ("ipc", "bns"):
+    if ":" in ref and ref.split(":", 1)[0] in ("ipc", "bns", "crpc", "bnss", "iea", "bsa"):
         code, sec = ref.split(":", 1)
         title = doc.title if doc.title and "section" not in doc.title.lower() else ""
         return f"{code.upper()} Section {sec}" + (f" - {title}" if title else "")

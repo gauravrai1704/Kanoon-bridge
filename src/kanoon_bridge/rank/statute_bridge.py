@@ -43,7 +43,7 @@ class StatuteBridge:
         refs = {t[4:] for t in tokens if t.startswith("sec:")}
         if self.normalizer is not None:
             for off in (t for t in tokens if t.startswith("off:")):
-                for code in ("ipc", "bns"):
+                for code in ("ipc", "bns", "crpc", "bnss", "iea", "bsa"):
                     refs.update(self.normalizer.sections_of(off, code))
             for ref in list(refs):
                 refs.update(self.normalizer.equivalents(ref))

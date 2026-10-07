@@ -75,6 +75,20 @@ def main() -> None:
                      or k.startswith(("wrong", "binding", "code_acc", "P@5_"))}
             print(f"  {system:9s} {shown}")
         print(f"  ({time.time() - t0:.1f}s)")
+    if engine.ltr_short is not None and not args.skip_ablation:
+        # the short-query LTR model is not part of "full" (see SearchOptions.ltr_short): report it beside
+        lrows = []
+        for name in ev.get("ltr_short_sets", []):
+            if name not in sets:
+                continue
+            ts = load_test_set(name, ev=ev, limit=args.limit)
+            for system, opt in (("full", SearchOptions.full()), ("full+ltr_short", SearchOptions(ltr=True, ngram=True, ltr_short=True))):
+                scores = evaluate_set(engine, ts, opt, system, ev, runs / "ltr_short")
+                lrows.append({"set": name, "system": system, **{k: round(v, 4) for k, v in scores.items()
+                                                                  if k in ("MAP", "nDCG@10", "P@5", "MRR", "binding_share@5")}})
+                print(f"  ltr_short {name} {system:15s} {lrows[-1]}")
+        if lrows:
+            ablation.write_table(lrows, tables / "ltr_short.csv")
     if rows:
         out = project_path(ev.outputs.tables) / "main_results.csv"
         if args.sets and out.exists():              # a subset was re-run: keep the other sets' rows
@@ -83,7 +97,7 @@ def main() -> None:
         ablation.write_table(rows, out)
 
     if not args.skip_ablation:
-        for name in ("e1_ilpcsr", "e2_collision"):
+        for name in ("e1_ilpcsr", "e1q_ilpcsr_short", "e2_collision"):
             if name in sets:
                 ts = load_test_set(name, ev=ev, limit=args.limit)
                 if ts.judged:

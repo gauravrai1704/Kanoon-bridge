@@ -3,6 +3,7 @@
     huggingface-cli login            # IL-PCSR is gated: accept its terms on the HF page first
     python scripts/00_fetch_data.py  # both sources
     python scripts/00_fetch_data.py --only bns
+    python scripts/00_fetch_data.py --only procedure    # BNSS + BSA (CrPC/IEA bridge)
 
 Sources
 -------
@@ -29,6 +30,17 @@ import sys
 from kanoon_bridge.config import load_config, project_path
 
 BNS_REPO = "https://github.com/PSKprem/bns-study-platform"
+PROCEDURE_REPO = "https://github.com/GSMS-B/indian-legal-mcp"     # BNSS + BSA bare acts, CrPC + IEA (MIT)
+
+
+def fetch_procedure(cfg) -> None:
+    dest = project_path(cfg.paths.procedure_dir)
+    if (dest / "data" / "raw" / "bnss_sections.json").exists():
+        print(f"procedure: already present at {dest}")
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "clone", "--depth", "1", PROCEDURE_REPO, str(dest)], check=True)
+    print(f"procedure: cloned to {dest}")
 
 
 def fetch_bns(cfg) -> None:
@@ -58,11 +70,13 @@ def fetch_ilpcsr(cfg) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", choices=["ilpcsr", "bns"])
+    ap.add_argument("--only", choices=["ilpcsr", "bns", "procedure"])
     args = ap.parse_args()
     cfg = load_config()
     if args.only in (None, "bns"):
         fetch_bns(cfg)
+    if args.only in (None, "procedure"):
+        fetch_procedure(cfg)
     if args.only in (None, "ilpcsr"):
         fetch_ilpcsr(cfg)
 

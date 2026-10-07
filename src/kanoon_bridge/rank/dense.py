@@ -54,6 +54,10 @@ class DenseRetriever:
         return f"{kind}: " if self.cfg.dense.get("e5_prefixes", True) else ""
 
     def _encode(self, texts: list[str], kind: str, batch_size: int = 32) -> np.ndarray:
+        model = self._model()
+        if getattr(model, "device", None) is not None and str(model.device).startswith("cuda") and not getattr(self, "_half", False):
+            model.half()                                   # fp16 on the GPU (Colab T4): ~2x faster
+            self._half = True
         vecs = self._model().encode([self._prefix(kind) + t for t in texts], batch_size=batch_size,
                                     normalize_embeddings=True, show_progress_bar=len(texts) > 256)
         vecs = np.asarray(vecs, dtype=np.float32)
@@ -84,7 +88,7 @@ class DenseRetriever:
         npy, ids = cls._paths(cfg, name)
         if not npy.exists():
             raise FileNotFoundError(f"{npy} not found - run scripts/04_encode_dense.py first (make dense)")
-        r = cls(cfg=cfg, model=model, matrix=np.load(npy))
+        r = cls(cfg=cfg, model=model, matrix=np.load(npy).astype(np.float32))   # stored as float16
         r.para_doc = json.loads(ids.read_text(encoding="utf-8"))
         r._index_rows()
         return r
@@ -107,7 +111,7 @@ class DenseRetriever:
         self._index_rows()
         npy, ids = self._paths(self.cfg, name)
         npy.parent.mkdir(parents=True, exist_ok=True)
-        np.save(npy, self.matrix)
+        np.save(npy, self.matrix.astype(np.float16))           # half the disk; cosine order unchanged
         ids.write_text(json.dumps(owners), encoding="utf-8")
 
     def score(self, text: str, candidates: set[str] | None = None) -> dict[str, float]:

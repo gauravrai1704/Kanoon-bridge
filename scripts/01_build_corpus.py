@@ -24,7 +24,8 @@ from kanoon_bridge.text.version_norm import VersionNormalizer
 
 SAMPLE_OVERRIDES = {"paths": {"ilpcsr_dir": "tests/data/ilpcsr_sample", "bns_dir": "data/raw/bns-study-platform"}}
 
-_CODE_LABEL = {"ipc": "IPC", "bns": "BNS", "crpc": "CrPC", "bnss": "BNSS"}
+_CODE_LABEL = {"ipc": "IPC", "bns": "BNS", "crpc": "CrPC", "bnss": "BNSS", "iea": "Evidence Act", "bsa": "BSA"}
+_BRIDGED = (Code.IPC, Code.BNS, Code.CRPC, Code.BNSS, Code.IEA, Code.BSA)
 
 
 def heading(doc) -> str:
@@ -42,6 +43,19 @@ def build(cfg) -> list:
         parse_crosswalk.write_crosswalk(rows, project_path(cfg.paths.crosswalk))
         parse_crosswalk.build_offence_ids(rows, project_path(cfg.paths.offence_ids))
         print(f"crosswalk: {sum(1 for r in rows if r['ipc_section'])} IPC-BNS pairs")
+    proc_dir = project_path(cfg.paths.procedure_dir)
+    if (proc_dir / "data" / "raw" / "bnss_sections.json").exists():
+        from kanoon_bridge.ingest import align_codes
+
+        ids = []
+        for old_code, (new_code, old_file, new_file, _, _) in align_codes.PAIRS.items():
+            rows = align_codes.align(align_codes.load_old(proc_dir / "data" / "raw" / old_file),
+                                     align_codes.load_new(proc_dir / "data" / "raw" / new_file))
+            align_codes.write(rows, project_path(cfg.paths[f"{old_code}_{new_code}"]), old_code, new_code,
+                              "GSMS-B/indian-legal-mcp (MIT)")
+            ids += align_codes.build_provision_ids(rows, old_code, new_code)
+        align_codes.write_provision_ids(ids, project_path(cfg.paths.provision_ids))
+        print(f"procedure/evidence crosswalk: {len(ids)} shared CrPC-BNSS / IEA-BSA provision ids")
     normalizer = VersionNormalizer.load(cfg)
     table = metadata.CourtTable.load(cfg)
 
@@ -50,6 +64,17 @@ def build(cfg) -> list:
         docs += load_statutes.parse_bns(bns_dir)
     else:
         print(f"warning: {bns_dir} missing - BNS statutes not added (run scripts/00_fetch_data.py)")
+    if (proc_dir / "data" / "raw" / "bnss_sections.json").exists():
+        docs += load_statutes.parse_new_procedure(proc_dir)
+    hc = project_path("data/processed/hc_docs.jsonl")           # post-2024 High Court judgments (scripts/11)
+    if hc.exists():
+        from kanoon_bridge.schema import read_documents
+
+        hc_docs = list(read_documents(hc))
+        docs += hc_docs
+        print(f"High Court open-data judgments added: {len(hc_docs)}")
+    else:
+        print(f"warning: {proc_dir} missing - BNSS/BSA statutes not added (run scripts/00_fetch_data.py --only procedure)")
 
     for doc in docs:
         if doc.doc_type == DocType.STATUTE:
@@ -57,9 +82,9 @@ def build(cfg) -> list:
                 segment.segment_statute(doc)
             doc.paragraphs.insert(0, Paragraph(heading(doc), "statute", -1))
             ref = doc.meta.get("ref", "")
-            doc.offence_ids = normalizer.offences_for(ref) if doc.code in (Code.IPC, Code.BNS) else []
-            if doc.code == Code.IPC and doc.offence_ids:
-                # IL-PCSR names IPC sections only by number; keep the offence name for display
+            doc.offence_ids = normalizer.offences_for(ref) if doc.code in _BRIDGED else []
+            if doc.code in (Code.IPC, Code.CRPC, Code.IEA) and doc.offence_ids:
+                # IL-PCSR names old-code sections only by number; keep the provision name for display
                 # (meta is not indexed, so retrieval is unchanged)
                 doc.meta["label"] = normalizer.label(doc.offence_ids[0])
         else:

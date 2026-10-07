@@ -142,22 +142,23 @@ python app/cli.py "bail in dowry death case" --agent --state maharashtra --date 
 
 Show `docs/report/figures/fig_main.png`.
 
-> "E1 is IL-PCSR's own precedent-retrieval benchmark: 627 test queries, each a whole judgment. Plain BM25 gets MAP 0.22. We get 0.42, and F1 goes from 0.15 to 0.31. That is close to the best lexical baseline in the IL-PCSR paper, which is BM25 over word trigrams. Every gain is significant under a paired randomization test with Holm correction."
+> "E1 is IL-PCSR's own precedent-retrieval benchmark: 627 test queries, each a whole judgment. Plain BM25 gets MAP 0.22. We get 0.41, and F1 goes from 0.15 to 0.31. That is close to the best lexical baseline in the IL-PCSR paper, which is BM25 over word trigrams. Every gain is significant under a paired randomization test with Holm correction."
 
 Show `fig_e3.png`.
 
 > "The version-aware sets are where the design shows:
-> - E3 is our core result. 'Cases under section 103 BNS': BM25 gets MAP 0.01, because no judgment says 'BNS 103'. We get 0.67.
-> - E7 asks the same offence before and after July 2024. The right code at rank 1 goes from 47% to 94%.
+> - E3 is our core result. 'Cases under section 103 BNS': BM25 gets MAP 0.01, because no judgment says 'BNS 103'. We get 0.65.
+> - E8 does the same for procedure and evidence, with a CrPC-to-BNSS and Evidence-Act-to-BSA alignment we built by text similarity: BM25 0.00, us 0.65.
+> - E7 asks the same offence before and after July 2024. The right code at rank 1 goes from 47% to 95%.
 > - E2 is colliding numbers like 302. Wrong-offence hits in the top 10 drop from 8% to zero."
 
 Show `fig_ablation.png`.
 
-> "The ablation adds one component at a time. Trigrams add 0.19 MAP. Learning to rank adds 0.03. And the statute bridge actually costs 0.03 on whole-judgment queries. We report that too."
+> "The ablation adds one component at a time. Trigrams add 0.19 MAP. Learning to rank adds 0.03. And the statute bridge actually costs 0.03 on whole-judgment queries. We report that too. A second ranker for typed questions lifts IL-PCSR-style queries by 30% but halves nDCG on our topical set, because it learns to prefer famous precedents, so it is off by default. A blind AI second judge agrees with our E4 labels at kappa 0.54 and disagrees with the citation-based E6 labels."
 
 Show the RAG line of `results/tables/rag.csv`.
 
-> "For answers, 91% of sentences are supported by the source they cite. Abstention is still weak: it caught one of four out-of-scope questions. That's on our list."
+> "For answers, 90% of sentences are supported by the source they cite. Abstention is still weak: it caught one of four out-of-scope questions. That's on our list."
 
 ---
 

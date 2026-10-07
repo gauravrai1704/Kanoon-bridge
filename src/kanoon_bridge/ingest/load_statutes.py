@@ -74,6 +74,32 @@ def parse_bns_json(root: str | Path) -> list[Document]:
     return docs
 
 
+NEW_ACTS = {  # code -> (file in the indian-legal-mcp checkout, act name)
+    Code.BNSS: ("bnss_sections.json", "Bharatiya Nagarik Suraksha Sanhita, 2023"),
+    Code.BSA: ("bsa_sections.json", "Bharatiya Sakshya Adhiniyam, 2023"),
+}
+
+
+def parse_new_procedure(root: str | Path) -> list[Document]:
+    """BNSS (531) and BSA (170) sections from the indian-legal-mcp checkout (bare-act text, MIT)."""
+    from kanoon_bridge.ingest.align_codes import load_new
+
+    docs = []
+    for code, (fname, act) in NEW_ACTS.items():
+        path = Path(root) / "data" / "raw" / fname
+        if not path.exists():
+            continue
+        for s in load_new(path):
+            ref = section_ref(code, s.number)
+            doc = Document(doc_id=ref, doc_type=DocType.STATUTE, title=s.title,
+                           paragraphs=[Paragraph(s.text.strip() or s.title, "statute", 0)], code=code,
+                           section=s.number, decision_date=BNS_IN_FORCE,
+                           meta={"act": act, "act_code": code.value, "ref": ref,
+                                 "source": "GSMS-B/indian-legal-mcp (bare act)"})
+            docs.append(segment_statute(doc))
+    return docs
+
+
 _HEADING_RE = re.compile(r"^\s*(\d{1,3}[A-Z]?)\.\s+([^\n]{3,200}?)\.?\s*[—–-]{1,2}", re.M)
 
 

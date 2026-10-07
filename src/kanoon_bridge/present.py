@@ -131,9 +131,16 @@ def _show(ref: str) -> str:
 
 def version_note(ref: str, normalizer) -> str:
     """'bns:103' -> 'BNS 103 <- IPC 302 (same offence)'; 'ipc:302' -> 'IPC 302 -> BNS 103 from 1 Jul 2024'."""
-    if not ref or normalizer is None or ref.split(":")[0] not in ("ipc", "bns"):
+    if not ref or normalizer is None or ref.split(":")[0] not in ("ipc", "bns", "crpc", "bnss", "iea", "bsa"):
         return ""
     code, _, num = ref.partition(":")
+    if code not in ("ipc", "bns"):                       # procedure / evidence: from the aligned ids
+        eq = normalizer.equivalents(ref)
+        if not eq:
+            return f"{_show(ref)}: new, no {('CrPC' if code == 'bnss' else 'IEA').upper()} counterpart" if code in ("bnss", "bsa") else ""
+        arrow = "<-" if code in ("bnss", "bsa") else "->"
+        tail = "" if code in ("bnss", "bsa") else " from 1 Jul 2024"
+        return f"{_show(ref)} {arrow} " + ", ".join(_show(e) for e in eq) + tail
     base = re.match(r"\d+[a-z]*", num)
     base = base.group(0) if base else num
     rows = [r for r in normalizer.crosswalk if (r.bns_section if code == "bns" else r.ipc_section) == base]

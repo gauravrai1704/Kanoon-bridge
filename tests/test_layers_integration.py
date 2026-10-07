@@ -200,6 +200,10 @@ def test_layer1_dense_fusion_with_fake_encoder(engine, tmp_path):
     eng.dense = dense
     res = eng.search(Query("knife", **Q), SearchOptions(dense=True, qpp=True))
     assert all("dense" in h.components for h in res.precedents)
+    fusion = [v for step, v in res.query.trace if step == "fusion"]           # typed question: 3-way QPP gate
+    assert fusion and "dense" in fusion[0] and "QPP confidence" in fusion[0]
+    long_q = " ".join(["the accused stabbed with a knife in the murder"] * 8)  # a pasted judgment
+    res = eng.search(Query(long_q, **Q), SearchOptions(dense=True, qpp=True, ngram=True))
     assert any(step == "alpha" for step, _ in res.query.trace)
 
 
@@ -274,6 +278,12 @@ def test_ltr_rerank_and_duplicate_collapse(engine):
     assert "ltr" in res.precedents[0].components and res.precedents[0].components["ltr"] == 1.0   # a binding case on top
     short = eng.search(Query("knife murder", **Q), SearchOptions(ltr=True))
     assert all("ltr" not in h.components for h in short.precedents)
+    # the short-query model: only when asked for, and never for a query citing a section
+    eng.ltr_short = LinearRanker(weights=w)
+    typed = eng.search(Query("knife murder", **Q), SearchOptions(ltr=True, ltr_short=True))
+    assert any(step == "ltr" and "short-query" in v for step, v in typed.query.trace)
+    cited = eng.search(Query("cases under section 302 IPC", **Q), SearchOptions(ltr=True, ltr_short=True))
+    assert not any(step == "ltr" for step, _ in cited.query.trace)
     eng.near_dups = {"P1": "P1", "P2": "P1"}
     res = eng.search(Query("knife murder", **Q), SearchOptions(collapse_duplicates=True))
     ids = [h.doc_id for h in res.precedents]
