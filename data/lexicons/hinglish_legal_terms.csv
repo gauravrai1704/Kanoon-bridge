@@ -1,17 +1,170 @@
 # Owner C. Roman Hindi / Devanagari legal terms -> English terms used in judgments and statutes.
-# Seed rows only; extend to ~150 terms. weight < 1.0 for looser translations.
+# One row per (word, English term); a word may have several rows. weight < 1.0 = looser translation.
+# Lookup normalises spellings (text/transliterate.normalize_roman), so list one common spelling.
 roman,devanagari,english,weight
 hatya,हत्या,murder,1.0
 qatl,क़त्ल,murder,1.0
-chori,चोरी,theft,1.0
-dhokha,धोखा,cheating,1.0
-dhokhadhadi,धोखाधड़ी,cheating,1.0
-chaku,चाकू,knife,0.8
+khoon,ख़ून,murder,0.7
+khooni,ख़ूनी,murder,0.7
+maarne,मारने,kill,0.7
+maar,मार,hurt,0.6
 maara,मारा,hurt,0.6
 maarpeet,मारपीट,hurt,1.0
+pitai,पिटाई,hurt,0.8
+hamla,हमला,assault,1.0
+humla,हुमला,assault,0.9
+vaar,वार,assault,0.6
+chot,चोट,hurt,0.8
+chot,चोट,injury,0.8
+zakhm,ज़ख़्म,injury,1.0
+ghayal,घायल,injury,0.8
+gambhir,गंभीर,grievous,0.7
+chaku,चाकू,knife,0.8
+chaku,चाकू,stab,0.6
+chaku,चाकू,dangerous weapon,0.5
+chhura,छुरा,knife,0.8
+talwar,तलवार,sword,0.8
+banduk,बंदूक,firearm,0.8
+tamancha,तमंचा,firearm,0.8
+katta,कट्टा,firearm,0.8
+pistaul,पिस्तौल,firearm,0.8
+goli,गोली,shot,0.7
+lathi,लाठी,stick,0.7
+danda,डंडा,stick,0.7
+hathiyar,हथियार,weapon,1.0
+hathiyar,हथियार,dangerous weapon,0.7
+zehar,ज़हर,poison,1.0
+vish,विष,poison,1.0
+chori,चोरी,theft,1.0
+chor,चोर,theft,0.8
+churaya,चुराया,theft,0.8
+loot,लूट,robbery,1.0
+lootpaat,लूटपाट,robbery,1.0
+dakaiti,डकैती,dacoity,1.0
+dhokha,धोखा,cheating,1.0
+dhokhadhadi,धोखाधड़ी,cheating,1.0
+thagi,ठगी,cheating,1.0
+farzi,फ़र्ज़ी,forgery,0.8
+jaali,जाली,forgery,0.9
+jaalsazi,जालसाज़ी,forgery,1.0
+nakli,नक़ली,counterfeit,0.8
+amanat,अमानत,entrusted,0.8
+khayanat,ख़यानत,criminal breach of trust,0.9
+gaban,ग़बन,misappropriation,1.0
+gaban,ग़बन,criminal breach of trust,0.8
+rishwat,रिश्वत,bribe,1.0
+ghoos,घूस,bribe,1.0
+bhrashtachar,भ्रष्टाचार,corruption,1.0
+vasooli,वसूली,extortion,0.9
+blackmail,ब्लैकमेल,extortion,0.8
+hafta,हफ़्ता,extortion,0.6
 dhamki,धमकी,criminal intimidation,1.0
+dhamki,धमकी,threat,0.8
+dhamkaya,धमकाया,intimidation,0.8
 dahej,दहेज,dowry,1.0
+pratadna,प्रताड़ना,cruelty,1.0
+zulm,ज़ुल्म,cruelty,0.8
+atyachar,अत्याचार,cruelty,0.8
+utpidan,उत्पीड़न,harassment,1.0
+satana,सताना,harassment,0.8
+pareshan,परेशान,harassment,0.6
+pati,पति,husband,1.0
+patni,पत्नी,wife,1.0
+biwi,बीवी,wife,1.0
+sasural,ससुराल,matrimonial,0.6
+saas,सास,relative,0.5
+talaq,तलाक़,divorce,1.0
+shaadi,शादी,marriage,1.0
+vivah,विवाह,marriage,1.0
 balatkar,बलात्कार,rape,1.0
+yaun,यौन,sexual,1.0
+shoshan,शोषण,exploitation,0.8
+chhedchhad,छेड़छाड़,molestation,0.8
+chhedchhad,छेड़छाड़,outraging modesty,0.8
+ijjat,इज़्ज़त,modesty,0.6
+lajja,लज्जा,modesty,0.7
+ashleel,अश्लील,obscene,1.0
+pichha,पीछा,stalking,0.8
+apharan,अपहरण,kidnapping,1.0
+agwa,अगवा,abduction,0.9
+bhagana,भगाना,kidnapping,0.6
+bandhak,बंधक,wrongful confinement,0.6
+qaid,क़ैद,imprisonment,0.9
+umrqaid,उम्रक़ैद,imprisonment for life,1.0
+atmahatya,आत्महत्या,suicide,1.0
+khudkushi,ख़ुदकुशी,suicide,1.0
+uksana,उकसाना,abetment,0.9
+saazish,साज़िश,conspiracy,1.0
+shadyantra,षड्यंत्र,conspiracy,1.0
+danga,दंगा,rioting,1.0
+dange,दंगे,rioting,1.0
+bheed,भीड़,unlawful assembly,0.6
+aag,आग,fire,0.7
+aagzani,आगज़नी,fire,0.8
+aagzani,आगज़नी,mischief,0.7
+todphod,तोड़फोड़,mischief,0.8
+nuksaan,नुक़सान,damage,0.7
+zameen,ज़मीन,land,0.8
+kabza,क़ब्ज़ा,possession,0.8
+kabza,क़ब्ज़ा,trespass,0.7
+ghuspaith,घुसपैठ,trespass,1.0
+ghar,घर,house,0.6
+sampatti,संपत्ति,property,1.0
+maal,माल,property,0.7
+paise,पैसे,money,0.7
+rupaye,रुपये,money,0.7
+gaali,गाली,abuse,0.7
+apmaan,अपमान,insult,1.0
+maanhani,मानहानि,defamation,1.0
+badnami,बदनामी,defamation,0.7
+lapravahi,लापरवाही,negligence,1.0
+durghatna,दुर्घटना,accident,1.0
+takkar,टक्कर,accident,0.6
+gaadi,गाड़ी,vehicle,0.8
+vahan,वाहन,vehicle,1.0
+nasha,नशा,intoxication,0.8
+sharab,शराब,liquor,0.8
+ganja,गांजा,narcotic,0.7
+nashili,नशीली,narcotic,0.8
+jhagda,झगड़ा,quarrel,0.8
+ladai,लड़ाई,fight,0.8
+khatra,ख़तरा,danger,0.7
+jaan,जान,life,0.6
+maut,मौत,death,1.0
+mrityu,मृत्यु,death,1.0
+laash,लाश,dead body,0.7
+bachcha,बच्चा,child,1.0
+bachchi,बच्ची,child,1.0
+nabalig,नाबालिग,minor,1.0
+ladki,लड़की,girl,0.7
+aurat,औरत,woman,0.8
+mahila,महिला,woman,1.0
+peedit,पीड़ित,victim,1.0
+aaropi,आरोपी,accused,1.0
+mujrim,मुजरिम,accused,0.8
+apradhi,अपराधी,offender,0.8
+apradh,अपराध,offence,1.0
+jurm,जुर्म,offence,1.0
+doshi,दोषी,convicted,0.8
+bari,बरी,acquitted,0.8
+saza,सज़ा,punishment,1.0
+saza,सज़ा,sentence,0.8
+jurmana,जुर्माना,fine,1.0
+faansi,फांसी,death sentence,0.8
 zamanat,ज़मानत,bail,1.0
 giraftari,गिरफ़्तारी,arrest,1.0
-lapravahi,लापरवाही,negligence,1.0
+giraftar,गिरफ़्तार,arrest,1.0
+thana,थाना,police station,0.8
+shikayat,शिकायत,complaint,1.0
+mukadma,मुक़दमा,trial,0.7
+mukadma,मुक़दमा,case,0.7
+adalat,अदालत,court,1.0
+nyayalay,न्यायालय,court,1.0
+vakil,वकील,advocate,1.0
+gawah,गवाह,witness,1.0
+gawahi,गवाही,evidence,0.8
+saboot,सबूत,evidence,1.0
+kanoon,क़ानून,law,0.8
+gairkanooni,ग़ैरक़ानूनी,unlawful,0.9
+avaidh,अवैध,unlawful,0.8
+dhara,धारा,section,0.8
