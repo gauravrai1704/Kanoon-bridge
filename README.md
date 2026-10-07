@@ -114,6 +114,8 @@ Python 3.10+.
 
 ## Data
 
+For easy access go to: https://drive.google.com/drive/folders/1fIHr80Uz0QNTrk9BDXvpmFvsHk8A8MLI?usp=sharing
+
 Downloads go in `data/raw/` (gitignored). One command fetches both sources:
 
 ```bash
