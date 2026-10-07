@@ -1,2 +1,40 @@
-{"id": "E6-EX1-delhi", "text": "bail in dowry death case", "lang": "en", "state": "delhi", "incident_date": "2022-08-01", "notes": "EXAMPLE - same text run once per state"}
-{"id": "E6-EX1-maharashtra", "text": "bail in dowry death case", "lang": "en", "state": "maharashtra", "incident_date": "2022-08-01", "notes": "EXAMPLE"}
+{"id": "E6-murder_conviction-delhi", "text": "appeal against murder conviction on circumstantial evidence", "lang": "en", "state": "delhi", "topic": "murder_conviction", "sections": ["ipc:302"]}
+{"id": "E6-murder_conviction-maharashtra", "text": "appeal against murder conviction on circumstantial evidence", "lang": "en", "state": "maharashtra", "topic": "murder_conviction", "sections": ["ipc:302"]}
+{"id": "E6-murder_conviction-punjab", "text": "appeal against murder conviction on circumstantial evidence", "lang": "en", "state": "punjab", "topic": "murder_conviction", "sections": ["ipc:302"]}
+{"id": "E6-murder_conviction-uttar-pradesh", "text": "appeal against murder conviction on circumstantial evidence", "lang": "en", "state": "uttar-pradesh", "topic": "murder_conviction", "sections": ["ipc:302"]}
+{"id": "E6-cheque_bounce-delhi", "text": "cheque dishonour complaint under negotiable instruments act", "lang": "en", "state": "delhi", "topic": "cheque_bounce", "sections": ["nia:138"]}
+{"id": "E6-cheque_bounce-maharashtra", "text": "cheque dishonour complaint under negotiable instruments act", "lang": "en", "state": "maharashtra", "topic": "cheque_bounce", "sections": ["nia:138"]}
+{"id": "E6-cheque_bounce-punjab", "text": "cheque dishonour complaint under negotiable instruments act", "lang": "en", "state": "punjab", "topic": "cheque_bounce", "sections": ["nia:138"]}
+{"id": "E6-cheque_bounce-uttar-pradesh", "text": "cheque dishonour complaint under negotiable instruments act", "lang": "en", "state": "uttar-pradesh", "topic": "cheque_bounce", "sections": ["nia:138"]}
+{"id": "E6-quash_fir-delhi", "text": "quashing of FIR under inherent powers of high court", "lang": "en", "state": "delhi", "topic": "quash_fir", "sections": ["crpc:482"]}
+{"id": "E6-quash_fir-maharashtra", "text": "quashing of FIR under inherent powers of high court", "lang": "en", "state": "maharashtra", "topic": "quash_fir", "sections": ["crpc:482"]}
+{"id": "E6-quash_fir-punjab", "text": "quashing of FIR under inherent powers of high court", "lang": "en", "state": "punjab", "topic": "quash_fir", "sections": ["crpc:482"]}
+{"id": "E6-quash_fir-uttar-pradesh", "text": "quashing of FIR under inherent powers of high court", "lang": "en", "state": "uttar-pradesh", "topic": "quash_fir", "sections": ["crpc:482"]}
+{"id": "E6-cruelty_498a-delhi", "text": "cruelty by husband and relatives for dowry", "lang": "en", "state": "delhi", "topic": "cruelty_498a", "sections": ["ipc:498a"]}
+{"id": "E6-cruelty_498a-maharashtra", "text": "cruelty by husband and relatives for dowry", "lang": "en", "state": "maharashtra", "topic": "cruelty_498a", "sections": ["ipc:498a"]}
+{"id": "E6-cruelty_498a-punjab", "text": "cruelty by husband and relatives for dowry", "lang": "en", "state": "punjab", "topic": "cruelty_498a", "sections": ["ipc:498a"]}
+{"id": "E6-cruelty_498a-uttar-pradesh", "text": "cruelty by husband and relatives for dowry", "lang": "en", "state": "uttar-pradesh", "topic": "cruelty_498a", "sections": ["ipc:498a"]}
+{"id": "E6-attempt_murder-delhi", "text": "attempt to murder conviction and sentence", "lang": "en", "state": "delhi", "topic": "attempt_murder", "sections": ["ipc:307"]}
+{"id": "E6-attempt_murder-maharashtra", "text": "attempt to murder conviction and sentence", "lang": "en", "state": "maharashtra", "topic": "attempt_murder", "sections": ["ipc:307"]}
+{"id": "E6-attempt_murder-punjab", "text": "attempt to murder conviction and sentence", "lang": "en", "state": "punjab", "topic": "attempt_murder", "sections": ["ipc:307"]}
+{"id": "E6-attempt_murder-uttar-pradesh", "text": "attempt to murder conviction and sentence", "lang": "en", "state": "uttar-pradesh", "topic": "attempt_murder", "sections": ["ipc:307"]}
+{"id": "E6-cheating_420-delhi", "text": "cheating and dishonestly inducing delivery of property", "lang": "en", "state": "delhi", "topic": "cheating_420", "sections": ["ipc:420"]}
+{"id": "E6-cheating_420-maharashtra", "text": "cheating and dishonestly inducing delivery of property", "lang": "en", "state": "maharashtra", "topic": "cheating_420", "sections": ["ipc:420"]}
+{"id": "E6-cheating_420-punjab", "text": "cheating and dishonestly inducing delivery of property", "lang": "en", "state": "punjab", "topic": "cheating_420", "sections": ["ipc:420"]}
+{"id": "E6-cheating_420-uttar-pradesh", "text": "cheating and dishonestly inducing delivery of property", "lang": "en", "state": "uttar-pradesh", "topic": "cheating_420", "sections": ["ipc:420"]}
+{"id": "E6-abet_suicide-delhi", "text": "abetment of suicide by harassment", "lang": "en", "state": "delhi", "topic": "abet_suicide", "sections": ["ipc:306"]}
+{"id": "E6-abet_suicide-maharashtra", "text": "abetment of suicide by harassment", "lang": "en", "state": "maharashtra", "topic": "abet_suicide", "sections": ["ipc:306"]}
+{"id": "E6-abet_suicide-punjab", "text": "abetment of suicide by harassment", "lang": "en", "state": "punjab", "topic": "abet_suicide", "sections": ["ipc:306"]}
+{"id": "E6-abet_suicide-uttar-pradesh", "text": "abetment of suicide by harassment", "lang": "en", "state": "uttar-pradesh", "topic": "abet_suicide", "sections": ["ipc:306"]}
+{"id": "E6-rape_376-delhi", "text": "rape conviction based on testimony of prosecutrix", "lang": "en", "state": "delhi", "topic": "rape_376", "sections": ["ipc:376"]}
+{"id": "E6-rape_376-maharashtra", "text": "rape conviction based on testimony of prosecutrix", "lang": "en", "state": "maharashtra", "topic": "rape_376", "sections": ["ipc:376"]}
+{"id": "E6-rape_376-punjab", "text": "rape conviction based on testimony of prosecutrix", "lang": "en", "state": "punjab", "topic": "rape_376", "sections": ["ipc:376"]}
+{"id": "E6-rape_376-uttar-pradesh", "text": "rape conviction based on testimony of prosecutrix", "lang": "en", "state": "uttar-pradesh", "topic": "rape_376", "sections": ["ipc:376"]}
+{"id": "E6-rash_driving-delhi", "text": "death by rash and negligent driving", "lang": "en", "state": "delhi", "topic": "rash_driving", "sections": ["ipc:304a"]}
+{"id": "E6-rash_driving-maharashtra", "text": "death by rash and negligent driving", "lang": "en", "state": "maharashtra", "topic": "rash_driving", "sections": ["ipc:304a"]}
+{"id": "E6-rash_driving-punjab", "text": "death by rash and negligent driving", "lang": "en", "state": "punjab", "topic": "rash_driving", "sections": ["ipc:304a"]}
+{"id": "E6-rash_driving-uttar-pradesh", "text": "death by rash and negligent driving", "lang": "en", "state": "uttar-pradesh", "topic": "rash_driving", "sections": ["ipc:304a"]}
+{"id": "E6-motor_claims-delhi", "text": "compensation claim for motor accident before tribunal", "lang": "en", "state": "delhi", "topic": "motor_claims", "sections": ["mva:166"]}
+{"id": "E6-motor_claims-maharashtra", "text": "compensation claim for motor accident before tribunal", "lang": "en", "state": "maharashtra", "topic": "motor_claims", "sections": ["mva:166"]}
+{"id": "E6-motor_claims-punjab", "text": "compensation claim for motor accident before tribunal", "lang": "en", "state": "punjab", "topic": "motor_claims", "sections": ["mva:166"]}
+{"id": "E6-motor_claims-uttar-pradesh", "text": "compensation claim for motor accident before tribunal", "lang": "en", "state": "uttar-pradesh", "topic": "motor_claims", "sections": ["mva:166"]}
