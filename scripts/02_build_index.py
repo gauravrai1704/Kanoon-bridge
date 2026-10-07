@@ -7,6 +7,8 @@ Reads data/processed/docs.jsonl, runs every document through text.pipeline.analy
     data/processed/index/precedents_zone.pkl
     data/processed/index/facets.pkl
     data/processed/index/statute_terms.json     statute doc_id -> its section + offence tokens
+    data/processed/index/surface_forms.json     spellings seen in the corpus (did-you-mean display)
+    data/processed/index/near_duplicates.json   precedent -> near-duplicate group (MinHash + LSH)
 
 Query cases (IL-PCSR queries) are NOT indexed: they are only used as queries.
 
@@ -37,14 +39,31 @@ def main() -> None:
     store.save(ZoneIndex.build(statutes, analyze), "statutes_zone")
     store.save(ZoneIndex.build(precedents, analyze), "precedents_zone")
     store.save(FacetIndex.build(statutes + precedents), "facets")
+    from kanoon_bridge.rank.ngram import NgramIndex, describe
 
+    for name, group in (("statutes", statutes), ("precedents", precedents)):
+        ng = NgramIndex.build(group, n=cfg.ngram.n, k1=cfg.ngram.k1, b=cfg.ngram.b)
+        store.save(ng, f"ngram_{name}")
+        print(name, describe(ng))
+
+    # statute doc -> its canonical section token + offence tokens (input of rank/statute_bridge.py)
     statute_terms = {}
     for d in statutes:
-        terms = analyze_text(f"section {d.section} {d.code.value}", res) if d.section else []
-        statute_terms[d.doc_id] = [t for t in terms if t.startswith(("sec:", "off:"))] + [
-            f"off:{o.removeprefix('off:')}" for o in d.offence_ids
-        ]
+        ref = d.meta.get("ref", "")
+        statute_terms[d.doc_id] = ([f"sec:{ref}"] if ref else []) + list(dict.fromkeys(d.offence_ids))
     store.save(statute_terms, "statute_terms", "json")
+
+    # stem -> most frequent spelling, so spelling suggestions read "dowry", not "dowri"
+    from kanoon_bridge.text.spell import surface_forms
+
+    store.save(surface_forms(statutes + precedents), "surface_forms", "json")
+
+    # near-duplicate judgments (MinHash + LSH), collapsed in interactive results
+    from kanoon_bridge.index.dedup import near_duplicate_groups
+
+    dups = near_duplicate_groups(precedents)
+    store.save(dups, "near_duplicates", "json")
+    print(f"near-duplicates: {len(dups)} precedents in {len(set(dups.values()))} groups")
     print("saved indexes to", store.index_dir())
 
 

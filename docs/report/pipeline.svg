@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 760" width="1600" height="760" font-family="Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3d4256"/></marker>
+    <style>
+      .box{fill:#fff;stroke:#3d4256;stroke-width:1.5;rx:10}
+      .t{font-size:17px;font-weight:700;fill:#1d2033}
+      .s{font-size:13.5px;fill:#3d4256}
+      .f{font-size:12px;fill:#7a6020;font-family:'IBM Plex Mono',Menlo,monospace}
+      .band{font-size:15px;font-weight:700;letter-spacing:.5px}
+      .ln{stroke:#3d4256;stroke-width:1.6;fill:none;marker-end:url(#a)}
+      .dl{stroke:#6b4fa0;stroke-width:1.6;fill:none;stroke-dasharray:6 5;marker-end:url(#a)}
+    </style>
+  </defs>
+  <rect width="1600" height="760" fill="#fbfaf6"/>
+  <text x="30" y="40" font-size="24" font-weight="800" fill="#1d2033">Kanoon-Bridge pipeline</text>
+  <text x="30" y="64" class="s">Offline build (top) feeds the Layer 1 core retriever; Layer 2 (agent) and Layer 3 (grounded answer) call Layer 1 and never rank on their own.</text>
+
+  <!-- offline -->
+  <rect x="20" y="82" width="1560" height="150" rx="14" fill="#eef1f8" stroke="#c9cfe0"/>
+  <text x="36" y="106" class="band" fill="#33529b">OFFLINE BUILD (make data index graph ltr)</text>
+  <g>
+    <rect class="box" x="36" y="118" width="280" height="100"/>
+    <text x="50" y="142" class="t">Sources</text>
+    <text x="50" y="164" class="s">IL-PCSR: 3,183 precedents,</text>
+    <text x="50" y="182" class="s">936 statutes, 6,271 query cases</text>
+    <text x="50" y="200" class="s">BNS: 358 sections + crosswalk</text>
+    <rect class="box" x="340" y="118" width="300" height="100"/>
+    <text x="354" y="142" class="t">Corpus + version normalisation</text>
+    <text x="354" y="164" class="s">rhetorical roles → zones (facts, arguments,</text>
+    <text x="354" y="182" class="s">reasoning, decision); 496 IPC↔BNS</text>
+    <text x="354" y="200" class="s">pairs → offence ids for both codes</text>
+    <text x="354" y="212" class="f">ingest/  text/version_norm.py</text>
+    <rect class="box" x="664" y="118" width="300" height="100"/>
+    <text x="678" y="142" class="t">Indexes</text>
+    <text x="678" y="164" class="s">positional inverted index, per-zone index,</text>
+    <text x="678" y="182" class="s">facet index (court/state/date/code),</text>
+    <text x="678" y="200" class="s">bigram k-gram (spelling), MinHash LSH</text>
+    <text x="678" y="214" class="f">index/</text>
+    <rect class="box" x="988" y="118" width="280" height="100"/>
+    <text x="1002" y="142" class="t">Citation graph</text>
+    <text x="1002" y="164" class="s">train citations → PageRank per</text>
+    <text x="1002" y="182" class="s">jurisdiction; tiers + champion lists</text>
+    <text x="1002" y="214" class="f">rank/citation_graph.py</text>
+    <rect class="box" x="1292" y="118" width="272" height="100"/>
+    <text x="1306" y="142" class="t">Learning to rank</text>
+    <text x="1306" y="164" class="s">13 features, coordinate ascent</text>
+    <text x="1306" y="182" class="s">on MAP, VAL split only</text>
+    <text x="1306" y="214" class="f">rank/ltr.py</text>
+    <path class="ln" d="M316,168 H338"/><path class="ln" d="M640,168 H662"/><path class="ln" d="M964,168 H986"/><path class="ln" d="M1268,168 H1290"/>
+  </g>
+
+  <!-- layer 1 -->
+  <rect x="20" y="250" width="1560" height="232" rx="14" fill="#edf6f2" stroke="#bfdccf"/>
+  <text x="36" y="274" class="band" fill="#1f7a55">LAYER 1  CORE RETRIEVER  (search.py: SearchEngine.search)</text>
+  <g>
+    <rect class="box" x="36" y="288" width="180" height="180"/>
+    <text x="50" y="312" class="t">Query</text>
+    <text x="50" y="334" class="s">English, Hindi or</text>
+    <text x="50" y="352" class="s">Hinglish text</text>
+    <text x="50" y="374" class="s">+ state</text>
+    <text x="50" y="392" class="s">+ incident date</text>
+    <text x="50" y="414" class="s">+ Boolean / phrase /</text>
+    <text x="50" y="432" class="s">facet syntax</text>
+
+    <rect class="box" x="236" y="288" width="300" height="180"/>
+    <text x="250" y="312" class="t">Analyse</text>
+    <text x="250" y="334" class="s">1 parse Boolean, "phrase", /k, filters</text>
+    <text x="250" y="352" class="s">2 detect language; transliterate;</text>
+    <text x="250" y="370" class="s">   Hindi soundex; legal lexicon</text>
+    <text x="250" y="388" class="s">3 spelling: k-gram + Damerau-Lev.</text>
+    <text x="250" y="406" class="s">4 section → offence id (both codes)</text>
+    <text x="250" y="424" class="s">5 bare "302": collision resolver</text>
+    <text x="250" y="442" class="s">6 code in force from the date</text>
+    <text x="250" y="460" class="f">query/analyzer.py  text/*</text>
+
+    <rect class="box" x="556" y="288" width="220" height="180"/>
+    <text x="570" y="312" class="t">Rank statutes</text>
+    <text x="570" y="334" class="s">BM25 over sections of</text>
+    <text x="570" y="352" class="s">the code in force</text>
+    <text x="570" y="374" class="s">(IPC before 1 Jul 2024,</text>
+    <text x="570" y="392" class="s">BNS from then on)</text>
+    <text x="570" y="460" class="f">rank/bm25f.py</text>
+
+    <rect class="box" x="796" y="288" width="220" height="180"/>
+    <text x="810" y="312" class="t">Statute bridge</text>
+    <text x="810" y="334" class="s">top statutes' offence</text>
+    <text x="810" y="352" class="s">ids boost precedents</text>
+    <text x="810" y="370" class="s">that applied them, in</text>
+    <text x="810" y="388" class="s">EITHER code</text>
+    <text x="810" y="460" class="f">rank/statute_bridge.py</text>
+
+    <rect class="box" x="1036" y="288" width="250" height="180"/>
+    <text x="1050" y="312" class="t">Rank precedents</text>
+    <text x="1050" y="334" class="s">BM25F over judgment zones</text>
+    <text x="1050" y="352" class="s">+ dense MaxP (optional)</text>
+    <text x="1050" y="370" class="s">mixed by QPP</text>
+    <text x="1050" y="392" class="s">+ λ·authority g(d | state):</text>
+    <text x="1050" y="410" class="s">binding vs persuasive</text>
+    <text x="1050" y="460" class="f">rank/authority.py  qpp.py</text>
+
+    <rect class="box" x="1306" y="288" width="258" height="180"/>
+    <text x="1320" y="312" class="t">Re-rank + present</text>
+    <text x="1320" y="334" class="s">LTR top-100; near-duplicate</text>
+    <text x="1320" y="352" class="s">collapse; query-biased</text>
+    <text x="1320" y="370" class="s">snippets; "why this result";</text>
+    <text x="1320" y="388" class="s">facet counts; similar cases;</text>
+    <text x="1320" y="406" class="s">Rocchio feedback</text>
+    <text x="1320" y="460" class="f">rank/ltr.py  present.py</text>
+    <path class="ln" d="M216,378 H234"/><path class="ln" d="M536,378 H554"/><path class="ln" d="M776,378 H794"/><path class="ln" d="M1016,378 H1034"/><path class="ln" d="M1286,378 H1304"/>
+  </g>
+
+  <!-- layer 2 and 3 -->
+  <rect x="20" y="500" width="770" height="240" rx="14" fill="#f3effa" stroke="#d6cbea"/>
+  <text x="36" y="524" class="band" fill="#5b3f94">LAYER 2  RESEARCH AGENT</text>
+  <rect class="box" x="36" y="540" width="170" height="130"/>
+  <text x="50" y="564" class="t">Plan</text>
+  <text x="50" y="586" class="s">cross-code rewrite,</text>
+  <text x="50" y="604" class="s">Boolean CNF, binding-</text>
+  <text x="50" y="622" class="s">court facet, statutes-</text>
+  <text x="50" y="640" class="s">first sub-queries</text>
+  <rect class="box" x="226" y="540" width="160" height="130"/>
+  <text x="240" y="564" class="t">Execute</text>
+  <text x="240" y="586" class="s">each sub-query is</text>
+  <text x="240" y="604" class="s">one Layer 1 search</text>
+  <rect class="box" x="406" y="540" width="160" height="130"/>
+  <text x="420" y="564" class="t">Fuse</text>
+  <text x="420" y="586" class="s">reciprocal rank</text>
+  <text x="420" y="604" class="s">fusion (RRF)</text>
+  <rect class="box" x="586" y="540" width="188" height="130"/>
+  <text x="600" y="564" class="t">Reflect</text>
+  <text x="600" y="586" class="s">QPP says weak →</text>
+  <text x="600" y="604" class="s">pseudo-relevance</text>
+  <text x="600" y="622" class="s">feedback round</text>
+  <path class="ln" d="M206,605 H224"/><path class="ln" d="M386,605 H404"/><path class="ln" d="M566,605 H584"/>
+  <path class="dl" d="M680,670 V700 H120 V672"/>
+  <text x="300" y="718" class="s" fill="#5b3f94">weak retrieval: add feedback terms, plan again (max 2 rounds)</text>
+
+  <rect x="810" y="500" width="770" height="240" rx="14" fill="#fbf1e8" stroke="#ecd2bb"/>
+  <text x="826" y="524" class="band" fill="#a2541c">LAYER 3  GROUNDED ANSWER</text>
+  <rect class="box" x="826" y="540" width="170" height="130"/>
+  <text x="840" y="564" class="t">Abstain?</text>
+  <text x="840" y="586" class="s">QPP + idf-weighted</text>
+  <text x="840" y="604" class="s">coverage of the</text>
+  <text x="840" y="622" class="s">question</text>
+  <rect class="box" x="1016" y="540" width="170" height="130"/>
+  <text x="1030" y="564" class="t">Chunk + write</text>
+  <text x="1030" y="586" class="s">top statutes and</text>
+  <text x="1030" y="604" class="s">reasoning paragraphs;</text>
+  <text x="1030" y="622" class="s">Claude or extractive</text>
+  <rect class="box" x="1206" y="540" width="170" height="130"/>
+  <text x="1220" y="564" class="t">Citation check</text>
+  <text x="1220" y="586" class="s">tf-idf cosine of each</text>
+  <text x="1220" y="604" class="s">sentence vs the</text>
+  <text x="1220" y="622" class="s">source it cites</text>
+  <rect class="box" x="1396" y="540" width="168" height="130"/>
+  <text x="1410" y="564" class="t">Version check</text>
+  <text x="1410" y="586" class="s">IPC cited for a</text>
+  <text x="1410" y="604" class="s">2025 incident? bare</text>
+  <text x="1410" y="622" class="s">"302"? → flag</text>
+  <path class="ln" d="M996,605 H1014"/><path class="ln" d="M1186,605 H1204"/><path class="ln" d="M1376,605 H1394"/>
+  <text x="826" y="700" class="s" fill="#a2541c">Every answer sentence cites a retrieved source; unsupported sentences and wrong-code citations are flagged.</text>
+
+  <path class="ln" d="M300,486 V538" /><text x="420" y="524" class="s">sub-queries down, ranked lists back</text>
+  <path class="ln" d="M1430,486 V538" /><text x="1100" y="524" class="s">ranked statutes + precedents</text>
+</svg>

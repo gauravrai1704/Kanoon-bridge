@@ -1,48 +1,126 @@
 # Which experiments scripts/05_run_all_evals.py runs.
 
 k_values: [1, 5, 10, 20]
+depth: 100                      # results kept per query in each run file
+
+# E1 queries are whole IL-PCSR judgments: cap them to their 100 highest-idf terms
+# (BM25F/tf-idf cost grows with query length; IL-PCSR's own BM25 used full text).
+e1_max_query_terms: 100
+ilpcsr_protocol: true           # F1@k with k chosen on the val split (IL-PCSR Table 3 protocol)
 
 test_sets:
-  e1_ilpcsr:
-    queries: ilpcsr_test        # loaded via ingest.load_ilpcsr
+  e1_ilpcsr:                    # precedent retrieval, IL-PCSR test split
+    queries: ilpcsr_test
     qrels: ilpcsr_test
     target: precedent
-  e2_collision:
+    val: ilpcsr_val             # used only to choose k
+  e1q_ilpcsr_short:             # typed-question proxy: first 40 words of each test judgment's facts
+    queries: ilpcsr_test_short
+    qrels: ilpcsr_test
+    target: precedent
+    val: ilpcsr_val_short
+  e1s_ilpcsr_statutes:          # statute retrieval on the same queries
+    queries: ilpcsr_test
+    qrels: ilpcsr_test
+    target: statute
+    val: ilpcsr_val
+  e2_collision:                 # rows may carry "wrong_refs": ["bns:302"] for the wrong-offence metric
     queries: data/queries/e2_collision.jsonl
     qrels: data/queries/qrels/e2_collision.tsv
     target: statute
-  e3_cross_version:
+  e3_cross_version:             # generated (scripts/07): "cases under section 103 BNS"; gold = precedents that applied IPC 302
     queries: data/queries/e3_cross_version.jsonl
-    qrels: ilpcsr_test
+    qrels: data/queries/qrels/e3_cross_version.tsv
     target: precedent
-  e4_multilingual:
+  e3_control:                   # the same needs in IPC numbering: a version-aware system scores about the same
+    queries: data/queries/e3_control.jsonl
+    qrels: data/queries/qrels/e3_control.tsv
+    target: precedent
+  e8_procedure_cross_version:   # "cases under section 482 BNSS" (CrPC 438) / "section 63 BSA" (IEA 65B)
+    queries: data/queries/e8_procedure_cross_version.jsonl
+    qrels: data/queries/qrels/e8_procedure_cross_version.tsv
+    target: precedent
+  e8_procedure_control:         # the same needs in CrPC / Evidence Act numbering
+    queries: data/queries/e8_procedure_control.jsonl
+    qrels: data/queries/qrels/e8_procedure_control.tsv
+    target: precedent
+  e9_procedure_temporal:        # provision name before / after 1 July 2024 -> CrPC vs BNSS, IEA vs BSA section
+    queries: data/queries/e9_procedure_temporal.jsonl
+    qrels: data/queries/qrels/e9_procedure_temporal.tsv
+    target: statute
+  e10_bns_era:                  # post-2024 HC judgments citing BNS, asked for in IPC numbers (scripts/11, Colab)
+    queries: data/queries/e10_bns_era.jsonl
+    qrels: data/queries/qrels/e10_bns_era.tsv
+    target: precedent
+  e4_multilingual:              # rows carry "lang": en | hi | hinglish
     queries: data/queries/e4_multilingual.jsonl
     qrels: data/queries/qrels/e4_multilingual.tsv
     target: statute
-  e6_jurisdiction:
+  e6_jurisdiction:              # rows carry "state"; topical qrels graded into binding (2) / persuasive (1)
     queries: data/queries/e6_jurisdiction.jsonl
     qrels: data/queries/qrels/e6_jurisdiction.tsv
     target: precedent
-  e7_temporal:
+  e7_temporal:                  # rows carry "incident_date"; scored on the code of the top statute
     queries: data/queries/e7_temporal.jsonl
     qrels: data/queries/qrels/e7_temporal.tsv
     target: statute
 
 # Ablation ladder: each step switches on one more component (names match search.SearchOptions).
 ablation_ladder:
-  - {name: bm25,           zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false}
-  - {name: +zones,         zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false}
-  - {name: +bridge,        zones: true,  bridge: true,  authority: false, dense: false, qpp: false, jurisdiction: false}
-  - {name: +authority,     zones: true,  bridge: true,  authority: true,  dense: false, qpp: false, jurisdiction: false}
-  - {name: +dense,         zones: true,  bridge: true,  authority: true,  dense: true,  qpp: false, jurisdiction: false}
-  - {name: +qpp,           zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: false}
-  - {name: +jurisdiction,  zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true}
+  - {name: bm25,          zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, version_norm: false}
+  - {name: +ngram,        zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, version_norm: false, ngram: true}
+  - {name: +version_norm, zones: false, bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, ngram: true}
+  - {name: +zones,        zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: false, ngram: true}
+  - {name: +code_filter,  zones: true,  bridge: false, authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +bridge,       zones: true,  bridge: true,  authority: false, dense: false, qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +authority,    zones: true,  bridge: true,  authority: true,  dense: false, qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +dense,        zones: true,  bridge: true,  authority: true,  dense: true,  qpp: false, jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +qpp,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: false, code_filter: true, ngram: true}
+  - {name: +jurisdiction, zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ngram: true}
+  - {name: +ltr,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ltr: true, ngram: true}
+  - {name: +ltr_short,    zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ltr: true, ngram: true, ltr_short: true}
 
+# IL-PCSR's strongest lexical baseline (BM25 over word 3-grams of the full query, Paul et al. 2025
+# Table 3) runs as a third system on the sets built from IL-PCSR
+ilpcsr_baseline_sets: [e1_ilpcsr, e1q_ilpcsr_short, e1s_ilpcsr_statutes]
+# published IL-PCSR test numbers (%, Table 3 of arXiv:2511.00268), shown beside ours in the report
+ilpcsr_published:
+  precedent:
+    "BM25 word 3-gram": {F1: 32.21, MAP: 43.44, MRR: 57.52}
+    "BM25 word 5-gram (best lexical)": {F1: 33.29, MAP: 43.98, MRR: 58.55}
+    "Para-GNN (summaries) + BM25, transfer learning": {F1: 38.77, MAP: 50.21, MRR: 63.81}
+    "GPT-4.1 re-ranking (best overall)": {F1: 43.31, MAP: 54.43, MRR: 68.88}
+  statute:
+    "BM25 word 3-gram": {F1: 17.80, MAP: 19.39, MRR: 41.74}
+    "BM25 word 2-gram, paragraph Max-All (best lexical)": {F1: 18.59, MAP: 21.82, MRR: 44.32}
+    "Para-GNN (summaries) + BM25, transfer learning": {F1: 39.44, MAP: 52.13, MRR: 73.77}
+    "GPT-4.1 re-ranking (best overall)": {F1: 46.11, MAP: 61.06, MRR: 81.55}
+
+# typed-question sets also run with the short-query LTR model (results/tables/ltr_short.csv)
+ltr_short_sets: [e1q_ilpcsr_short, e4_multilingual, e6_jurisdiction]
+
+# E4: analyzer steps switched on one at a time (stemming needs a re-index, so it is not ablated here)
 language_ablation:
-  - {name: none,           transliterate: false, phonetic: false, dense: false}
-  - {name: +translit,      transliterate: true,  phonetic: false, dense: false}
-  - {name: +phonetic,      transliterate: true,  phonetic: true,  dense: false}
-  - {name: +dense,         transliterate: true,  phonetic: true,  dense: true}
+  - {name: none,      transliterate: false, lexicon: false, phonetic: false, dense: false}
+  - {name: +translit, transliterate: true,  lexicon: false, phonetic: false, dense: false}
+  - {name: +lexicon,  transliterate: true,  lexicon: true,  phonetic: false, dense: false}
+  - {name: +phonetic, transliterate: true,  lexicon: true,  phonetic: true,  dense: false}
+  - {name: +dense,    transliterate: true,  lexicon: true,  phonetic: true,  dense: true}
+
+# Typo robustness (eval/typos.py): known-item search for statutes. Query = a statute's title
+# with simulated typos; target = that statute. Spelling correction off vs on vs clean titles.
+typos:
+  n_items: 300                  # statutes sampled (with a title of 2+ content words)
+  seed: 13
+  rate: 1.0                     # expected typos per query (at least one)
+
+efficiency:
+  n_queries: 200                # E1 test queries timed per mode
+  modes: [all, tiers, champions]
+
+rag:
+  questions: data/queries/rag_questions.jsonl
+  generator: auto               # auto (Claude if ANTHROPIC_API_KEY is set, else extractive) | claude | extractive
 
 outputs:
   runs: results/runs

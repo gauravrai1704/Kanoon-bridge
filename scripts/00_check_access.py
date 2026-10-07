@@ -35,11 +35,10 @@ def check_setup() -> None:
         sys.exit(1)
 
     print("\nData (data/raw is gitignored; download per README)")
-    raw = ROOT / cfg.paths.raw
     checks = [
-        (raw / "ilpcsr", "IL-PCSR in data/raw/ilpcsr/ (or HF cache)"),
-        (raw / "bns", "BNS bare act in data/raw/bns/"),
-        (raw / "crosswalk", "crosswalk PDF in data/raw/crosswalk/"),
+        (ROOT / cfg.paths.ilpcsr_dir / "queries", "IL-PCSR export in data/raw/ilpcsr/ (scripts/00_fetch_data.py)"),
+        (ROOT / cfg.paths.bns_dir / "data" / "sections", "BNS sections in data/raw/bns-study-platform/ (00_fetch_data.py)"),
+        (ROOT / cfg.paths.crosswalk_pdf, "optional: government crosswalk PDF for --compare"),
         (ROOT / cfg.paths.crosswalk, "data/crosswalk/ipc_bns.csv"),
         (ROOT / cfg.paths.offence_ids, "data/crosswalk/offence_ids.csv"),
         (ROOT / cfg.paths.lexicon_hinglish, "Hinglish legal lexicon"),

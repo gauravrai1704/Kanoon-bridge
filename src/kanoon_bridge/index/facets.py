@@ -15,7 +15,7 @@ Dr. Sonia Khetarpaul (see proposal, Related work).
 
 from __future__ import annotations
 
-from bisect import bisect_left, bisect_right
+import bisect
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Iterable
@@ -38,80 +38,38 @@ class DocMeta:
 class FacetIndex:
     by_type: dict[str, set[str]] = field(default_factory=dict)
     by_court: dict[str, set[str]] = field(default_factory=dict)
-    by_state: dict[str, set[str]] = field(default_factory=dict)
+    by_state: dict[str, set[str]] = field(default_factory=dict)     # "*" = binds everywhere (Supreme Court)
     by_code: dict[str, set[str]] = field(default_factory=dict)
-    by_section: dict[str, set[str]] = field(default_factory=dict)
-    dates: list[tuple[date, str]] = field(default_factory=list)
+    by_section: dict[str, set[str]] = field(default_factory=dict)   # statute section ref -> precedents citing it
+    dates: list[tuple[date, str]] = field(default_factory=list)     # sorted (decision_date, doc_id)
     metas: dict[str, DocMeta] = field(default_factory=dict)
 
     @classmethod
     def build(cls, docs: Iterable[Document]) -> "FacetIndex":
-        """Build all facet indexes from the supplied documents."""
-        index = cls()
+        """Fill every facet dict from Document fields; `dates` sorted for bisect range search."""
+        fx = cls()
+        for d in docs:
+            m = DocMeta(doc_type=d.doc_type.value, court=d.court.value, court_name=d.court_name,
+                        states=list(d.states), decision_date=d.decision_date, code=d.code.value,
+                        statutes_cited=list(d.statutes_cited))
+            fx.metas[d.doc_id] = m
+            fx.by_type.setdefault(m.doc_type, set()).add(d.doc_id)
+            fx.by_court.setdefault(m.court, set()).add(d.doc_id)
+            fx.by_code.setdefault(m.code, set()).add(d.doc_id)
+            for s in m.states:
+                fx.by_state.setdefault(s, set()).add(d.doc_id)
+            for ref in m.statutes_cited:
+                fx.by_section.setdefault(ref, set()).add(d.doc_id)
+            if m.decision_date is not None:
+                fx.dates.append((m.decision_date, d.doc_id))
+        fx.dates.sort()
+        return fx
 
-        def add_to_index(mapping: dict[str, set[str]], key: str, doc_id: str) -> None:
-            mapping.setdefault(key, set()).add(doc_id)
-
-        for doc in docs:
-            doc_id = doc.doc_id
-
-            # Normalise scalar facet values.
-            doc_type = str(doc.doc_type).lower()
-            court = str(doc.court).lower()
-            court_name = str(doc.court_name)
-
-            # States may be stored as a list/tuple/set.
-            states = [
-                str(state).lower()
-                for state in (doc.states or [])
-            ]
-
-            code = str(doc.code).lower()
-
-            # Sections/statutes cited may be stored as strings.
-            statutes_cited = [
-                str(section).lower()
-                for section in (doc.statutes_cited or [])
-            ]
-
-            decision_date = doc.decision_date
-
-            # Store metadata.
-            index.metas[doc_id] = DocMeta(
-                doc_type=doc_type,
-                court=court,
-                court_name=court_name,
-                states=states,
-                decision_date=decision_date,
-                code=code,
-                statutes_cited=statutes_cited,
-            )
-
-            # Type.
-            add_to_index(index.by_type, doc_type, doc_id)
-
-            # Court.
-            add_to_index(index.by_court, court, doc_id)
-
-            # States.
-            for state in states:
-                add_to_index(index.by_state, state, doc_id)
-
-            # Code.
-            add_to_index(index.by_code, code, doc_id)
-
-            # Sections/statutes cited.
-            for section in statutes_cited:
-                add_to_index(index.by_section, section, doc_id)
-
-            # Decision date.
-            if decision_date is not None:
-                index.dates.append((decision_date, doc_id))
-
-        # Sort by date so bisect can be used for range queries.
-        index.dates.sort(key=lambda item: item[0])
-
-        return index
+    def date_range(self, date_from: date | None = None, date_to: date | None = None) -> set[str]:
+        """Docs decided in [date_from, date_to] (either end open), by bisect on the sorted dates."""
+        lo = 0 if date_from is None else bisect.bisect_left(self.dates, (_as_date(date_from), ""))
+        hi = len(self.dates) if date_to is None else bisect.bisect_right(self.dates, (_as_date(date_to), "\uffff"))
+        return {doc_id for _, doc_id in self.dates[lo:hi]}
 
     def filter(
         self,
@@ -123,101 +81,37 @@ class FacetIndex:
         code: str | None = None,
         cites_any: list[str] | None = None,
     ) -> set[str]:
-        """Intersection of all given facets; None means 'no constraint'.
+        """Intersection of all given facets; None means 'no constraint' (all docs).
 
-        Uses the smallest candidate set first. Date ranges are handled with
-        binary search over the sorted `dates` list. A state filter also
-        includes documents in by_state["*"].
+        A states filter also admits docs in by_state["*"] (Supreme Court binds everywhere).
+        The sets are intersected smallest first, and the date range is computed only if needed.
         """
-        candidates: list[set[str]] = []
-
-        # Document type.
-        if doc_type is not None:
-            candidates.append(
-                self.by_type.get(doc_type.lower(), set())
-            )
-
-        # Court.
-        if court is not None:
-            candidates.append(
-                self.by_court.get(court.lower(), set())
-            )
-
-        # States.
+        sets: list[set[str]] = []
+        if doc_type:
+            sets.append(self.by_type.get(doc_type, set()))
+        if court:
+            sets.append(self.by_court.get(court, set()))
+        if code:
+            sets.append(self.by_code.get(code, set()))
         if states:
-            state_sets = []
-
-            for state in states:
-                state = state.lower()
-
-                matching = set(self.by_state.get(state, set()))
-
-                # "*" means the document applies everywhere.
-                matching.update(self.by_state.get("*", set()))
-
-                state_sets.append(matching)
-
-            if state_sets:
-                # A document must satisfy all requested state filters.
-                candidates.append(
-                    set.intersection(*state_sets)
-                )
-
-        # Code.
-        if code is not None:
-            candidates.append(
-                self.by_code.get(code.lower(), set())
-            )
-
-        # Sections/statutes cited.
+            sets.append(set().union(*(self.by_state.get(s, set()) for s in states), self.by_state.get("*", set())))
         if cites_any:
-            cited_sets = [
-                self.by_section.get(section.lower(), set())
-                for section in cites_any
-            ]
-
-            # "cites_any" means a document can match any one of them.
-            if cited_sets:
-                candidates.append(set.union(*cited_sets))
-
-        # Date range.
+            sets.append(set().union(*(self.by_section.get(r, set()) for r in cites_any)))
         if date_from is not None or date_to is not None:
-            dates_only = [item[0] for item in self.dates]
-
-            if date_from is None:
-                left = 0
-            else:
-                left = bisect_left(dates_only, date_from)
-
-            if date_to is None:
-                right = len(self.dates)
-            else:
-                # bisect_right makes date_to inclusive.
-                right = bisect_right(dates_only, date_to)
-
-            date_candidates = {
-                doc_id
-                for _, doc_id in self.dates[left:right]
-            }
-
-            candidates.append(date_candidates)
-
-        # No filters means return every indexed document.
-        if not candidates:
+            sets.append(self.date_range(date_from, date_to))
+        if not sets:
             return set(self.metas)
-
-        # Start with the smallest candidate set to reduce intersection work.
-        candidates.sort(key=len)
-
-        result = set(candidates[0])
-
-        for candidate in candidates[1:]:
-            result.intersection_update(candidate)
-
-            if not result:
+        sets.sort(key=len)
+        out = set(sets[0])
+        for s in sets[1:]:
+            out &= s
+            if not out:
                 break
-
-        return result
+        return out
 
     def meta(self, doc_id: str) -> DocMeta:
         return self.metas[doc_id]
+
+
+def _as_date(value) -> date:
+    return value if isinstance(value, date) else date.fromisoformat(str(value))

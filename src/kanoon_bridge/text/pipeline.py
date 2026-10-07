@@ -8,9 +8,9 @@ Team rule 2: documents and queries must go through the same steps, or normalisat
 Steps (each can be switched off for ablations via TextOptions):
     tokenize        text/tokenize.py        [A]  working
     stop words      lexicons/*.txt          [A]  working
-    stemming        text/stem.py            [C]  English working, Hindi TODO
-    collision       text/collision.py       [B]  TODO: resolves "sec:?:302" to a code
-    version norm    text/version_norm.py    [B]  TODO: adds "off:<offence>" tokens
+    stemming        text/stem.py            [C]  English (Porter) + Hindi (light suffix stripper)
+    collision       text/collision.py       [B]  resolves "sec:?:302" to a code (date + context)
+    version norm    text/version_norm.py    [B]  adds "off:<offence>" tokens
 
 Unfinished steps are skipped (with a one-time warning) so A and D can test end to end
 before B and C land their parts.
@@ -75,7 +75,9 @@ class TextResources:
 
 def _load_stopwords(cfg: Config) -> set[str]:
     words: set[str] = set()
-    for key in ("stopwords_legal", "stopwords_hindi"):
+    for key in ("stopwords_english", "stopwords_legal", "stopwords_hindi"):
+        if key not in cfg.paths:
+            continue
         path = project_path(cfg.paths[key])
         if Path(path).exists():
             with open(path, encoding="utf-8") as f:

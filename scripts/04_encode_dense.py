@@ -18,8 +18,17 @@ def main() -> None:
     docs = [d for d in read_documents(project_path(cfg.paths.docs)) if d.doc_type == DocType.PRECEDENT]
     statutes = [d for d in read_documents(project_path(cfg.paths.docs)) if d.doc_type == DocType.STATUTE]
     retriever = DenseRetriever(cfg=cfg)
-    retriever.encode_corpus(docs, name="precedents")
-    retriever.encode_corpus(statutes, name="statutes")
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--batch-size", type=int, default=128)
+    args = ap.parse_args()
+    import time
+
+    t = time.time()
+    retriever.encode_corpus(docs, name="precedents", batch_size=args.batch_size)
+    print(f"precedents: {len(retriever.para_doc)} paragraphs in {time.time() - t:.0f}s")
+    retriever.encode_corpus(statutes, name="statutes", batch_size=args.batch_size)
     print("embeddings saved to", project_path(cfg.paths.embeddings))
 
 

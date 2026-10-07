@@ -30,44 +30,28 @@ def _path(name: str, fmt: str) -> Path:
 
 def save(obj: Any, name: str, fmt: str = "pkl") -> Path:
     """Save `obj` as data/processed/index/<name>.<fmt>; fmt is 'pkl' or 'json'."""
-    if fmt not in {"pkl", "json"}:
-        raise ValueError(f"unknown format: {fmt}")
-
     path = _path(name, fmt)
-
     if fmt == "pkl":
         with open(path, "wb") as f:
             pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
-    else:
+    elif fmt == "json":
         with open(path, "w", encoding="utf-8") as f:
             json.dump(obj, f, ensure_ascii=False)
-
+    else:
+        raise ValueError(f"unknown format: {fmt}")
     return path
 
 
 def load(name: str, fmt: str = "pkl") -> Any:
-    """Load an index or artefact from the processed index directory."""
-    if fmt not in {"pkl", "json"}:
-        raise ValueError(f"unknown format: {fmt}")
-
     path = _path(name, fmt)
-
     if not path.exists():
-        raise FileNotFoundError(
-            f"{path} not found - run scripts/02_build_index.py first"
-        )
-
+        raise FileNotFoundError(f"{path} not found - run scripts/02_build_index.py first")
     if fmt == "pkl":
         with open(path, "rb") as f:
             return pickle.load(f)
-
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def exists(name: str, fmt: str = "pkl") -> bool:
-    """Return True if the requested stored artefact exists."""
-    if fmt not in {"pkl", "json"}:
-        raise ValueError(f"unknown format: {fmt}")
-
     return _path(name, fmt).exists()

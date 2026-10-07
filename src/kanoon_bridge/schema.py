@@ -35,7 +35,9 @@ class Code(str, Enum):
     IPC = "ipc"                    # Indian Penal Code, 1860 (in force until 30 Jun 2024)
     BNS = "bns"                    # Bharatiya Nyaya Sanhita, 2023 (from 1 Jul 2024)
     CRPC = "crpc"
-    BNSS = "bnss"
+    BNSS = "bnss"                  # Bharatiya Nagarik Suraksha Sanhita, 2023 (replaces CrPC)
+    IEA = "iea"                    # Indian Evidence Act, 1872
+    BSA = "bsa"                    # Bharatiya Sakshya Adhiniyam, 2023 (replaces IEA)
     OTHER = "other"                # any other Act
     UNKNOWN = "?"
 
@@ -176,6 +178,10 @@ class AnalyzedQuery:
     sections: list[str] = field(default_factory=list)        # section refs found in the query
     offence_ids: list[str] = field(default_factory=list)     # canonical offences after version normalisation
     code_in_force: Code = Code.UNKNOWN         # from incident_date
+    boolean: Any = None                        # query.parser.QueryNode when the query uses AND/OR/NOT/""/ /k
+    corrections: list[Any] = field(default_factory=list)      # text.spell.Correction per corrected word
+    suggestion: str | None = None              # "did you mean" rewrite of the query text
+    wildcards: dict[str, list[str]] = field(default_factory=dict)  # pattern -> index terms it expanded to
     trace: list[tuple[str, str]] = field(default_factory=list)  # (step name, output) for --debug
 
     def weighted_terms(self) -> dict[str, float]:

@@ -25,8 +25,8 @@ switched off without touching layer 1 — and the core is a complete submission 
 | **IL-PCSR precedents** | 3,183 SC + HC judgments (unmasked) | `docs.jsonl` as `PRECEDENT` → precedent zone index | layer 1 ranking, citation graph, RAG chunks | indexed |
 | **IL-PCSR statutes** | 936 IPC-era sections | `docs.jsonl` as `STATUTE` → statute index | layer 1 statute ranking, statute bridge | indexed |
 | **IL-PCSR qrels** | which precedents/statutes each query cited | loaded by `ingest/load_ilpcsr.load_qrels` | train → graph; val → tuning; test → E1/E3 | never tune on test |
-| **BNS bare act** (India Code) | 358 sections, in force from 1 July 2024 | `docs.jsonl` as `STATUTE` (code BNS) | BNS-era statute retrieval | indexed |
-| **IPC↔BNS crosswalk** (government table) | section-by-section mapping | `data/crosswalk/ipc_bns.csv`, `offence_ids.csv` | version normalisation, collision resolver, RAG version check | hand-checked by B |
+| **BNS bare act** (via bns-study-platform, verified against the Gazette) | 358 sections, in force from 1 July 2024 | `docs.jsonl` as `STATUTE` (code BNS) | BNS-era statute retrieval | indexed |
+| **IPC↔BNS crosswalk** (each BNS section's IPC correspondence; government table as cross-check) | 496 section pairs → ~350 offences | `data/crosswalk/ipc_bns.csv`, `offence_ids.csv` | version normalisation, collision resolver, statute bridge, RAG version check | spot-check key sections |
 | **Lexicons** (ours) | Hinglish legal terms, stop words, court→states | `data/lexicons/` | analyzer expansion, text pipeline, metadata | committed |
 | **Hand-built query sets** (ours) | E2, E3, E4, E6, E7 queries + 2-judge qrels | `data/queries/` | evaluation only | written **before** rules are final |
 | PoliceDrishti (optional, gated) | 190 case summaries → BNS charges | `data/raw/policedrishti/` | E5 facts → sections | eval only |
@@ -36,7 +36,7 @@ switched off without touching layer 1 — and the core is a complete submission 
 
 | Split | Size | Used for | Never used for |
 | --- | --- | --- | --- |
-| train | 5,021 queries | citation-graph edges → authority g(d) | evaluation |
+| train | 5,017 queries | citation-graph edges → authority g(d) | evaluation |
 | val | 627 queries | tuning λ (authority), α (fusion), zone weights, choosing k for F1@k | reported results |
 | test | 627 queries | E1 and E3 results in the report | tuning anything, graph edges |
 | hand-built sets | ~30–100 each | E2, E4, E6, E7 | rule design (write them first) |
@@ -84,15 +84,28 @@ Worked example (values are illustrative):
 | Authority + top-K | `rank/authority.py`, `rank/topk.py` | net = relevance + λ·g(d \| delhi): SC and Delhi HC cases get full weight, other HCs 0.4 |
 | Output | `schema.SearchResult` | statutes, precedents, per-document score breakdown, trace, timings |
 
+### Around layer 1: tolerant input, learned ranking, readable output
+
+| Step | Module | What happens |
+| --- | --- | --- |
+| Wildcards | `text/spell.py` | `extort*` expands through a k-gram index to the index terms it matches |
+| Spelling | `text/spell.py` | words unseen in the index get their closest frequent term (k-gram candidates, Damerau–Levenshtein ≤ 1–2 edits), shown as "Did you mean" |
+| Learned re-ranking | `rank/ltr.py` | 13 features (zones, bridge, authority, dense, offence match, binding, recency …) combined by weights learned on val (coordinate ascent on MAP) |
+| Duplicates | `index/dedup.py` | MinHash near-duplicate groups; one judgment per group is shown |
+| Presentation | `present.py` | query-biased snippets with highlights, "why this result", statute version notes, facet counts |
+| Interaction | `rank/feedback.py`, `rank/similar.py` | Rocchio relevance feedback; similar cases by text + version-aware coupling + co-citation |
+
+Sources for each technique are in [docs/RESEARCH.md](docs/RESEARCH.md).
+
 ### Layer 2 — research agent (`ResearchAgent.run`)
 
 | Step | Module | What happens |
 | --- | --- | --- |
-| Plan | `agent/plan.py` (`RulePlanner`) | q0 original · q1 cross-code ("IPC 307 knife injury") · q2 Boolean ("(knife OR chaku) AND (injury OR hurt)") · q3 facet (binding courts for Delhi only) · q4 statutes-first |
-| Execute | `agent/executor.py` | each sub-query = one layer-1 search (same engine, rule 4) |
-| Fuse | `agent/fuse.py` | reciprocal rank fusion: Σ w / (60 + rank) |
-| Reflect | `agent/reflect.py` | QPP on the fused list; if weak, pseudo-relevance feedback adds top-document terms and runs one more round (max 2) |
-| Output | `agent.research.AgentResult` | fused statutes + precedents, every sub-query and its results in the trace |
+| Plan | `agent/plan.py` (`RulePlanner`; `agent.planner: llm / hybrid` adds Claude-proposed sub-queries) | q0 original · q1 cross-code ("knife stabbing IPC Section 302" for "BNS 103 knife stabbing") · q2 Boolean `(off:murder OR sec:bns:103 OR sec:ipc:302) AND stab`, run as a postings filter then ranked · q3 facet: only precedents binding in the user's state (SC + its HC), weight 0.8 · q4 statutes-first with the offence names spelled out |
+| Execute | `agent/executor.py` | each sub-query = one layer-1 search (same engine, rule 4) with its own `SearchOptions` overrides (`require_terms`, `restrict_states`, `extra_terms`, `drop_terms`) |
+| Fuse | `agent/fuse.py` | reciprocal rank fusion Σ w / (60 + rank) (default) or CombSUM of min-max scores; a sub-query feeds its target list, the original feeds both |
+| Reflect | `agent/reflect.py` | fewer than 10 fused precedents, or QPP confidence (max idf + top-score gap of the core list) below 0.35 → round 2: pseudo-relevance feedback adds the top-5 documents' best ratio/decision terms (weight 0.5) and drops the vaguest query term; max 2 rounds |
+| Output | `agent.research.AgentResult` | fused statutes + precedents, `.analyzed` query, every sub-query and its hits in the trace, `found_by(doc)` |
 
 With only the `original` sub-query the agent returns exactly the layer-1 ranking — a built-in sanity check.
 
@@ -111,11 +124,15 @@ With only the `original` sub-query the agent returns exactly the layer-1 ranking
 
 ```
 Query ──► Layer 1 ──► SearchResult(statutes, precedents, query.trace)
-Query ──► Layer 2 ──(many Queries)──► Layer 1 ──► AgentResult(statutes, precedents, trace)
-SearchResult | AgentResult ──► Layer 3 ──► Answer(text, flags, abstained)
+Query ──► Layer 2 ──(many Queries + SearchOptions hooks)──► Layer 1 ──► AgentResult(statutes, precedents, analyzed, trace)
+SearchResult | AgentResult ──► Layer 3 ──► Answer(text, flags, abstained, chunks)
+SearchEngine (+ ResearchAgent) ──► eval/run_eval.evaluate_set ──► metrics, run files
 ```
 
-Both `SearchResult` and `AgentResult` expose `.statutes` and `.precedents`, so layer 3 works on either.
+Both `SearchResult` and `AgentResult` expose `.statutes`, `.precedents`, `.timings_ms` and the
+analysed query (`SearchResult.query` / `AgentResult.analyzed`), so layer 3, the CLI, the app and
+the evaluator accept either. `tests/test_layers_integration.py` checks every one of these hand-offs
+on an in-memory corpus.
 
 ---
 

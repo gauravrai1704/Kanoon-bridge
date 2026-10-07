@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kanoon-Bridge</title>
+  <meta name="description" content="Search Indian criminal law across the IPC and the BNS, in English, Hindi or Hinglish.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M7 22 Q24 6 41 22' fill='none' stroke='%23D6AE45' stroke-width='3'/%3E%3Cpath d='M24 11v29M17 40h14' stroke='%23D6AE45' stroke-width='3'/%3E%3Cpath d='M2.5 31 Q7 37 11.5 31 Z M36.5 31 Q41 37 45.5 31 Z' fill='%23D6AE45'/%3E%3C/svg%3E">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to results</a>
+
+  <aside class="sidebar" id="sidebar" aria-label="History and settings">
+    <div class="brand">
+      <span id="brand-logo"></span>
+      <span class="brand-name">Kanoon-Bridge</span>
+    </div>
+    <button class="new-q" id="new-q" type="button"><span class="ic" data-icon="plus"></span>New question</button>
+
+    <nav class="history" aria-label="Your questions">
+      <div id="history-list"></div>
+      <p class="history-empty" id="history-empty">Your questions will appear here, so you can come back to any of them.</p>
+    </nav>
+
+    <section class="settings" aria-label="Settings">
+      <p class="settings-title">Your advocate</p>
+      <div class="adv-pick" role="radiogroup" aria-label="Choose your advocate">
+        <button type="button" role="radio" data-adv="meera" class="adv-choice"><span class="mini-adv" data-adv-art="meera"></span>Adv. Meera</button>
+        <button type="button" role="radio" data-adv="kabir" class="adv-choice"><span class="mini-adv" data-adv-art="kabir"></span>Adv. Kabir</button>
+      </div>
+      <div class="settings-row">
+        <button type="button" class="ghost" id="theme-toggle" aria-label="Switch colour theme"><span class="ic" id="theme-icon"></span><span id="theme-label">Light</span></button>
+        <button type="button" class="ghost" id="clear-history"><span class="ic" data-icon="trash"></span>Clear history</button>
+      </div>
+      <p class="status-line" id="status-line">Connecting to the index…</p>
+    </section>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <div class="shell">
+    <header class="topbar">
+      <button type="button" class="icon-btn menu-btn" id="menu-btn" aria-label="Open history"><span class="ic" data-icon="menu"></span></button>
+      <span class="topbar-brand"><span id="top-logo"></span>Kanoon-Bridge</span>
+    </header>
+    <button type="button" class="hood-btn" id="hood-btn" hidden><span class="ic" data-icon="gears"></span>How this was found</button>
+
+    <main id="main">
+      <!-- Landing: the bridge with the search box on its deck -->
+      <section class="hero" id="hero">
+        <h1 class="hero-title">Ask the law in your own words.</h1>
+        <p class="hero-sub">English, Hindi or Hinglish. Kanoon-Bridge finds the section in force on your date, carries old IPC sections across to the new BNS, and ranks the judgments that bind your state.</p>
+        <div class="bridge-stage" id="bridge-stage">
+          <div id="bridge-art"></div>
+          <form class="deck-form" id="search-form" role="search" autocomplete="off">
+            <label class="sr-only" for="q">Your question</label>
+            <span class="ic deck-ic" data-icon="search"></span>
+            <input id="q" name="q" type="search" placeholder="Describe what happened, or type a section like BNS 103" maxlength="600">
+            <button class="go" type="submit">Search</button>
+          </form>
+        </div>
+        <div class="options" id="options">
+          <label class="opt-field">State
+            <select id="state"></select>
+          </label>
+          <label class="opt-field">Incident date
+            <input type="date" id="date">
+          </label>
+          <label class="switch"><input type="checkbox" id="opt-answer" checked><span class="track"></span>Advocate's answer</label>
+          <label class="switch"><input type="checkbox" id="opt-agent"><span class="track"></span>Research agent (deeper, slower)</label>
+        </div>
+        <div class="examples" id="examples" aria-label="Try an example"></div>
+      </section>
+
+      <!-- Results -->
+      <section class="results" id="results" hidden aria-live="polite">
+        <div class="understood" id="understood"></div>
+        <div class="advocate-panel" id="advocate-panel"></div>
+        <div class="feedback-bar" id="feedback-bar" hidden></div>
+        <div class="result-cols">
+          <section class="cases" aria-labelledby="cases-h">
+            <h2 id="cases-h" class="col-title"><span class="ic" data-icon="gavel"></span>Judgments</h2>
+            <div id="cases"></div>
+          </section>
+          <section class="law" aria-labelledby="law-h">
+            <h2 id="law-h" class="col-title"><span class="ic" data-icon="pillar"></span>The law</h2>
+            <div id="law"></div>
+          </section>
+        </div>
+        <p class="disclaimer">Kanoon-Bridge explains the law. It is not legal advice; speak to a practising advocate before you act.</p>
+      </section>
+
+      <section class="loading" id="loading" hidden aria-live="polite">
+        <div class="crossing" id="crossing"></div>
+        <p id="loading-text">Crossing from IPC to BNS…</p>
+      </section>
+      <p class="error" id="error" hidden role="alert"></p>
+    </main>
+  </div>
+
+  <!-- How this was found -->
+  <aside class="hood" id="hood" aria-label="How this answer was found" hidden>
+    <header class="hood-head">
+      <div>
+        <h2>How this was found</h2>
+        <p class="hood-sub" id="hood-sub"></p>
+      </div>
+      <button type="button" class="icon-btn" id="hood-close" aria-label="Close"><span class="ic" data-icon="close"></span></button>
+    </header>
+    <div class="hood-tools">
+      <button type="button" class="ghost" id="hood-replay">Replay the run</button>
+      <button type="button" class="ghost" id="hood-raw" aria-pressed="false">Show raw response</button>
+    </div>
+    <div class="timebar" id="timebar"></div>
+    <div class="time-legend" id="time-legend"></div>
+    <ol class="run" id="run"></ol>
+    <pre class="raw" id="raw" hidden></pre>
+  </aside>
+
+  <!-- Reader -->
+  <dialog class="reader" id="reader">
+    <form method="dialog" class="reader-close"><button class="icon-btn" aria-label="Close"><span class="ic" data-icon="close"></span></button></form>
+    <div id="reader-body"></div>
+  </dialog>
+
+  <script src="art.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

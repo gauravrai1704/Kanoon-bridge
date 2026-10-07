@@ -1,49 +1,121 @@
-"""Raw data -> data/processed/docs.jsonl.  [owner: A, wiring working]
+"""Raw data -> data/processed/docs.jsonl.  [owner: Gaurav — working]
 
 Steps:
-    IL-PCSR queries (all splits), precedents, statutes  ingest/load_ilpcsr.py
-    BNS sections                                        ingest/load_statutes.py
-    zones                                               ingest/segment.py
-    court, states, date, code                           ingest/metadata.py
+    crosswalk CSVs regenerated from the BNS source (if present)   ingest/parse_crosswalk.py
+    IL-PCSR queries (train/val/test), precedents, statutes         ingest/load_ilpcsr.py
+    358 BNS sections                                               ingest/load_statutes.py
+    zones (role labels -> zones)                                   ingest/segment.py
+    court, states, date, code in force                             ingest/metadata.py
+    statute offence ids (IPC 302 -> off:murder_bns103)              text/version_norm.py
 
-    python scripts/01_build_corpus.py
+    python scripts/01_build_corpus.py               # real data from data/raw/
+    python scripts/01_build_corpus.py --sample      # tiny synthetic sample in tests/data/
 """
 
 from __future__ import annotations
 
+import argparse
 from collections import Counter
 
 from kanoon_bridge.config import load_config, project_path
-from kanoon_bridge.ingest import load_ilpcsr, load_statutes, metadata, segment
-from kanoon_bridge.schema import DocType, write_documents
+from kanoon_bridge.ingest import load_ilpcsr, load_statutes, metadata, parse_crosswalk, segment
+from kanoon_bridge.schema import Code, DocType, Paragraph, write_documents
+from kanoon_bridge.text.version_norm import VersionNormalizer
+
+SAMPLE_OVERRIDES = {"paths": {"ilpcsr_dir": "tests/data/ilpcsr_sample", "bns_dir": "data/raw/bns-study-platform"}}
+
+_CODE_LABEL = {"ipc": "IPC", "bns": "BNS", "crpc": "CrPC", "bnss": "BNSS", "iea": "Evidence Act", "bsa": "BSA"}
+_BRIDGED = (Code.IPC, Code.BNS, Code.CRPC, Code.BNSS, Code.IEA, Code.BSA)
 
 
-def main() -> None:
-    cfg = load_config()
+def heading(doc) -> str:
+    """Normalised first line so the tokenizer emits the right section token ('Section 302 IPC.')."""
+    code = doc.meta.get("act_code", doc.code.value)
+    if doc.section and code in _CODE_LABEL:
+        return f"Section {doc.section} {_CODE_LABEL[code]}. {doc.title}."
+    return f"{doc.title}."
+
+
+def build(cfg) -> list:
+    bns_dir = project_path(cfg.paths.bns_dir)
+    if (bns_dir / "data" / "sections").exists():
+        rows = parse_crosswalk.extract_rows_from_bns_json(bns_dir)
+        parse_crosswalk.write_crosswalk(rows, project_path(cfg.paths.crosswalk))
+        parse_crosswalk.build_offence_ids(rows, project_path(cfg.paths.offence_ids))
+        print(f"crosswalk: {sum(1 for r in rows if r['ipc_section'])} IPC-BNS pairs")
+    proc_dir = project_path(cfg.paths.procedure_dir)
+    if (proc_dir / "data" / "raw" / "bnss_sections.json").exists():
+        from kanoon_bridge.ingest import align_codes
+
+        ids = []
+        for old_code, (new_code, old_file, new_file, _, _) in align_codes.PAIRS.items():
+            rows = align_codes.align(align_codes.load_old(proc_dir / "data" / "raw" / old_file),
+                                     align_codes.load_new(proc_dir / "data" / "raw" / new_file))
+            align_codes.write(rows, project_path(cfg.paths[f"{old_code}_{new_code}"]), old_code, new_code,
+                              "GSMS-B/indian-legal-mcp (MIT)")
+            ids += align_codes.build_provision_ids(rows, old_code, new_code)
+        align_codes.write_provision_ids(ids, project_path(cfg.paths.provision_ids))
+        print(f"procedure/evidence crosswalk: {len(ids)} shared CrPC-BNSS / IEA-BSA provision ids")
+    normalizer = VersionNormalizer.load(cfg)
     table = metadata.CourtTable.load(cfg)
 
-    docs = []
-    for split in ("train", "val", "test"):
-        docs += load_ilpcsr.load_queries(split)
-    docs += load_ilpcsr.load_precedents()
-    docs += load_ilpcsr.load_statute_candidates()
-    bns_dir = project_path(cfg.paths.raw) / "bns"
-    for path in sorted(bns_dir.glob("*")):
-        docs += load_statutes.parse_bns(path)
+    docs = list(load_ilpcsr.iter_all(cfg))
+    if (bns_dir / "data" / "sections").exists():
+        docs += load_statutes.parse_bns(bns_dir)
+    else:
+        print(f"warning: {bns_dir} missing - BNS statutes not added (run scripts/00_fetch_data.py)")
+    if (proc_dir / "data" / "raw" / "bnss_sections.json").exists():
+        docs += load_statutes.parse_new_procedure(proc_dir)
+    hc = project_path("data/processed/hc_docs.jsonl")           # post-2024 High Court judgments (scripts/11)
+    if hc.exists():
+        from kanoon_bridge.schema import read_documents
+
+        hc_docs = list(read_documents(hc))
+        docs += hc_docs
+        print(f"High Court open-data judgments added: {len(hc_docs)}")
+    else:
+        print(f"warning: {proc_dir} missing - BNSS/BSA statutes not added (run scripts/00_fetch_data.py --only procedure)")
 
     for doc in docs:
         if doc.doc_type == DocType.STATUTE:
-            segment.segment_statute(doc)
+            if doc.meta.get("source") == "il-pcsr":
+                segment.segment_statute(doc)
+            doc.paragraphs.insert(0, Paragraph(heading(doc), "statute", -1))
+            ref = doc.meta.get("ref", "")
+            doc.offence_ids = normalizer.offences_for(ref) if doc.code in _BRIDGED else []
+            if doc.code in (Code.IPC, Code.CRPC, Code.IEA) and doc.offence_ids:
+                # IL-PCSR names old-code sections only by number; keep the provision name for display
+                # (meta is not indexed, so retrieval is unchanged)
+                doc.meta["label"] = normalizer.label(doc.offence_ids[0])
         else:
             metadata.enrich(doc, table)
+    return docs
 
+
+def report(docs) -> None:
+    print("by type:", dict(Counter(d.doc_type.value for d in docs)))
+    print("query splits:", dict(Counter(d.split for d in docs if d.doc_type == DocType.QUERY_CASE)))
+    judg = [d for d in docs if d.doc_type != DocType.STATUTE]
+    print("judgments missing court:", sum(1 for d in judg if d.court.value == "unknown"),
+          "| missing states:", sum(1 for d in judg if not d.states),
+          "| missing date:", sum(1 for d in judg if d.decision_date is None))
+    print("courts:", Counter(d.court_name for d in judg).most_common(8))
+    print("zones:", dict(Counter(p.zone for d in judg for p in d.paragraphs)))
+    stat = [d for d in docs if d.doc_type == DocType.STATUTE]
+    print("statutes by code:", dict(Counter(d.code.value for d in stat)),
+          "| with offence ids:", sum(1 for d in stat if d.offence_ids))
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--sample", action="store_true", help="use the synthetic sample (tests/data)")
+    args = ap.parse_args()
+    cfg = load_config(overrides=SAMPLE_OVERRIDES if args.sample else None)
+    docs = build(cfg)
     out = project_path(cfg.paths.docs)
     n = write_documents(docs, out)
     print(f"wrote {n} documents to {out}")
-    print("by type:", Counter(d.doc_type.value for d in docs))
-    missing_court = sum(1 for d in docs if d.doc_type != DocType.STATUTE and not d.court_name)
-    missing_date = sum(1 for d in docs if d.doc_type != DocType.STATUTE and d.decision_date is None)
-    print(f"judgments missing court: {missing_court}, missing date: {missing_date}")
+    report(docs)
 
 
 if __name__ == "__main__":

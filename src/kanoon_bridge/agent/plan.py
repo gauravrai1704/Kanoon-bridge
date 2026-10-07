@@ -67,9 +67,12 @@ def _is_content(t: str) -> bool:
     return not (t.startswith(("sec:", "off:")) or t.isdigit() or len(t) < 3)
 
 
+_BRIDGED = ("ipc", "bns", "crpc", "bnss", "iea", "bsa")
+
+
 def _section_text(ref: str) -> str:
     code, _, num = ref.partition(":")
-    return f"{code.upper()} Section {num}" if code in ("ipc", "bns") else f"Section {num}"
+    return f"{code.upper()} Section {num}" if code in _BRIDGED else f"Section {num}"
 
 
 @dataclass
@@ -98,14 +101,14 @@ class RulePlanner:
     def _cross_code(self, p: Plan, query: Query, aq: AnalyzedQuery, idf: dict[str, float]) -> None:
         own = set(aq.sections)
         others = [k[len("sec:"):] for k in aq.expanded_terms if k.startswith("sec:") and k[len("sec:"):] not in own]
-        others = [r for r in dict.fromkeys(others) if r.split(":")[0] in ("ipc", "bns")]
+        others = [r for r in dict.fromkeys(others) if r.split(":")[0] in _BRIDGED]
         if not others:
             return
         text = query.text
         for m in sorted(extract_sections(text), key=lambda m: -m.start):     # drop the original mentions
             text = text[: m.start] + " " + text[m.end:]
         text = " ".join((text + " " + " ".join(_section_text(r) for r in others)).split())
-        mine = ", ".join(_section_text(r) for r in own if r.split(":")[0] in ("ipc", "bns")) or "the query's sections"
+        mine = ", ".join(_section_text(r) for r in own if r.split(":")[0] in _BRIDGED) or "the query's sections"
         p.add("cross_code", _variant(query, text),
               f"{mine} -> {', '.join(_section_text(r) for r in others)}: precedents decided under the other code")
 

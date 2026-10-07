@@ -1,6 +1,20 @@
 PY ?= python
 
-.PHONY: check data index graph dense eval app test all
+.PHONY: build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+
+fetch:
+	$(PY) scripts/00_fetch_data.py
+
+crosswalk:
+	$(PY) -m kanoon_bridge.ingest.parse_crosswalk
+
+# cross-check the crosswalk against the government PDF (download it by hand first, see SETUP_AND_RUN.md)
+compare:
+	$(PY) -m kanoon_bridge.ingest.parse_crosswalk --compare
+
+# print IL-PCSR schema and one example row (after make fetch)
+inspect:
+	$(PY) -m kanoon_bridge.ingest.load_ilpcsr
 
 check:
 	$(PY) scripts/00_check_access.py
@@ -17,13 +31,59 @@ graph:
 dense:
 	$(PY) scripts/04_encode_dense.py
 
+ltr:
+	$(PY) scripts/06_train_ltr.py
+
+# generated E2 / E3 / E7 test sets (after make data)
+testsets:
+	$(PY) scripts/07_make_test_sets.py
+	$(PY) scripts/08_make_judged_sets.py
+
+# grid search on the validation split (BM25 b, zone weights, trigram beta); copy winners to configs/default.yaml
+tune:
+	$(PY) scripts/09_tune_on_val.py
+	$(PY) scripts/09_tune_on_val.py --ngram
+
+# postings, idf and a BM25F score worked out term by term (demo): make postings Q="IPC 302 murder knife"
+postings:
+	$(PY) scripts/show_postings.py "$(Q)"
+
+# significance tests from the existing run files
+significance:
+	$(PY) -m kanoon_bridge.eval.significance --all
+
 eval:
 	$(PY) scripts/05_run_all_evals.py
 
+eval-quick:
+	$(PY) scripts/05_run_all_evals.py --limit 50
+
+eval-sample:
+	$(PY) scripts/05_run_all_evals.py --sample --rag-generator extractive
+
+plots:
+	$(PY) scripts/05_run_all_evals.py --only-plots
+
+# the main web app: http://localhost:8000
+web:
+	$(PY) app/web_server.py
+
+# the older Streamlit demo
 app:
 	streamlit run app/streamlit_app.py
 
 test:
 	$(PY) -m pytest -q
 
-all: data index graph eval
+# everything needed to search (no evaluation), about 6 minutes
+build: crosswalk data index graph ltr
+
+all: crosswalk data index graph ltr testsets eval
+
+# synthetic end-to-end run (no Hugging Face access needed; BNS source still required)
+sample:
+	$(PY) tests/data/make_ilpcsr_sample.py
+	$(PY) scripts/01_build_corpus.py --sample
+	$(PY) scripts/02_build_index.py
+	$(PY) scripts/03_build_graph.py --sample
+	$(PY) scripts/06_train_ltr.py --sample --folds 2

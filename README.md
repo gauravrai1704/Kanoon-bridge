@@ -10,8 +10,64 @@ CSD358 (Information Retrieval) IR Hackathon · Track T6 (vertical search: law) w
 
 ![Architecture](docs/architecture.svg)
 
-Three layers on one core: **(1) core retriever** (required) → **(2) research agent** (stretch, from hour 26)
-→ **(3) grounded RAG answer** (stretch, if layer 2 is done by ~hour 30). See `ARCHITECTURE.md`.
+Three layers on one core: **(1) core retriever** → **(2) research agent** → **(3) grounded answer**.
+See `ARCHITECTURE.md` and the pipeline figure in `docs/report/pipeline.png`.
+
+## Quick start (from the zip)
+
+```bash
+cd kanoon-bridge
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+# IL-PCSR is not redistributed (CC-BY-NC-SA): copy your five parquet files in
+mkdir -p data/raw/ilpcsr && cp /path/to/raw/ilpcsr/*.parquet data/raw/ilpcsr/
+make build          # corpus + indexes + citation graph + LTR model, about 6 minutes
+make web            # http://localhost:8000
+make test           # 164 tests
+```
+
+The BNS sections (`data/raw/bns-study-platform`) and the government crosswalk PDF are
+included. `make eval` re-runs every experiment (about an hour on 2 CPU cores); the results of
+our run are already in `results/tables/` and `results/figures/`.
+
+## Results (IL-PCSR test split and our test sets)
+
+| Set | Metric | BM25 baseline | Kanoon-Bridge |
+| --- | --- | --- | --- |
+| E1 precedents (627 judgments) | MAP / F1@k / MRR | 0.220 / 0.151 / 0.316 | **0.414 / 0.308 / 0.560** |
+| E1 statutes | MAP / F1@k / MRR | 0.149 / 0.118 / 0.281 | **0.220 / 0.189 / 0.449** |
+| E1q typed-question proxies (40 words) | MAP | 0.051 | 0.059 (0.076 with the short-query LTR) |
+
+**Against IL-PCSR's own strongest lexical baseline** (BM25 over word 3-grams, run by us; the paper's
+published test numbers in brackets, [Paul et al. 2025](https://arxiv.org/abs/2511.00268) Table 3):
+
+| Set | Metric | IL-PCSR BM25 3-gram: ours [paper] | Kanoon-Bridge | Paired test |
+| --- | --- | --- | --- | --- |
+| E1 precedents | MAP / F1@k / MRR | 0.409 / 0.306 / 0.548 [0.434 / 0.322 / 0.575] | 0.414 / 0.308 / 0.559 | +0.005 MAP, n.s. (p = 0.34) |
+| E1 statutes | MAP / F1@k / MRR | 0.185 / 0.170 / 0.384 [0.194 / 0.178 / 0.417] | 0.220 / 0.189 / 0.449 | +0.035 MAP, significant |
+| E1q typed proxies | MAP | 0.046 | 0.059 | +0.013 MAP, significant |
+
+So on pasted judgments our gain over unigram BM25 is the trigram channel, which is IL-PCSR's idea.
+The paper's trained models (Para-GNN + BM25: 0.502 / 0.521 MAP; GPT-4.1 re-ranking: 0.544 / 0.611)
+stay ahead of us on E1.
+
+| Set | Metric | BM25 baseline | Kanoon-Bridge |
+| --- | --- | --- | --- |
+| E3 asked in BNS numbers | MAP | 0.006 | **0.655** |
+| E8 asked in BNSS / BSA numbers | MAP | 0.005 | **0.654** |
+| E9 CrPC vs BNSS, IEA vs BSA by date | MAP | 0.630 | **0.859** |
+| E4 English / Hindi / Hinglish (50 needs) | MAP | 0.395 | **0.461** |
+| E6 jurisdiction | nDCG@10 | 0.366 | **0.657** |
+| E7 right code at rank 1 | accuracy | 0.475 | **0.955** |
+| E2 colliding numbers | wrong-offence hits in top 10 | 7.5% | **0%** |
+
+All differences except E2's MAP and E1q are significant (paired randomization test, Holm-corrected).
+Second judge (blind AI sub-agents, declared): Cohen's κ = 0.54 on E4 and −0.16 on E6
+(`results/tables/agreement.csv`; see the report for why E6's citation-based gold disagrees).
+The dense channel and the post-2024 High Court judgments are run on a Colab T4 with
+`notebooks/colab_gpu_run.ipynb`.
+Full tables (with the 3-gram baseline as system `ilpcsr_bm25_3gram`): `results/tables/main_results.csv`, `significance.csv`, `ablation_e1_ilpcsr.csv`.
+Report and video script: `docs/report/`.
 
 ---
 
@@ -19,19 +75,28 @@ Three layers on one core: **(1) core retriever** (required) → **(2) research a
 
 | Component | Owner | Status |
 | --- | --- | --- |
-| Shared schema, config, storage, search entry point | all | working |
-| Legal tokeniser (section tokens) | A | working baseline |
-| Positional / zone / facet indexes, query parser | A | stub |
-| Crosswalk parsing, version normalisation, collision resolver | B | stub |
-| Transliteration, phonetic matching, stemming, dense channel | C | stub |
-| tf-idf, BM25F, statute bridge, authority, QPP, tiers | D | stub |
-| Evaluation metrics | D | working |
-| Research agent, layer 2 (RRF fusion + loop working) | agent owner | wiring works, rules stub |
-| RAG answer, layer 3 (orchestration working) | first free member | stub |
+| Shared schema, config, storage, text pipeline, search entry point | all | working |
+| Data fetch, IL-PCSR loader, BNS loader, segmentation, metadata (courts, states, dates) | Gaurav | **working** |
+| Crosswalk (496 IPC-BNS pairs), version normalisation, collision resolver | Gaurav | **working** |
+| tf-idf, BM25F, statute bridge, citation graph, PageRank authority, QPP, tiers | Gaurav | **working** |
+| Legal tokeniser (section tokens) | Sharanya | working |
+| Positional / zone / facet indexes, Boolean + phrase + proximity query parser and evaluation | Sharanya | **working** |
+| Transliteration, Hinglish normalisation, ~165-row legal lexicon, phonetic matching, Hindi stemming, dense channel | Kashvi | **working** (dense needs `make dense` on a GPU) |
+| Research agent, layer 2: rule planner (cross-code, Boolean, facet, statutes), RRF/CombSUM, QPP reflection + PRF, optional LLM planner | Shaurya | **working** |
+| Evaluation: test sets E1-E7, ablation ladder, language ablation, efficiency, plots | Gaurav | **working** |
+| Agent vs core and RAG evaluation | Gaurav | **working** |
+| RAG answer, layer 3: abstain, chunks, Claude/extractive generation, citation + version checks | Gaurav | **working** |
+| Web app (app/web_server.py + app/web/): bridge search, advocate answers, history, step-by-step "how this was found" | Gaurav | **working** |
+| Tolerant retrieval: spelling correction + did-you-mean, wildcards; snippets, highlighting, "why this result"; similar cases; relevance feedback; learning to rank; near-duplicate collapse; typo experiment | Gaurav | **working** |
+
+Every feature, the paper or textbook section it builds on, and what is new: **[docs/RESEARCH.md](docs/RESEARCH.md)**.
 
 Update this table as components land. Stubs raise `NotImplementedError` with a TODO saying what to build.
 
 ---
+
+> **Step-by-step guide to download every dataset and run everything (including the PDF
+> cross-check and the RAG layer): [SETUP_AND_RUN.md](SETUP_AND_RUN.md).**
 
 ## Setup
 
@@ -49,30 +114,49 @@ Python 3.10+.
 
 ## Data
 
-Downloads go in `data/raw/` (gitignored). Run `python scripts/00_check_access.py` first — it reports what is missing.
+Downloads go in `data/raw/` (gitignored). One command fetches both sources:
 
-| Data | Where to get it | Put it in |
+```bash
+pip install -e ".[data]"
+huggingface-cli login              # IL-PCSR is gated: accept its terms on the dataset page first
+make fetch                         # = python scripts/00_fetch_data.py
+make check                         # PASS/MISSING per item + TODOs left per owner
+```
+
+| Data | Source | Lands in |
 | --- | --- | --- |
-| IL-PCSR (IIT Kharagpur + IIT Kanpur) | https://huggingface.co/datasets/Exploration-Lab/IL-PCSR | `data/raw/ilpcsr/` |
-| BNS bare-act text | India Code (https://www.indiacode.nic.in) | `data/raw/bns/` |
-| IPC↔BNS comparison table (government copy) | https://www.keralaprisons.gov.in/userfiles/act-and-rules/comparison_summary_BNS_to_IPC.pdf | `data/raw/crosswalk/` |
+| IL-PCSR (IIT Kharagpur + IIT Kanpur), CC-BY-NC-SA 4.0 | https://huggingface.co/datasets/Exploration-Lab/IL-PCSR | `data/raw/ilpcsr/<config>/<split>.parquet` |
+| BNS bare-act text (358 sections) + each section's IPC correspondence | https://github.com/PSKprem/bns-study-platform (`data/sections/*.json`) | `data/raw/bns-study-platform/` |
+| IPC↔BNS crosswalk (derived) | generated by `make crosswalk` from the source above | `data/crosswalk/*.csv` (committed) |
+| Government comparison table (optional cross-check) | https://www.keralaprisons.gov.in/userfiles/act-and-rules/comparison_summary_BNS_to_IPC.pdf | `data/raw/crosswalk/` |
 | PoliceDrishti (gated, optional) | https://huggingface.co/datasets/happyman11/PoliceDristi | `data/raw/policedrishti/` |
 | NLLB-E5 weights (optional) | https://github.com/ArkadeepAcharya/NLLB-E5 | downloaded by `scripts/04_encode_dense.py` |
+
+From the bns-study-platform repository we use only the bare-act text (government material) and the
+section-number correspondences; none of its commentary.
+
+**No Hugging Face access yet?** `make sample` runs the whole offline build on a tiny synthetic
+sample in IL-PCSR's exact schema (`tests/data/`, fictional cases — never report results on it).
+
 
 No crawling. If any is added later: obey robots.txt, rate-limit, collect no personal data.
 
 ## How to run
 
 ```bash
-make data      # scripts/01_build_corpus.py  → data/processed/docs.jsonl
+make data      # scripts/01_build_corpus.py  → crosswalk CSVs + data/processed/docs.jsonl
 make index     # scripts/02_build_index.py   → data/processed/index/
 make graph     # scripts/03_build_graph.py   → citation graph + authority scores
 make dense     # scripts/04_encode_dense.py  → paragraph embeddings (GPU recommended)
+make ltr       # scripts/06_train_ltr.py     → learned re-ranker (trained on val)
 make eval      # scripts/05_run_all_evals.py → results/tables, results/figures
-make app       # streamlit demo
+make web       # the web app: http://localhost:8000 (search on the bridge, advocate answers, history, how-it-was-found)
+make app       # older Streamlit demo
 python app/cli.py "mere bhai ko chaku maara" --state delhi --date 2025-03-01 --debug
-python app/cli.py "..." --agent            # layer 2: several sub-queries, fused
-python app/cli.py "..." --answer           # layer 3: cited answer with checks
+python app/cli.py "..." --agent --debug    # layer 2: several sub-queries, fused (trace shows each one)
+python app/cli.py "..." --answer           # layer 3: cited answer with checks (Claude if a key is in .env)
+make compare   # crosswalk vs the government PDF (download it by hand first)
+make eval-quick / make eval-sample / make plots
 ```
 
 ## Repo layout
@@ -90,6 +174,6 @@ python app/cli.py "..." --answer           # layer 3: cited answer with checks
 
 ## Credits
 
-IL-PCSR (Paul et al., 2025), Hindi-BEIR / NLLB-E5 (Acharya et al., NAACL 2025), CaseLink (Tang et al., SIGIR 2024),
+IL-PCSR (Paul et al., 2025), BNS bare-act text and IPC correspondences via the bns-study-platform project (PSKprem), Hindi-BEIR / NLLB-E5 (Acharya et al., NAACL 2025), CaseLink (Tang et al., SIGIR 2024),
 QPP for agentic RAG (Tian et al., IR-RAG@SIGIR 2025), PoliceDrishti dataset. Spatio-temporal facets inspired by
 the work of Dr. Sonia Khetarpaul (SNU).

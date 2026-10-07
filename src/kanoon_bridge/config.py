@@ -10,6 +10,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,9 @@ def load_config(name: str = "default.yaml", overrides: dict[str, Any] | None = N
         data = yaml.safe_load(f) or {}
     if overrides:
         data = _deep_merge(data, overrides)
+    # environment override for the IL-PCSR location (used by --sample runs of the eval scripts)
+    if os.environ.get("KB_ILPCSR_DIR") and isinstance(data.get("paths"), dict):
+        data["paths"]["ilpcsr_dir"] = os.environ["KB_ILPCSR_DIR"]
     return Config(data)
 
 

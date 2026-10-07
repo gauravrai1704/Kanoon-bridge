@@ -1,4 +1,4 @@
-"""Legal-aware tokeniser.  [owner: A — working baseline, extend as needed]
+"""Legal-aware tokeniser.  [owner: A — working]
 
 What it does
 ------------
@@ -15,8 +15,9 @@ them intact here is essential: "302" alone would collide with every other 302.
     >>> tokenize("Convicted u/s 302 IPC and Section 34")
     ['convicted', 'sec:ipc:302', 'and', 'sec:?:34']
 
-TODO(A): handle "r/w" (read with), section ranges ("302-304"), Act names beyond the main
-codes, and roman-numeral clauses. Add each new case to tests/test_tokenize.py first.
+Also handled: "r/w" / "read with" lists ("302 r/w 34 IPC") and ranges ("sections 302-304",
+"302 to 304"; at most 20 sections). Not handled: Act names beyond the penal and procedure
+codes (they stay ordinary words) and roman-numeral clauses.
 """
 
 from __future__ import annotations
@@ -38,20 +39,27 @@ _CODE_WORDS: list[tuple[str, Code]] = [
     (r"cr\.?\s?p\.?\s?c\.?", Code.CRPC),
     (r"bharatiya\s+nagarik\s+suraksha\s+sanhita", Code.BNSS),
     (r"b\.?\s?n\.?\s?s\.?\s?s\.?", Code.BNSS),
+    (r"(?:indian\s+)?evidence\s+act", Code.IEA),
+    (r"i\.?\s?e\.?\s?a\.?(?![a-z])", Code.IEA),
+    (r"bharatiya\s+sakshya\s+adhiniyam", Code.BSA),
+    (r"b\.?\s?s\.?\s?a\.?(?![a-z])", Code.BSA),
 ]
 _CODE_RE = "|".join(f"(?:{p})" for p, _ in _CODE_WORDS)
 
 _NUM = r"\d{1,3}[a-z]?(?:\s?\(\s?\d{1,2}\s?\))?"          # 302, 498a, 103(1)
-_NUM_LIST = rf"{_NUM}(?:\s*(?:,|and|&|/|or)\s*{_NUM})*"     # 302, 307 and 34
+_SEP = r"(?:,|and|&|r/w|read\s+with|/|or|to|-)"                 # list, "read with", ranges
+_NUM_LIST = rf"{_NUM}(?:\s*{_SEP}\s*{_NUM})*"     # 302, 307 and 34 · 302 r/w 34 · 302-304
 
 # "section 302 ipc", "u/s 302", "sections 302, 307 and 34 of the ipc", "s. 103(1) bns"
 _LEAD_RE = re.compile(
     rf"\b(?:u/ss?\.?|under\s+sections?|sections?|secs?\.?|ss?\.)\s*"
     rf"(?P<nums>{_NUM_LIST})"
-    rf"(?:\s*(?:of\s+(?:the\s+)?)?(?P<code>{_CODE_RE}))?",
+    rf"(?:\s*(?:(?:of|in|under)\s+(?:the\s+)?)?(?P<code>{_CODE_RE}))?",
 )
 # "302 ipc", "498a i.p.c."
 _TRAIL_RE = re.compile(rf"\b(?P<nums>{_NUM_LIST})\s+(?:of\s+(?:the\s+)?)?(?P<code>{_CODE_RE})")
+# "bns 103", "ipc section 302", "ipc s. 498a" (code first; a 4-digit year never matches)
+_CODE_FIRST_RE = re.compile(rf"\b(?P<code>{_CODE_RE})\s*(?:,\s*)?(?:sections?|secs?\.?|ss?\.)?\s*(?P<nums>{_NUM_LIST})(?![0-9a-z])")
 
 _WORD_RE = re.compile(r"sec:[a-z?]+:[0-9a-z()]+|[a-z0-9]+(?:'[a-z]+)?|[ऀ-ॿ]+")
 
@@ -80,8 +88,19 @@ def _code_from_words(words: str | None) -> Code:
 
 
 def _split_nums(nums: str) -> list[str]:
-    parts = re.split(r"\s*(?:,|and|&|/|or)\s*", nums)
-    return [re.sub(r"\s+", "", p) for p in parts if p.strip()]
+    """'302, 307 and 34' -> [302, 307, 34]; '302 r/w 34' -> [302, 34]; '302-304' / '302 to 304'
+    -> [302, 303, 304] (plain numbers only, ranges of at most 20 sections)."""
+    out: list[str] = []
+    for part in re.split(r"\s*(?:,|and|&|r/w|read\s+with|/|or)\s*", nums):
+        part = re.sub(r"\s+", "", part)
+        if not part:
+            continue
+        m = re.fullmatch(r"(\d{1,3})(?:-|to)(\d{1,3})", part)
+        if m and 0 < int(m.group(2)) - int(m.group(1)) <= 20:
+            out += [str(n) for n in range(int(m.group(1)), int(m.group(2)) + 1)]
+        else:
+            out += [p for p in re.split(r"-|to", part) if p]
+    return out
 
 
 def extract_sections(text: str) -> list[SectionMention]:
@@ -89,7 +108,7 @@ def extract_sections(text: str) -> list[SectionMention]:
     low = text.lower()
     found: list[SectionMention] = []
     taken: list[tuple[int, int]] = []
-    for regex in (_LEAD_RE, _TRAIL_RE):
+    for regex in (_CODE_FIRST_RE, _LEAD_RE, _TRAIL_RE):
         for m in regex.finditer(low):
             if any(s < m.end() and m.start() < e for s, e in taken):
                 continue
@@ -102,12 +121,7 @@ def extract_sections(text: str) -> list[SectionMention]:
 
 
 def tokenize(text: str, keep_sections: bool = True) -> list[str]:
-    """
-    Lower-case `text` and split it into tokens.
-
-    When `keep_sections` is enabled, recognised legal section references
-    are preserved as single section tokens such as ``sec:ipc:302``.
-    """
+    """Lower-case `text` and split into tokens; section mentions become single tokens."""
     low = text.lower()
     if not keep_sections:
         return _WORD_RE.findall(low)
@@ -127,7 +141,6 @@ def tokenize(text: str, keep_sections: bool = True) -> list[str]:
 
 
 def is_section_token(token: str) -> bool:
-    """Return True if `token` represents a normalised legal section reference."""
     return token.startswith(SECTION_PREFIX)
 
 

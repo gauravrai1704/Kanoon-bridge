@@ -1,11 +1,12 @@
-"""Boolean retrieval over the positional index.  [owner: A]
+"""Boolean retrieval over the positional index.  [owner: A — working]
 
 Evaluates a QueryNode tree (from query/parser.py) to a set of doc ids.
 
 Lecture concepts shown here (point to this file in the video):
-  * linear-merge postings intersection
+  * linear-merge postings intersection (`intersect`, two pointers over sorted doc ids)
   * query optimisation: intersect terms in order of increasing document frequency
   * NOT as set difference against the candidate universe
+  * phrase and proximity operators from positions
 """
 
 from __future__ import annotations
@@ -14,184 +15,116 @@ from typing import Callable
 
 from kanoon_bridge.index.positional import PositionalIndex
 from kanoon_bridge.query.parser import Op, QueryNode
+from kanoon_bridge.query.proximity import within_positions
 
 
 def intersect(p1: list[str], p2: list[str]) -> list[str]:
-    """Linear merge of two sorted doc-id lists.
-
-    Uses the textbook two-pointer intersection algorithm.
-    """
-    i = 0
-    j = 0
-    result: list[str] = []
-
+    """Linear merge of two sorted doc-id lists (textbook two-pointer algorithm)."""
+    out: list[str] = []
+    i = j = 0
     while i < len(p1) and j < len(p2):
         if p1[i] == p2[j]:
-            result.append(p1[i])
+            out.append(p1[i])
             i += 1
             j += 1
         elif p1[i] < p2[j]:
             i += 1
         else:
             j += 1
-
-    return result
+    return out
 
 
 def intersect_many(postings: list[list[str]]) -> list[str]:
-    """Intersect many lists, shortest first.
-
-    Lists are sorted by length so that the smallest candidate set is
-    processed first. The intersection stops immediately if it becomes empty.
-    """
+    """Intersect many sorted lists, shortest first (lecture query optimisation); stops early
+    as soon as the running result is empty."""
     if not postings:
         return []
-
     ordered = sorted(postings, key=len)
-
     result = ordered[0]
-
-    for posting in ordered[1:]:
+    for plist in ordered[1:]:
         if not result:
             break
-
-        result = intersect(result, posting)
-
+        result = intersect(result, plist)
     return result
 
 
-def evaluate(
-    node: QueryNode,
-    index: PositionalIndex,
-    analyze: Callable[[str], list[str]],
-    universe: set[str] | None = None,
-) -> set[str]:
-    """Evaluate a QueryNode tree against a positional index.
+def _positions(node: QueryNode, index: PositionalIndex, analyze) -> dict[str, list[int]] | None:
+    """doc -> sorted start positions for a TERM or PHRASE (a term that analyses to several
+    tokens is treated as a phrase). None for an empty term (only stop words)."""
+    tokens = analyze(node.value)
+    if not tokens:
+        return None
+    if len(tokens) == 1:
+        return index.postings.get(tokens[0], {})
+    out: dict[str, list[int]] = {}
+    for d in index.phrase(tokens):
+        starts = set(index.postings[tokens[0]][d])
+        for i, t in enumerate(tokens[1:], start=1):
+            starts &= {p - i for p in index.postings[t][d]}
+        out[d] = sorted(starts)
+    return out
 
-    `analyze` converts query terms into the same normalized tokens used
-    when indexing documents.
 
-    TERM:
-        Returns documents containing all analyzed tokens.
+def evaluate(node: QueryNode, index: PositionalIndex, analyze: Callable[[str], list[str]],
+             universe: set[str] | None = None, expand: Callable[[str], list[str]] | None = None) -> set[str]:
+    """Evaluate the tree; `analyze` turns a term/phrase into index terms (same pipeline as docs).
 
-    PHRASE:
-        Uses the positional index's phrase query.
-
-    AND:
-        Intersects the results of both children.
-
-    OR:
-        Takes the union of both children.
-
-    NOT:
-        Returns the universe minus the child's results.
-
-    PROX:
-        Evaluates a proximity query using query.proximity.within.
+    TERM   with '*': wildcard, OR over `expand(pattern)` (text/spell.py k-gram index)
+    TERM   docs containing its analysed token; a section reference ("BNS 103") matches any doc
+           with its offence id, so Boolean search is version-aware like ranking
+           (several plain tokens, e.g. "breach-of-trust", act as a phrase)
+    PHRASE index.phrase over its analysed tokens
+    AND    intersect_many over sorted postings (shortest first); NOT children subtract
+    OR     union
+    NOT    universe minus the child
+    PROX   both sides within k positions (TERM/PHRASE sides); other sides fall back to AND
+    A term made only of stop words places no constraint.
     """
-    if node.op == Op.TERM:
+    universe = set(index.doc_len) if universe is None else universe
+    op = node.op
+    if op == Op.TERM and "*" in node.value:
+        # wildcard: OR over the index terms the k-gram index expands it to (IIR §3.2)
+        out: set[str] = set()
+        for t in (expand(node.value) if expand is not None else []):
+            out |= set(index.postings.get(t, {}))
+        return out & universe
+    if op in (Op.TERM, Op.PHRASE):
         tokens = analyze(node.value)
-
         if not tokens:
-            return set()
-
-        postings: list[list[str]] = []
-
-        for token in tokens:
-            docs = sorted(index.docs_with(token))
-            postings.append(docs)
-
-        return set(intersect_many(postings))
-
-    if node.op == Op.PHRASE:
-        tokens = analyze(node.value)
-
-        if not tokens:
-            return set()
-
-        return index.phrase(tokens)
-
-    if node.op == Op.AND:
-        if len(node.children) < 2:
-            return set()
-
-        child_results = [
-            evaluate(child, index, analyze, universe)
-            for child in node.children
-        ]
-
-        child_results.sort(key=len)
-
-        result = child_results[0]
-
-        for child_result in child_results[1:]:
-            result = result.intersection(child_result)
-
+            return set(universe)
+        offences = [t for t in tokens if t.startswith("off:")]
+        if offences and op == Op.TERM:
+            # a section reference ("302 IPC", "BNS 103") matches its offence in either code
+            out: set[str] = set()
+            for t in offences:
+                out |= set(index.postings.get(t, {}))
+            return out & universe
+        if op == Op.PHRASE or len(tokens) > 1:
+            return index.phrase(tokens) & universe
+        return set(index.postings.get(tokens[0], {})) & universe
+    if op == Op.OR:
+        out: set[str] = set()
+        for child in node.children:
+            out |= evaluate(child, index, analyze, universe, expand)
+        return out
+    if op == Op.NOT:
+        return universe - evaluate(node.children[0], index, analyze, universe, expand)
+    if op == Op.AND:
+        positive = [c for c in node.children if c.op != Op.NOT]
+        negative = [c for c in node.children if c.op == Op.NOT]
+        lists = [sorted(evaluate(c, index, analyze, universe, expand)) for c in positive]
+        result = set(intersect_many(lists)) if lists else set(universe)
+        for c in negative:                                   # a AND NOT b  =  a - b
             if not result:
                 break
-
+            result -= evaluate(c.children[0], index, analyze, universe, expand)
         return result
-
-    if node.op == Op.OR:
-        result: set[str] = set()
-
-        for child in node.children:
-            result.update(
-                evaluate(child, index, analyze, universe)
-            )
-
-        return result
-
-    if node.op == Op.NOT:
-        if universe is None:
-            universe = set(index.doc_len)
-
-        if not node.children:
-            return set(universe)
-
-        child_result = evaluate(
-            node.children[0],
-            index,
-            analyze,
-            universe,
-        )
-
-        return set(universe) - child_result
-
-    if node.op == Op.PROX:
-        if len(node.children) != 2:
-            return set()
-
-        from kanoon_bridge.query.proximity import within
-
-        left = node.children[0]
-        right = node.children[1]
-
-        left_terms = _node_terms(left, analyze)
-        right_terms = _node_terms(right, analyze)
-
-        if not left_terms or not right_terms:
-            return set()
-
-        return within(
-            index,
-            left_terms,
-            right_terms,
-            node.k,
-        )
-
-    raise ValueError(f"Unsupported query operator: {node.op}")
-
-
-def _node_terms(
-    node: QueryNode,
-    analyze: Callable[[str], list[str]],
-) -> list[str]:
-    """Convert a TERM or PHRASE node into normalized index terms."""
-    if node.op == Op.TERM:
-        return analyze(node.value)
-
-    if node.op == Op.PHRASE:
-        return analyze(node.value)
-
-    return []
+    if op == Op.PROX:
+        left, right = node.children
+        if all(c.op in (Op.TERM, Op.PHRASE) and "*" not in c.value for c in (left, right)):
+            p1, p2 = _positions(left, index, analyze), _positions(right, index, analyze)
+            if p1 is None or p2 is None:                     # a stop-word side: just the other side
+                return evaluate(right if p1 is None else left, index, analyze, universe, expand)
+            return within_positions(p1, p2, node.k) & universe
+        return evaluate(QueryNode(Op.AND, children=[left, right]), index, analyze, universe, expand)
+    raise ValueError(f"unknown operator {op}")

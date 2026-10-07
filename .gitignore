@@ -15,6 +15,7 @@ data/raw/
 data/processed/
 results/runs/
 results/tables/
+results/sample/
 *.npy
 *.pt
 *.bin
@@ -27,3 +28,6 @@ results/tables/
 .DS_Store
 .vscode/
 .idea/
+
+# judging pools quote IL-PCSR text (CC-BY-NC-SA): regenerate with scripts/12_second_judge.py pool
+data/queries/judging/*_pool.jsonl
