@@ -69,10 +69,13 @@ def answer(result, docs, cfg: Config | None = None, idf=None, resolver=None, nor
                             model=rcfg.model or None, closed_book=closed_book)
     ans.chunks = chunks
     ans = citation_check.check(ans, chunks, idf, threshold=rcfg.support_threshold, any_chunk=closed_book)
+    
     if resolver is not None:
-        ans = version_check.check(ans, query.incident_date, resolver, normalizer)
-    return ans
+        original_query = getattr(result, "query", None)
+        incident_date = getattr(original_query, "incident_date", None)
+        ans = version_check.check(ans, incident_date, resolver, normalizer)
 
+    return ans
 
 @dataclass
 class RagPipeline:
