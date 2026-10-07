@@ -80,6 +80,22 @@ ablation_ladder:
   - {name: +ltr,          zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ltr: true, ngram: true}
   - {name: +ltr_short,    zones: true,  bridge: true,  authority: true,  dense: true,  qpp: true,  jurisdiction: true,  code_filter: true, ltr: true, ngram: true, ltr_short: true}
 
+# IL-PCSR's strongest lexical baseline (BM25 over word 3-grams of the full query, Paul et al. 2025
+# Table 3) runs as a third system on the sets built from IL-PCSR
+ilpcsr_baseline_sets: [e1_ilpcsr, e1q_ilpcsr_short, e1s_ilpcsr_statutes]
+# published IL-PCSR test numbers (%, Table 3 of arXiv:2511.00268), shown beside ours in the report
+ilpcsr_published:
+  precedent:
+    "BM25 word 3-gram": {F1: 32.21, MAP: 43.44, MRR: 57.52}
+    "BM25 word 5-gram (best lexical)": {F1: 33.29, MAP: 43.98, MRR: 58.55}
+    "Para-GNN (summaries) + BM25, transfer learning": {F1: 38.77, MAP: 50.21, MRR: 63.81}
+    "GPT-4.1 re-ranking (best overall)": {F1: 43.31, MAP: 54.43, MRR: 68.88}
+  statute:
+    "BM25 word 3-gram": {F1: 17.80, MAP: 19.39, MRR: 41.74}
+    "BM25 word 2-gram, paragraph Max-All (best lexical)": {F1: 18.59, MAP: 21.82, MRR: 44.32}
+    "Para-GNN (summaries) + BM25, transfer learning": {F1: 39.44, MAP: 52.13, MRR: 73.77}
+    "GPT-4.1 re-ranking (best overall)": {F1: 46.11, MAP: 61.06, MRR: 81.55}
+
 # typed-question sets also run with the short-query LTR model (results/tables/ltr_short.csv)
 ltr_short_sets: [e1q_ilpcsr_short, e4_multilingual, e6_jurisdiction]
 

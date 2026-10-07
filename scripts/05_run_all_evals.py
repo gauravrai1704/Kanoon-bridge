@@ -67,7 +67,10 @@ def main() -> None:
             continue
         print(f"{name}: {len(ts.queries)} queries, {ts.judged} judged"
               + ("" if ts.judged else " (qrels empty: only the qrels-free metric is meaningful)"))
-        for system, opt in (("baseline", SearchOptions.baseline()), ("full", SearchOptions.full())):
+        systems = [("baseline", SearchOptions.baseline()), ("full", SearchOptions.full())]
+        if name in ev.get("ilpcsr_baseline_sets", []):     # IL-PCSR's strongest lexical baseline
+            systems.insert(1, ("ilpcsr_bm25_3gram", SearchOptions.ilpcsr_baseline()))
+        for system, opt in systems:
             scores = evaluate_set(engine, ts, opt, system, ev, runs)
             rows.append({"set": name, "system": system, "queries": len(ts.queries),
                          **{k: round(v, 4) for k, v in scores.items()}})

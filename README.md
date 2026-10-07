@@ -23,7 +23,7 @@ pip install -e ".[dev]"
 mkdir -p data/raw/ilpcsr && cp /path/to/raw/ilpcsr/*.parquet data/raw/ilpcsr/
 make build          # corpus + indexes + citation graph + LTR model, about 6 minutes
 make web            # http://localhost:8000
-make test           # 163 tests
+make test           # 164 tests
 ```
 
 The BNS sections (`data/raw/bns-study-platform`) and the government crosswalk PDF are
@@ -37,6 +37,22 @@ our run are already in `results/tables/` and `results/figures/`.
 | E1 precedents (627 judgments) | MAP / F1@k / MRR | 0.220 / 0.151 / 0.316 | **0.414 / 0.308 / 0.560** |
 | E1 statutes | MAP / F1@k / MRR | 0.149 / 0.118 / 0.281 | **0.220 / 0.189 / 0.449** |
 | E1q typed-question proxies (40 words) | MAP | 0.051 | 0.059 (0.076 with the short-query LTR) |
+
+**Against IL-PCSR's own strongest lexical baseline** (BM25 over word 3-grams, run by us; the paper's
+published test numbers in brackets, [Paul et al. 2025](https://arxiv.org/abs/2511.00268) Table 3):
+
+| Set | Metric | IL-PCSR BM25 3-gram: ours [paper] | Kanoon-Bridge | Paired test |
+| --- | --- | --- | --- | --- |
+| E1 precedents | MAP / F1@k / MRR | 0.409 / 0.306 / 0.548 [0.434 / 0.322 / 0.575] | 0.414 / 0.308 / 0.559 | +0.005 MAP, n.s. (p = 0.34) |
+| E1 statutes | MAP / F1@k / MRR | 0.185 / 0.170 / 0.384 [0.194 / 0.178 / 0.417] | 0.220 / 0.189 / 0.449 | +0.035 MAP, significant |
+| E1q typed proxies | MAP | 0.046 | 0.059 | +0.013 MAP, significant |
+
+So on pasted judgments our gain over unigram BM25 is the trigram channel, which is IL-PCSR's idea.
+The paper's trained models (Para-GNN + BM25: 0.502 / 0.521 MAP; GPT-4.1 re-ranking: 0.544 / 0.611)
+stay ahead of us on E1.
+
+| Set | Metric | BM25 baseline | Kanoon-Bridge |
+| --- | --- | --- | --- |
 | E3 asked in BNS numbers | MAP | 0.006 | **0.655** |
 | E8 asked in BNSS / BSA numbers | MAP | 0.005 | **0.654** |
 | E9 CrPC vs BNSS, IEA vs BSA by date | MAP | 0.630 | **0.859** |
@@ -50,7 +66,7 @@ Second judge (blind AI sub-agents, declared): Cohen's κ = 0.54 on E4 and −0.1
 (`results/tables/agreement.csv`; see the report for why E6's citation-based gold disagrees).
 The dense channel and the post-2024 High Court judgments are run on a Colab T4 with
 `notebooks/colab_gpu_run.ipynb`.
-Full tables: `results/tables/main_results.csv`, `significance.csv`, `ablation_e1_ilpcsr.csv`.
+Full tables (with the 3-gram baseline as system `ilpcsr_bm25_3gram`): `results/tables/main_results.csv`, `significance.csv`, `ablation_e1_ilpcsr.csv`.
 Report and video script: `docs/report/`.
 
 ---

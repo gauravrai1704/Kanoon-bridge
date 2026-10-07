@@ -50,6 +50,7 @@ class SearchOptions:
     code_filter: bool = True       # statutes restricted to the code in force on the incident date
     version_norm: bool = True      # match sections through offence ids shared by IPC and BNS (off = text as written)
     ngram: bool = False            # word-trigram BM25 channel for long (case-as-query) queries, rank/ngram.py
+    ngram_only: bool = False       # rank by word-trigram BM25 alone, any query length (IL-PCSR's lexical baseline)
     top_k: int = 10
     max_query_terms: int | None = None   # cap long queries (E1 uses 100); None = config bm25.max_query_terms
     candidate_mode: str = "all"    # "all" | "tiers" | "champions" (efficiency experiment)
@@ -83,6 +84,14 @@ class SearchOptions:
         """Plain BM25, nothing else: the 'obvious baseline' in the report."""
         return cls(zones=False, bridge=False, authority=False, dense=False, qpp=False,
                    jurisdiction=False, code_filter=False, version_norm=False)
+
+    @classmethod
+    def ilpcsr_baseline(cls) -> "SearchOptions":
+        """IL-PCSR's strongest lexical baseline (Paul et al. 2025, Table 3): BM25 over word 3-grams
+        of the full query text, nothing else."""
+        b = cls.baseline()
+        b.ngram, b.ngram_only = True, True
+        return b
 
 
 @dataclass
@@ -144,7 +153,7 @@ class SearchEngine:
         return len(query.text.split()) >= self.cfg.ngram.min_query_words
 
     def _use_ngram(self, query: Query, opt: "SearchOptions") -> bool:
-        return opt.ngram and self._is_case_query(query)
+        return opt.ngram and (opt.ngram_only or self._is_case_query(query))
 
     @staticmethod
     def _mix(base: dict[str, float], ngram: dict[str, float], beta: float) -> dict[str, float]:
@@ -260,7 +269,7 @@ class SearchEngine:
             ng = self.ngram_statutes.score(query.text, statute_cands, top=300)
             for d, v in ng.items():
                 st_components.setdefault(d, {})["ngram"] = v
-            statute_scores = self._mix(statute_scores, ng, self.cfg.ngram.beta_statutes)
+            statute_scores = self._mix(statute_scores, ng, 1.0 if opt.ngram_only else self.cfg.ngram.beta_statutes)
             aq.trace.append(("ngram_statutes", f"{len(ng)} statutes share word {self.ngram_statutes.n}-grams with the query"))
         statutes = to_scored(top_k(statute_scores, opt.top_k), DocType.STATUTE, st_components)
         t["statutes"] = clock() - t0
@@ -319,7 +328,7 @@ class SearchEngine:
         # are comparable across queries; ranking by relevance alone is unchanged
         top_lex = max(lexical.values(), default=0.0) or 1.0
         relevance = {d: s / top_lex for d, s in lexical.items()}
-        case_query = self._is_case_query(query)
+        case_query = self._is_case_query(query) or opt.ngram_only
         dense: dict[str, float] = {}
         if opt.dense and self.dense is not None:
             dense = self.dense.score(aq.transliterated or query.text, prec_cands)
@@ -341,7 +350,7 @@ class SearchEngine:
                 ng = self.ngram_precedents.score(query.text, prec_cands, top=300)
                 for d, v in ng.items():
                     components.setdefault(d, {})["ngram"] = v
-                relevance = self._mix(relevance, ng, self.cfg.ngram.beta)
+                relevance = self._mix(relevance, ng, 1.0 if opt.ngram_only else self.cfg.ngram.beta)
                 aq.trace.append(("ngram", f"{len(ng)} precedents share word {self.ngram_precedents.n}-grams; "
                                           f"beta {self.cfg.ngram.beta}"))
             if dense:

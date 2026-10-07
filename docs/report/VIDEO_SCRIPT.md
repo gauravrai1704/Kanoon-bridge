@@ -142,7 +142,7 @@ python app/cli.py "bail in dowry death case" --agent --state maharashtra --date 
 
 Show `docs/report/figures/fig_main.png`.
 
-> "E1 is IL-PCSR's own precedent-retrieval benchmark: 627 test queries, each a whole judgment. Plain BM25 gets MAP 0.22. We get 0.41, and F1 goes from 0.15 to 0.31. That is close to the best lexical baseline in the IL-PCSR paper, which is BM25 over word trigrams. Every gain is significant under a paired randomization test with Holm correction."
+> "E1 is IL-PCSR's own precedent-retrieval benchmark: 627 test queries, each a whole judgment. Plain BM25 gets MAP 0.22. We get 0.41, and F1 goes from 0.15 to 0.31. But the fair comparison is IL-PCSR's own best lexical baseline, BM25 over word trigrams: we ran it and got 0.41 too. So on pasted judgments we are level with it, and the gain comes from trigrams, which was their idea. On statutes and on short typed questions we beat it significantly, and the paper's trained models, a GNN and GPT-4.1 re-ranking, are still ahead of us. Every gain over plain BM25 is significant under a paired randomization test with Holm correction."
 
 Show `fig_e3.png`.
 

@@ -75,6 +75,56 @@ def fig_main(main, out):
     plt.close(fig)
 
 
+def fig_ilpcsr(main, published, out):
+    """E1 MAP against IL-PCSR's baselines: our runs (filled) and the paper's test numbers (outlined)."""
+    if not published or _val(main, "e1_ilpcsr", "ilpcsr_bm25_3gram", "MAP") is None:
+        return False
+    short = {"BM25 word 3-gram": "BM25 word 3-grams", "best lexical": "Best lexical BM25 variant",
+             "Para-GNN": "Para-GNN + BM25 (trained)", "GPT-4.1": "GPT-4.1 re-ranking (best)"}
+
+    def label(name):
+        return next((v for k, v in short.items() if k in name), name) + "  [paper]"
+
+    def pub(key, name):
+        return published[key][name]["MAP"] / 100
+
+    names = list(published["precedent"])
+    st_names = list(published["statute"])
+    rows = [("BM25 unigrams  [ours]", _val(main, "e1_ilpcsr", "baseline", "MAP"), _val(main, "e1s_ilpcsr_statutes", "baseline", "MAP"), "base"),
+            ("BM25 word 3-grams  [ours]", _val(main, "e1_ilpcsr", "ilpcsr_bm25_3gram", "MAP"),
+             _val(main, "e1s_ilpcsr_statutes", "ilpcsr_bm25_3gram", "MAP"), "base")]
+    for i, n in enumerate(names):
+        rows.append((label(n), pub("precedent", n), pub("statute", st_names[i]), "paper"))
+    rows.append(("Kanoon-Bridge  [ours]", _val(main, "e1_ilpcsr", "full", "MAP"), _val(main, "e1s_ilpcsr_statutes", "full", "MAP"), "ours"))
+    fig, ax = plt.subplots(figsize=(8.8, 5.2))
+    h = 0.36
+    for i, (name, pv, sv, kind) in enumerate(reversed(rows)):
+        for off, v, alpha in ((h / 2, pv, 1.0), (-h / 2, sv, 0.5)):
+            if v is None:
+                continue
+            y = i + off
+            if kind == "paper":
+                ax.barh(y, v, height=h * 0.92, color="white", edgecolor=GREY, linewidth=1.3)
+            else:
+                ax.barh(y, v, height=h * 0.92, color=BLUE if kind == "ours" else GREY, alpha=alpha)
+            ax.text(v + 0.006, y, f"{v:.3f}", va="center", fontsize=8.3,
+                    color=BLUE if kind == "ours" else INK, fontweight="bold" if kind == "ours" else "normal")
+    ax.set_yticks(range(len(rows)), [r[0] for r in reversed(rows)], fontsize=9.2)
+    ax.tick_params(axis="y", length=0)
+    ax.spines["left"].set_visible(False)
+    ax.set_xlim(0, 0.7)
+    ax.set_xlabel("MAP on the IL-PCSR test split (upper bar: precedents, lower bar: statutes)", color=MUTED, fontsize=9)
+    ours, tri = _val(main, "e1_ilpcsr", "full", "MAP"), _val(main, "e1_ilpcsr", "ilpcsr_bm25_3gram", "MAP")
+    fig.suptitle(f"E1: level with IL-PCSR's lexical baseline on precedents ({tri:.3f} vs {ours:.3f}),\n"
+                 "ahead on statutes, behind the paper's trained models", x=0.02, ha="left", fontsize=11.5, fontweight="bold")
+    fig.text(0.02, 0.012, "Filled: our runs. Outlined: Paul et al. 2025, Table 3. Their statute pool has 936 sections; "
+             "ours also has the BNS/BNSS/BSA (1,995).", fontsize=7.8, color=MUTED)
+    fig.tight_layout(rect=(0, 0.035, 1, 0.92))
+    fig.savefig(out, dpi=200)
+    plt.close(fig)
+    return True
+
+
 def fig_ablation(rows, out):
     # +ltr_short only touches typed questions: identical to +ltr on whole-judgment queries
     rows = [r for r in rows if r.get("MAP") not in (None, "") and r["step"] != "+ltr_short"]
@@ -173,6 +223,8 @@ def main() -> None:
     if fig_e3(main_rows, out / "fig_e8.png", "e8_procedure_control", "e8_procedure_cross_version",
               "CrPC / IEA", "BNSS / BSA", "E8"):
         made.append("fig_e8.png")
+    if fig_ilpcsr(main_rows, ev.get("ilpcsr_published"), out / "fig_ilpcsr.png"):
+        made.append("fig_ilpcsr.png")
     lang = read_table(tables / "language_e4.csv") if (tables / "language_e4.csv").exists() else []
     if fig_language(main_rows, lang, out / "fig_language.png"):
         made.append("fig_language.png")

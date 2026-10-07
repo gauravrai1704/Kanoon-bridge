@@ -165,7 +165,11 @@ def run_all(ev: Config | None = None, sets: list[str] | None = None, ladder_sets
     for name in sets or list(ev.test_sets):
         a, b = runs / f"{name}.baseline.run", runs / f"{name}.full.run"
         if a.exists() and b.exists():
-            rows += pairs_rows(name, [("baseline", a, "full", b)], _qrels_for(name, ev), ("AP", "nDCG@10"), n_perm)
+            pairs = [("baseline", a, "full", b)]
+            il = runs / f"{name}.ilpcsr_bm25_3gram.run"
+            if il.exists():                                  # vs IL-PCSR's strongest lexical baseline
+                pairs.append(("ilpcsr_bm25_3gram", il, "full", b))
+            rows += pairs_rows(name, pairs, _qrels_for(name, ev), ("AP", "nDCG@10"), n_perm)
     for name in ladder_sets:
         steps = [s["name"] for s in ev.ablation_ladder]
         paths = [runs / "ablation" / f"{name}.{s}.run" for s in steps]

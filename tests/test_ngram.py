@@ -27,3 +27,16 @@ def test_masks_and_unknown_words_break_ngrams():
 def test_candidates_filter():
     idx = NgramIndex.build([_doc(0, "a b c d"), _doc(1, "a b c e")])
     assert set(idx.score("a b c", candidates={"1"})) == {"1"}
+
+
+def test_ilpcsr_baseline_ranks_by_trigrams_alone():
+    from kanoon_bridge.search import SearchEngine, SearchOptions
+
+    opt = SearchOptions.ilpcsr_baseline()
+    assert opt.ngram and opt.ngram_only and not opt.version_norm and not opt.bridge and not opt.ltr
+    eng = SearchEngine.__new__(SearchEngine)
+    eng.cfg = type("C", (), {"ngram": type("N", (), {"min_query_words": 50})()})()
+    from kanoon_bridge.schema import Query
+
+    assert eng._use_ngram(Query("a short typed question"), opt)          # any length, unlike the full system
+    assert not eng._use_ngram(Query("a short typed question"), SearchOptions.full())
