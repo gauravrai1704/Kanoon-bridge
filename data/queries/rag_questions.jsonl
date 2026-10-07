@@ -1,0 +1,20 @@
+{"id": "R01", "text": "What is the punishment for murder?", "incident_date": "2025-01-03", "state": "delhi", "answerable": true, "lang": "en"}
+{"id": "R02", "text": "What is the punishment for murder?", "incident_date": "2023-06-10", "state": "delhi", "answerable": true, "lang": "en"}
+{"id": "R03", "text": "Which section applies to cheating and dishonestly inducing delivery of property?", "incident_date": "2024-10-01", "state": "maharashtra", "answerable": true, "lang": "en"}
+{"id": "R04", "text": "Is a husband's cruelty towards his wife an offence, and under which section?", "incident_date": "2022-04-12", "state": "uttar-pradesh", "answerable": true, "lang": "en"}
+{"id": "R05", "text": "What does the law say about dowry death?", "incident_date": "2025-02-20", "state": "haryana", "answerable": true, "lang": "en"}
+{"id": "R06", "text": "What is the offence of criminal intimidation, such as threatening to kill?", "incident_date": "2024-09-01", "state": "karnataka", "answerable": true, "lang": "en"}
+{"id": "R07", "text": "What is the punishment for theft?", "incident_date": "2024-08-15", "state": "tamil-nadu", "answerable": true, "lang": "en"}
+{"id": "R08", "text": "When does culpable homicide not amount to murder?", "incident_date": "2021-11-30", "state": "kerala", "answerable": true, "lang": "en"}
+{"id": "R09", "text": "What is the punishment for rape?", "incident_date": "2025-03-05", "state": "delhi", "answerable": true, "lang": "en"}
+{"id": "R10", "text": "Which section covers voluntarily causing hurt with a dangerous weapon such as a knife?", "incident_date": "2025-03-01", "state": "delhi", "answerable": true, "lang": "en"}
+{"id": "R11", "text": "What is abetment of suicide and what is its punishment?", "incident_date": "2023-01-18", "state": "maharashtra", "answerable": true, "lang": "en"}
+{"id": "R12", "text": "Is kidnapping for ransom a separate offence?", "incident_date": "2024-12-10", "state": "bihar", "answerable": true, "lang": "en"}
+{"id": "R13", "text": "What is the offence of criminal breach of trust?", "incident_date": "2020-07-07", "state": "gujarat", "answerable": true, "lang": "en"}
+{"id": "R14", "text": "Which section deals with acts done by several persons in furtherance of common intention?", "incident_date": "2019-05-02", "state": "rajasthan", "answerable": true, "lang": "en"}
+{"id": "R15", "text": "Section 302 - what does it cover for an offence committed in 2025?", "incident_date": "2025-04-01", "state": "delhi", "answerable": true, "lang": "en"}
+{"id": "R16", "text": "What is the punishment for attempt to murder?", "incident_date": "2024-07-10", "state": "west-bengal", "answerable": true, "lang": "en"}
+{"id": "R17", "text": "What is the current GST rate on restaurant food?", "incident_date": "2025-01-01", "state": "delhi", "answerable": false, "lang": "en"}
+{"id": "R18", "text": "How do I register a trademark for my startup?", "incident_date": "2025-01-01", "state": "karnataka", "answerable": false, "lang": "en"}
+{"id": "R19", "text": "What is the income tax slab for salaried employees this year?", "incident_date": "2025-06-01", "state": "maharashtra", "answerable": false, "lang": "en"}
+{"id": "R20", "text": "Which football club won the league last season?", "incident_date": "2025-06-01", "state": "kerala", "answerable": false, "lang": "en"}

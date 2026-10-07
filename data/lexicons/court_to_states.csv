@@ -1,0 +1,30 @@
+# Court -> states/UTs whose courts its rulings bind. level: supreme_court | high_court. "*" = everywhere.
+# All 25 High Courts. First matching row wins, so the Supreme Court comes first.
+# Historical note: until 2019 one High Court (Hyderabad / Andhra Pradesh) served both AP and Telangana.
+court_name,name_pattern,level,states
+Supreme Court of India,supreme court,supreme_court,*
+Allahabad High Court,allahabad,high_court,uttar-pradesh
+Andhra Pradesh High Court,andhra pradesh|hyderabad,high_court,andhra-pradesh;telangana
+Bombay High Court,bombay,high_court,maharashtra;goa;dadra-nagar-haveli-daman-diu
+Calcutta High Court,calcutta,high_court,west-bengal;andaman-nicobar
+Chhattisgarh High Court,chhattisgarh,high_court,chhattisgarh
+Delhi High Court,delhi,high_court,delhi
+Gauhati High Court,gauhati|guwahati,high_court,assam;nagaland;mizoram;arunachal-pradesh
+Gujarat High Court,gujarat,high_court,gujarat
+Himachal Pradesh High Court,himachal,high_court,himachal-pradesh
+Jammu and Kashmir High Court,jammu|kashmir|ladakh,high_court,jammu-kashmir;ladakh
+Jharkhand High Court,jharkhand,high_court,jharkhand
+Karnataka High Court,karnataka|mysore,high_court,karnataka
+Kerala High Court,kerala,high_court,kerala;lakshadweep
+Madhya Pradesh High Court,madhya pradesh,high_court,madhya-pradesh
+Madras High Court,madras,high_court,tamil-nadu;puducherry
+Manipur High Court,manipur,high_court,manipur
+Meghalaya High Court,meghalaya,high_court,meghalaya
+Orissa High Court,orissa|odisha,high_court,odisha
+Patna High Court,patna,high_court,bihar
+Punjab and Haryana High Court,punjab|haryana|chandigarh,high_court,punjab;haryana;chandigarh
+Rajasthan High Court,rajasthan,high_court,rajasthan
+Sikkim High Court,sikkim,high_court,sikkim
+Telangana High Court,telangana,high_court,telangana
+Tripura High Court,tripura,high_court,tripura
+Uttarakhand High Court,uttarakhand|uttaranchal,high_court,uttarakhand

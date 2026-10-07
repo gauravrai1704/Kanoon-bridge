@@ -1,0 +1,4 @@
+mode,queries,latency_ms_median,latency_ms_p95,recall@20_vs_exhaustive
+all,200,110.88,185.16,1.0
+tiers,200,59.1,94.14,0.2449
+champions,200,108.7,195.9,0.9901

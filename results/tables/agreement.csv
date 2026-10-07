@@ -1,0 +1,3 @@
+set,judges,pairs,agreement_binary,kappa_binary,kappa_graded,relevant_team,relevant_second
+e4_multilingual,team vs ai,1022,0.906,0.536,0.508,66,162
+e6_jurisdiction,team vs ai,377,0.472,-0.155,,304,215

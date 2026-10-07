@@ -1,0 +1,337 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1928" viewBox="0 0 1500 1928" font-family="Inter, Helvetica, Arial, DejaVu Sans, sans-serif"><rect width="1500" height="1928" fill="#ffffff"/><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#55554f"/></marker></defs><text x="30" y="46" font-size="24" font-weight="bold" fill="#1d1d1b" text-anchor="start">Kanoon-Bridge: end-to-end architecture</text>
+<text x="30" y="70" font-size="14" font-weight="normal" fill="#55554f" text-anchor="start">Three layers on one core retriever. Layers 2 and 3 are stretch goals, gated at hour 26 and ~hour 30.</text>
+<rect x="14" y="90" width="1472" height="238" rx="12" fill="#f4f4f2" fill-opacity="0.55" stroke="#8a8a85" stroke-opacity="0.5"/>
+<text x="30" y="116" font-size="17" font-weight="bold" fill="#8a8a85" text-anchor="start">Data sources</text>
+<text x="1470" y="116" font-size="13" font-weight="normal" fill="#55554f" text-anchor="end">data/raw (gitignored) + data/crosswalk, data/lexicons, data/queries (committed)</text>
+<rect x="30" y="134" width="228" height="178" rx="8" fill="#ffffff" stroke="#8a8a85" stroke-width="1.4"/>
+<rect x="30" y="134" width="228" height="30" rx="8" fill="#f4f4f2"/>
+<rect x="30" y="156" width="228" height="8" fill="#f4f4f2"/>
+<text x="42" y="155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">IL-PCSR</text>
+<text x="246" y="155" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">IIT Kgp + Kanpur</text>
+<text x="42.0" y="186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">6,271 query judgments</text>
+<text x="42.0" y="204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  train 5,017 / val 627 /</text>
+<text x="42.0" y="222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  test 627</text>
+<text x="42.0" y="240" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">3,183 precedents</text>
+<text x="42.0" y="258" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">936 statutes (IPC era)</text>
+<text x="42.0" y="276" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">qrels = what each cited</text>
+<rect x="272" y="134" width="228" height="178" rx="8" fill="#ffffff" stroke="#8a8a85" stroke-width="1.4"/>
+<rect x="272" y="134" width="228" height="30" rx="8" fill="#f4f4f2"/>
+<rect x="272" y="156" width="228" height="8" fill="#f4f4f2"/>
+<text x="284" y="155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">BNS bare act</text>
+<text x="488" y="155" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">via GitHub</text>
+<text x="284.0" y="186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">358 sections, text</text>
+<text x="284.0" y="204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">verified vs Gazette</text>
+<text x="284.0" y="222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">+ IPC reference each</text>
+<text x="284.0" y="240" font-size="13" font-weight="normal" fill="#8a8a85" text-anchor="start">-&gt; BNS statute docs</text>
+<rect x="515" y="134" width="228" height="178" rx="8" fill="#ffffff" stroke="#8a8a85" stroke-width="1.4"/>
+<rect x="515" y="134" width="228" height="30" rx="8" fill="#f4f4f2"/>
+<rect x="515" y="156" width="228" height="8" fill="#f4f4f2"/>
+<text x="527" y="155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">IPC-BNS crosswalk</text>
+<text x="731" y="155" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">derived</text>
+<text x="527.0" y="186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">496 section pairs</text>
+<text x="527.0" y="204" font-size="13" font-weight="normal" fill="#8a8a85" text-anchor="start">-&gt; ipc_bns.csv</text>
+<text x="527.0" y="222" font-size="13" font-weight="normal" fill="#8a8a85" text-anchor="start">-&gt; offence_ids.csv</text>
+<text x="527.0" y="240" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">Govt PDF: cross-check</text>
+<rect x="757" y="134" width="228" height="178" rx="8" fill="#ffffff" stroke="#8a8a85" stroke-width="1.4"/>
+<rect x="757" y="134" width="228" height="30" rx="8" fill="#f4f4f2"/>
+<rect x="757" y="156" width="228" height="8" fill="#f4f4f2"/>
+<text x="769" y="155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Lexicons</text>
+<text x="973" y="155" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">ours</text>
+<text x="769.0" y="186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">Hinglish legal terms</text>
+<text x="769.0" y="204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">Hindi + legal stop words</text>
+<text x="769.0" y="222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">court -&gt; states table</text>
+<rect x="999" y="134" width="228" height="178" rx="8" fill="#ffffff" stroke="#8a8a85" stroke-width="1.4"/>
+<rect x="999" y="134" width="228" height="30" rx="8" fill="#f4f4f2"/>
+<rect x="999" y="156" width="228" height="8" fill="#f4f4f2"/>
+<text x="1011" y="155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Hand-built queries</text>
+<text x="1215" y="155" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">ours</text>
+<text x="1011.0" y="186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">E2 collision</text>
+<text x="1011.0" y="204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">E3 cross-version</text>
+<text x="1011.0" y="222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">E4 en / hi / Hinglish</text>
+<text x="1011.0" y="240" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">E6 jurisdiction</text>
+<text x="1011.0" y="258" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">E7 temporal</text>
+<text x="1011.0" y="276" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">2 judges + kappa</text>
+<rect x="1242" y="134" width="228" height="178" rx="8" fill="#ffffff" stroke="#8a8a85" stroke-width="1.4"/>
+<rect x="1242" y="134" width="228" height="30" rx="8" fill="#f4f4f2"/>
+<rect x="1242" y="156" width="228" height="8" fill="#f4f4f2"/>
+<text x="1254" y="155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Optional</text>
+<text x="1254.0" y="186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">PoliceDrishti: 190 facts</text>
+<text x="1254.0" y="204" font-size="13" font-weight="normal" fill="#8a8a85" text-anchor="start">-&gt; BNS charges (E5)</text>
+<text x="1254.0" y="222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">NLLB-E5 weights</text>
+<text x="1254.0" y="240" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">(Hindi-BEIR, NAACL'25)</text>
+<rect x="14" y="342" width="1472" height="112" rx="12" fill="#fff7e0" fill-opacity="0.55" stroke="#c99a1e" stroke-opacity="0.5"/>
+<text x="30" y="368" font-size="17" font-weight="bold" fill="#c99a1e" text-anchor="start">How each split is used</text>
+<text x="1470" y="368" font-size="13" font-weight="normal" fill="#55554f" text-anchor="end">rule 3: no test leakage</text>
+<rect x="30" y="382" width="348" height="60" rx="8" fill="#ffffff" stroke="#c99a1e" stroke-width="1.4"/>
+<rect x="30" y="382" width="348" height="30" rx="8" fill="#fff7e0"/>
+<rect x="30" y="404" width="348" height="8" fill="#fff7e0"/>
+<text x="42" y="403" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">TRAIN  5,017 queries</text>
+<text x="42.0" y="434" font-size="13" font-weight="normal" fill="#c99a1e" text-anchor="start">-&gt; citation-graph edges for g(d)</text>
+<rect x="394" y="382" width="348" height="60" rx="8" fill="#ffffff" stroke="#c99a1e" stroke-width="1.4"/>
+<rect x="394" y="382" width="348" height="30" rx="8" fill="#fff7e0"/>
+<rect x="394" y="404" width="348" height="8" fill="#fff7e0"/>
+<text x="406" y="403" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">VAL  627 queries</text>
+<text x="406.0" y="434" font-size="13" font-weight="normal" fill="#c99a1e" text-anchor="start">-&gt; tune lambda, alpha, zone weights, k</text>
+<rect x="758" y="382" width="348" height="60" rx="8" fill="#ffffff" stroke="#c99a1e" stroke-width="1.4"/>
+<rect x="758" y="382" width="348" height="30" rx="8" fill="#fff7e0"/>
+<rect x="758" y="404" width="348" height="8" fill="#fff7e0"/>
+<text x="770" y="403" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">TEST  627 queries</text>
+<text x="770.0" y="434" font-size="13" font-weight="normal" fill="#c99a1e" text-anchor="start">-&gt; E1 / E3 results only, never tuned</text>
+<rect x="1122" y="382" width="348" height="60" rx="8" fill="#ffffff" stroke="#c99a1e" stroke-width="1.4"/>
+<rect x="1122" y="382" width="348" height="30" rx="8" fill="#fff7e0"/>
+<rect x="1122" y="404" width="348" height="8" fill="#fff7e0"/>
+<text x="1134" y="403" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">HAND-BUILT SETS</text>
+<text x="1134.0" y="434" font-size="13" font-weight="normal" fill="#c99a1e" text-anchor="start">-&gt; E2, E4, E6, E7 (written first)</text>
+<line x1="750.0" y1="328" x2="750.0" y2="468" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="14" y="470" width="1472" height="290" rx="12" fill="#eaf1fb" fill-opacity="0.55" stroke="#3d6fb6" stroke-opacity="0.5"/>
+<text x="30" y="496" font-size="17" font-weight="bold" fill="#3d6fb6" text-anchor="start">Offline build</text>
+<text x="1470" y="496" font-size="13" font-weight="normal" fill="#55554f" text-anchor="end">make data / index / graph / dense  (scripts/01-04, run once)</text>
+<rect x="30" y="514" width="345" height="166" rx="8" fill="#ffffff" stroke="#3d6fb6" stroke-width="1.4"/>
+<rect x="30" y="514" width="345" height="30" rx="8" fill="#eaf1fb"/>
+<rect x="30" y="536" width="345" height="8" fill="#eaf1fb"/>
+<text x="42" y="535" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">01 build corpus</text>
+<text x="363" y="535" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">owner A</text>
+<text x="42.0" y="566" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">load IL-PCSR + BNS sections</text>
+<text x="42.0" y="584" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">segment: facts / arguments /</text>
+<text x="42.0" y="602" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  ratio / decision zones</text>
+<text x="42.0" y="620" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">metadata: court, states, date,</text>
+<text x="42.0" y="638" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  code in force</text>
+<text x="42.0" y="656" font-size="13" font-weight="normal" fill="#3d6fb6" text-anchor="start">-&gt; docs.jsonl (one schema)</text>
+<rect x="395" y="514" width="345" height="166" rx="8" fill="#ffffff" stroke="#3d6fb6" stroke-width="1.4"/>
+<rect x="395" y="514" width="345" height="30" rx="8" fill="#eaf1fb"/>
+<rect x="395" y="536" width="345" height="8" fill="#eaf1fb"/>
+<text x="407" y="535" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">02 build index</text>
+<text x="728" y="535" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">owner A</text>
+<text x="407.0" y="566" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">text pipeline (same as queries):</text>
+<text x="407.0" y="584" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">tokenize, stop words, stem,</text>
+<text x="407.0" y="602" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">collision, version norm</text>
+<text x="407.0" y="620" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  (IPC 302 = BNS 103 = off:murder)</text>
+<text x="407.0" y="638" font-size="13" font-weight="normal" fill="#3d6fb6" text-anchor="start">-&gt; zone index x2, facet index</text>
+<text x="407.0" y="656" font-size="13" font-weight="normal" fill="#3d6fb6" text-anchor="start">-&gt; statute terms</text>
+<rect x="760" y="514" width="345" height="166" rx="8" fill="#ffffff" stroke="#3d6fb6" stroke-width="1.4"/>
+<rect x="760" y="514" width="345" height="30" rx="8" fill="#eaf1fb"/>
+<rect x="760" y="536" width="345" height="8" fill="#eaf1fb"/>
+<text x="772" y="535" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">03 build graph</text>
+<text x="1093" y="535" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">owner D</text>
+<text x="772.0" y="566" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">TRAIN qrels + precedent</text>
+<text x="772.0" y="584" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  citations -&gt; citation graph</text>
+<text x="772.0" y="602" font-size="13" font-weight="normal" fill="#3d6fb6" text-anchor="start">-&gt; PageRank g(d)</text>
+<text x="772.0" y="620" font-size="13" font-weight="normal" fill="#3d6fb6" text-anchor="start">-&gt; per-state g(d | state)</text>
+<text x="772.0" y="638" font-size="13" font-weight="normal" fill="#3d6fb6" text-anchor="start">-&gt; tiers + champion lists</text>
+<rect x="1125" y="514" width="345" height="166" rx="8" fill="#ffffff" stroke="#3d6fb6" stroke-width="1.4"/>
+<rect x="1125" y="514" width="345" height="30" rx="8" fill="#eaf1fb"/>
+<rect x="1125" y="536" width="345" height="8" fill="#eaf1fb"/>
+<text x="1137" y="535" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">04 encode dense</text>
+<text x="1458" y="535" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">owner C, optional</text>
+<text x="1137.0" y="566" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">zone paragraphs -&gt; NLLB-E5</text>
+<text x="1137.0" y="584" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">one-time, on a GPU</text>
+<text x="1137.0" y="602" font-size="13" font-weight="normal" fill="#3d6fb6" text-anchor="start">-&gt; embeddings/*.npy</text>
+<text x="1137.0" y="620" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">doc score = max over</text>
+<text x="1137.0" y="638" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  its paragraphs</text>
+<rect x="30" y="696" width="1440" height="48" rx="8" fill="#ffffff" stroke="#9a9a9a" stroke-dasharray="5 3"/>
+<text x="46" y="717" font-size="14" font-weight="bold" fill="#1d1d1b" text-anchor="start">data/processed/</text>
+<text x="46" y="736" font-size="13" font-weight="normal" fill="#55554f" text-anchor="start">docs.jsonl  |  statutes_zone.pkl  |  precedents_zone.pkl  |  facets.pkl  |  statute_terms.json  |  authority.json  |  tiers.pkl  |  embeddings/</text>
+<line x1="202.5" y1="680" x2="202.5" y2="694" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="567.5" y1="680" x2="567.5" y2="694" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="932.5" y1="680" x2="932.5" y2="694" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="1297.5" y1="680" x2="1297.5" y2="694" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="750.0" y1="744" x2="750.0" y2="798" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="760.0" y="775.0" font-size="12" font-weight="normal" fill="#55554f" text-anchor="start">loaded once by SearchEngine.load()</text>
+<rect x="14" y="800" width="1472" height="236" rx="12" fill="#e6f5f1" fill-opacity="0.55" stroke="#1f8a70" stroke-opacity="0.5"/>
+<text x="30" y="826" font-size="17" font-weight="bold" fill="#1f8a70" text-anchor="start">Layer 1  Core retriever</text>
+<text x="1470" y="826" font-size="13" font-weight="normal" fill="#55554f" text-anchor="end">search.py  SearchEngine.search(query)  - the only path to results (rule 4)</text>
+<rect x="30" y="844" width="222" height="172" rx="8" fill="#ffffff" stroke="#1f8a70" stroke-width="1.4"/>
+<rect x="30" y="844" width="222" height="30" rx="8" fill="#e6f5f1"/>
+<rect x="30" y="866" width="222" height="8" fill="#e6f5f1"/>
+<text x="42" y="865" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Query</text>
+<text x="42.0" y="896" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">text: en / hi / Hinglish</text>
+<text x="42.0" y="914" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">+ user's state</text>
+<text x="42.0" y="932" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">+ incident date</text>
+<text x="42.0" y="950" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">+ filters: code:, court:</text>
+<rect x="274" y="844" width="222" height="172" rx="8" fill="#ffffff" stroke="#1f8a70" stroke-width="1.4"/>
+<rect x="274" y="844" width="222" height="30" rx="8" fill="#e6f5f1"/>
+<rect x="274" y="866" width="222" height="8" fill="#e6f5f1"/>
+<text x="286" y="865" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Analyze</text>
+<text x="484" y="865" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">C + B</text>
+<text x="286.0" y="896" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">detect language</text>
+<text x="286.0" y="914" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">translit + spelling norm</text>
+<text x="286.0" y="932" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">lexicon + phonetic</text>
+<text x="286.0" y="950" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">same text pipeline</text>
+<text x="286.0" y="968" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">code in force from date</text>
+<text x="286.0" y="986" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">+ other-code sections</text>
+<rect x="517" y="844" width="222" height="172" rx="8" fill="#ffffff" stroke="#1f8a70" stroke-width="1.4"/>
+<rect x="517" y="844" width="222" height="30" rx="8" fill="#e6f5f1"/>
+<rect x="517" y="866" width="222" height="8" fill="#e6f5f1"/>
+<text x="529" y="865" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Rank statutes</text>
+<text x="727" y="865" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">D</text>
+<text x="529.0" y="896" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">BM25F over statutes</text>
+<text x="529.0" y="914" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">only the code in force:</text>
+<text x="529.0" y="932" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">IPC before 1 Jul 2024,</text>
+<text x="529.0" y="950" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">BNS from then on</text>
+<rect x="761" y="844" width="222" height="172" rx="8" fill="#ffffff" stroke="#1f8a70" stroke-width="1.4"/>
+<rect x="761" y="844" width="222" height="30" rx="8" fill="#e6f5f1"/>
+<rect x="761" y="866" width="222" height="8" fill="#e6f5f1"/>
+<text x="773" y="865" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Statute bridge</text>
+<text x="971" y="865" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">D</text>
+<text x="773.0" y="896" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">top statutes -&gt;</text>
+<text x="773.0" y="914" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">expand precedent query</text>
+<text x="773.0" y="932" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">boost precedents that</text>
+<text x="773.0" y="950" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">cite those statutes</text>
+<rect x="1005" y="844" width="222" height="172" rx="8" fill="#ffffff" stroke="#1f8a70" stroke-width="1.4"/>
+<rect x="1005" y="844" width="222" height="30" rx="8" fill="#e6f5f1"/>
+<rect x="1005" y="866" width="222" height="8" fill="#e6f5f1"/>
+<text x="1017" y="865" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Rank precedents</text>
+<text x="1215" y="865" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">D, C</text>
+<text x="1017.0" y="896" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">BM25F with zone</text>
+<text x="1017.0" y="914" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  weights</text>
+<text x="1017.0" y="932" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">+ dense (optional),</text>
+<text x="1017.0" y="950" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  fused with alpha</text>
+<text x="1017.0" y="968" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">alpha set by QPP</text>
+<rect x="1248" y="844" width="222" height="172" rx="8" fill="#ffffff" stroke="#1f8a70" stroke-width="1.4"/>
+<rect x="1248" y="844" width="222" height="30" rx="8" fill="#e6f5f1"/>
+<rect x="1248" y="866" width="222" height="8" fill="#e6f5f1"/>
+<text x="1260" y="865" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Authority, top-K</text>
+<text x="1458" y="865" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">D</text>
+<text x="1260.0" y="896" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">rel + lambda g(d|state)</text>
+<text x="1260.0" y="914" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">SC, own HC: binding</text>
+<text x="1260.0" y="932" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">other HC: persuasive</text>
+<text x="1260.0" y="950" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">heap top-K</text>
+<line x1="254" y1="930.0" x2="271" y2="930.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="498" y1="930.0" x2="514" y2="930.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="741" y1="930.0" x2="758" y2="930.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="985" y1="930.0" x2="1002" y2="930.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="1229" y1="930.0" x2="1245" y2="930.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="14" y="1090" width="1472" height="262" rx="12" fill="#f1ebfa" fill-opacity="0.55" stroke="#6b48b5" stroke-opacity="0.5"/>
+<text x="30" y="1116" font-size="17" font-weight="bold" fill="#6b48b5" text-anchor="start">Layer 2  Research agent</text>
+<text x="1470" y="1116" font-size="13" font-weight="normal" fill="#55554f" text-anchor="end">agent/  ResearchAgent.run(query)  - stretch goal, from hour 26</text>
+<rect x="30" y="1134" width="266" height="150" rx="8" fill="#ffffff" stroke="#6b48b5" stroke-width="1.4"/>
+<rect x="30" y="1134" width="266" height="30" rx="8" fill="#f1ebfa"/>
+<rect x="30" y="1156" width="266" height="8" fill="#f1ebfa"/>
+<text x="42" y="1155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Plan</text>
+<text x="42.0" y="1186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">original</text>
+<text x="42.0" y="1204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">cross-code (IPC&lt;-&gt;BNS)</text>
+<text x="42.0" y="1222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">Boolean: top-idf AND</text>
+<text x="42.0" y="1240" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">facet: binding only</text>
+<text x="42.0" y="1258" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">statutes-first</text>
+<rect x="324" y="1134" width="266" height="150" rx="8" fill="#ffffff" stroke="#6b48b5" stroke-width="1.4"/>
+<rect x="324" y="1134" width="266" height="30" rx="8" fill="#f1ebfa"/>
+<rect x="324" y="1156" width="266" height="8" fill="#f1ebfa"/>
+<text x="336" y="1155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Execute</text>
+<text x="336.0" y="1186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">each sub-query =</text>
+<text x="336.0" y="1204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">one Layer 1 search</text>
+<text x="336.0" y="1222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">(same engine, rule 4)</text>
+<rect x="617" y="1134" width="266" height="150" rx="8" fill="#ffffff" stroke="#6b48b5" stroke-width="1.4"/>
+<rect x="617" y="1134" width="266" height="30" rx="8" fill="#f1ebfa"/>
+<rect x="617" y="1156" width="266" height="8" fill="#f1ebfa"/>
+<text x="629" y="1155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Fuse: RRF</text>
+<text x="629.0" y="1186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">sum of w / (60 + rank)</text>
+<text x="629.0" y="1204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">no score normalisation</text>
+<text x="629.0" y="1222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">CombSUM to compare</text>
+<rect x="911" y="1134" width="266" height="150" rx="8" fill="#ffffff" stroke="#6b48b5" stroke-width="1.4"/>
+<rect x="911" y="1134" width="266" height="30" rx="8" fill="#f1ebfa"/>
+<rect x="911" y="1156" width="266" height="8" fill="#f1ebfa"/>
+<text x="923" y="1155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Reflect: QPP</text>
+<text x="923.0" y="1186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">weak retrieval?</text>
+<text x="923.0" y="1204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">low max-idf, small gap</text>
+<text x="923.0" y="1222" font-size="13" font-weight="normal" fill="#6b48b5" text-anchor="start">-&gt; one more round</text>
+<text x="923.0" y="1240" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">   (max 2 rounds)</text>
+<rect x="1204" y="1134" width="266" height="150" rx="8" fill="#ffffff" stroke="#6b48b5" stroke-width="1.4"/>
+<rect x="1204" y="1134" width="266" height="30" rx="8" fill="#f1ebfa"/>
+<rect x="1204" y="1156" width="266" height="8" fill="#f1ebfa"/>
+<text x="1216" y="1155" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Fused ranking</text>
+<text x="1216.0" y="1186" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">statutes + precedents</text>
+<text x="1216.0" y="1204" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">trace of every</text>
+<text x="1216.0" y="1222" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  sub-query (--debug)</text>
+<line x1="298" y1="1209.0" x2="321" y2="1209.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="592" y1="1209.0" x2="614" y2="1209.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="885" y1="1209.0" x2="908" y2="1209.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="1179" y1="1209.0" x2="1201" y2="1209.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<path d="M 427.0 1134 L 427.0 1040" fill="none" stroke="#6b48b5" stroke-width="1.6" marker-end="url(#arr)"/>
+<path d="M 487.0 1036 L 487.0 1130" fill="none" stroke="#1f8a70" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="497.0" y="1069" font-size="12" font-weight="normal" fill="#55554f" text-anchor="start">ranked lists back</text>
+<text x="417.0" y="1069" font-size="12" font-weight="normal" fill="#55554f" text-anchor="end">sub-queries</text>
+<path d="M 1044.0 1284 L 1044.0 1314 L 163.0 1314 L 163.0 1288" fill="none" stroke="#6b48b5" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arr)"/>
+<text x="603.5" y="1306" font-size="12" font-weight="normal" fill="#55554f" text-anchor="middle">if weak: pseudo-relevance feedback adds top-document terms, then plan again</text>
+<rect x="14" y="1392" width="1472" height="236" rx="12" fill="#fdf0e6" fill-opacity="0.55" stroke="#c4651b" stroke-opacity="0.5"/>
+<text x="30" y="1418" font-size="17" font-weight="bold" fill="#c4651b" text-anchor="start">Layer 3  RAG answer</text>
+<text x="1470" y="1418" font-size="13" font-weight="normal" fill="#55554f" text-anchor="end">rag/  answer(result, docs)  - stretch goal, only if Layer 2 is done by ~hour 30</text>
+<rect x="30" y="1436" width="222" height="160" rx="8" fill="#ffffff" stroke="#c4651b" stroke-width="1.4"/>
+<rect x="30" y="1436" width="222" height="30" rx="8" fill="#fdf0e6"/>
+<rect x="30" y="1458" width="222" height="8" fill="#fdf0e6"/>
+<text x="42" y="1457" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Abstain?</text>
+<text x="42.0" y="1488" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">QPP says weak -&gt;</text>
+<text x="42.0" y="1506" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">'not enough grounding'</text>
+<text x="42.0" y="1524" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">no LLM call</text>
+<rect x="274" y="1436" width="222" height="160" rx="8" fill="#ffffff" stroke="#c4651b" stroke-width="1.4"/>
+<rect x="274" y="1436" width="222" height="30" rx="8" fill="#fdf0e6"/>
+<rect x="274" y="1458" width="222" height="8" fill="#fdf0e6"/>
+<text x="286" y="1457" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Chunk</text>
+<text x="286.0" y="1488" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">top statutes +</text>
+<text x="286.0" y="1506" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">ratio / decision paras</text>
+<text x="286.0" y="1524" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">numbered [1]..[8]</text>
+<rect x="517" y="1436" width="222" height="160" rx="8" fill="#ffffff" stroke="#c4651b" stroke-width="1.4"/>
+<rect x="517" y="1436" width="222" height="30" rx="8" fill="#fdf0e6"/>
+<rect x="517" y="1458" width="222" height="8" fill="#fdf0e6"/>
+<text x="529" y="1457" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Generate</text>
+<text x="529.0" y="1488" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">LLM, temperature 0</text>
+<text x="529.0" y="1506" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">3-5 sentences</text>
+<text x="529.0" y="1524" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">one [n] per sentence</text>
+<rect x="761" y="1436" width="222" height="160" rx="8" fill="#ffffff" stroke="#c4651b" stroke-width="1.4"/>
+<rect x="761" y="1436" width="222" height="30" rx="8" fill="#fdf0e6"/>
+<rect x="761" y="1458" width="222" height="8" fill="#fdf0e6"/>
+<text x="773" y="1457" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Citation check</text>
+<text x="773.0" y="1488" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">tf-idf cosine:</text>
+<text x="773.0" y="1506" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">sentence vs its chunk</text>
+<text x="773.0" y="1524" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">&lt; 0.2 -&gt; unsupported</text>
+<rect x="1005" y="1436" width="222" height="160" rx="8" fill="#ffffff" stroke="#c4651b" stroke-width="1.4"/>
+<rect x="1005" y="1436" width="222" height="30" rx="8" fill="#fdf0e6"/>
+<rect x="1005" y="1458" width="222" height="8" fill="#fdf0e6"/>
+<text x="1017" y="1457" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Version check</text>
+<text x="1017.0" y="1488" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">IPC cited for a</text>
+<text x="1017.0" y="1506" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">post-July-2024 case?</text>
+<text x="1017.0" y="1524" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">bare '302'? -&gt; flag</text>
+<rect x="1248" y="1436" width="222" height="160" rx="8" fill="#ffffff" stroke="#c4651b" stroke-width="1.4"/>
+<rect x="1248" y="1436" width="222" height="30" rx="8" fill="#fdf0e6"/>
+<rect x="1248" y="1458" width="222" height="8" fill="#fdf0e6"/>
+<text x="1260" y="1457" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Answer + flags</text>
+<text x="1260.0" y="1488" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">cited answer</text>
+<text x="1260.0" y="1506" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">+ flags + sources</text>
+<text x="1260.0" y="1524" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">'not legal advice'</text>
+<path d="M 1337.0 1284 L 1337.0 1374 L 230 1374 L 230 1432" fill="none" stroke="#6b48b5" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="739.0" y="1368" font-size="12" font-weight="normal" fill="#55554f" text-anchor="middle">fused ranking (or the Layer 1 result) goes to Layer 3</text>
+<line x1="254" y1="1516.0" x2="271" y2="1516.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="498" y1="1516.0" x2="514" y2="1516.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="741" y1="1516.0" x2="758" y2="1516.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="985" y1="1516.0" x2="1002" y2="1516.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="1229" y1="1516.0" x2="1245" y2="1516.0" stroke="#55554f" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="14" y="1668" width="1472" height="236" rx="12" fill="#ecf6e8" fill-opacity="0.55" stroke="#3f8a2c" stroke-opacity="0.5"/>
+<text x="30" y="1694" font-size="17" font-weight="bold" fill="#3f8a2c" text-anchor="start">Outputs and evaluation</text>
+<rect x="30" y="1712" width="430" height="172" rx="8" fill="#ffffff" stroke="#8a8a85" stroke-width="1.4"/>
+<rect x="30" y="1712" width="430" height="30" rx="8" fill="#f4f4f2"/>
+<rect x="30" y="1734" width="430" height="8" fill="#f4f4f2"/>
+<text x="42" y="1733" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Outputs</text>
+<text x="42.0" y="1764" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">app/cli.py --debug</text>
+<text x="42.0" y="1782" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">  shows every rewrite, postings, scores</text>
+<text x="42.0" y="1800" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">app/streamlit_app.py  (demo page)</text>
+<text x="42.0" y="1818" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">--agent -&gt; Layer 2,  --answer -&gt; Layer 3</text>
+<text x="42.0" y="1836" font-size="13" font-weight="normal" fill="#1d1d1b" text-anchor="start">no flag -&gt; Layer 1 only (dashed line, left)</text>
+<rect x="480" y="1712" width="990" height="172" rx="8" fill="#ffffff" stroke="#3f8a2c" stroke-width="1.4"/>
+<rect x="480" y="1712" width="990" height="30" rx="8" fill="#ecf6e8"/>
+<rect x="480" y="1734" width="990" height="8" fill="#ecf6e8"/>
+<text x="492" y="1733" font-size="15" font-weight="bold" fill="#1d1d1b" text-anchor="start">Evaluation</text>
+<text x="1458" y="1733" font-size="11.5" font-weight="normal" fill="#55554f" text-anchor="end">owner D, scripts/05_run_all_evals.py</text>
+<text x="492.0" y="1764" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">E1 IL-PCSR test: F1@k, MAP, MRR,</text>
+<text x="492.0" y="1782" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">   next to the published baselines</text>
+<text x="492.0" y="1800" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">E2 collision: wrong-offence rate, top-10</text>
+<text x="492.0" y="1818" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">E3 cross-version: Recall@20 of</text>
+<text x="492.0" y="1836" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">   BNS-worded queries</text>
+<text x="492.0" y="1854" font-size="12.5" font-weight="normal" fill="#3f8a2c" text-anchor="start">-&gt; results/tables, results/figures</text>
+<text x="975.0" y="1764" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">E4 language: P@5 for en / hi / Hinglish</text>
+<text x="975.0" y="1782" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">E6 jurisdiction: binding share in</text>
+<text x="975.0" y="1800" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">   top-5, nDCG@10</text>
+<text x="975.0" y="1818" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">E7 temporal: correct code of top statute</text>
+<text x="975.0" y="1836" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">Ablation ladder; efficiency (tiers)</text>
+<text x="975.0" y="1854" font-size="12.5" font-weight="normal" fill="#1d1d1b" text-anchor="start">Agent vs core; RAG supported sentences</text>
+<line x1="1359.0" y1="1596" x2="1359.0" y2="1710" stroke="#c4651b" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="1351.0" y="1698" font-size="12" font-weight="normal" fill="#55554f" text-anchor="end">answers scored</text>
+<path d="M 30 950 L 22 950 L 22 1798 L 28 1798" fill="none" stroke="#1f8a70" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arr)"/></svg>

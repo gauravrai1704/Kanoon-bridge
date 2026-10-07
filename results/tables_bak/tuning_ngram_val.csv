@@ -1,0 +1,13 @@
+target,beta,MAP_val
+precedent,0.0,0.227
+precedent,0.3,0.3104
+precedent,0.5,0.3556
+precedent,0.7,0.3802
+precedent,0.85,0.3979
+precedent,1.0,0.4018
+statute,0.0,0.155
+statute,0.3,0.1813
+statute,0.5,0.1954
+statute,0.7,0.2019
+statute,0.85,0.1972
+statute,1.0,0.1877

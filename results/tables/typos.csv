@@ -1,0 +1,4 @@
+condition,queries,MRR@10,Success@1,Success@10
+clean,300,0.9465,0.91,0.9967
+"typos, no spelling",300,0.8304,0.7733,0.92
+typos + spelling,300,0.9046,0.87,0.9633
