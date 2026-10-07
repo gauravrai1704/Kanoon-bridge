@@ -102,7 +102,12 @@ def extract_sections(text: str) -> list[SectionMention]:
 
 
 def tokenize(text: str, keep_sections: bool = True) -> list[str]:
-    """Lower-case `text` and split into tokens; section mentions become single tokens."""
+    """
+    Lower-case `text` and split it into tokens.
+
+    When `keep_sections` is enabled, recognised legal section references
+    are preserved as single section tokens such as ``sec:ipc:302``.
+    """
     low = text.lower()
     if not keep_sections:
         return _WORD_RE.findall(low)
@@ -122,6 +127,7 @@ def tokenize(text: str, keep_sections: bool = True) -> list[str]:
 
 
 def is_section_token(token: str) -> bool:
+    """Return True if `token` represents a normalised legal section reference."""
     return token.startswith(SECTION_PREFIX)
 
 

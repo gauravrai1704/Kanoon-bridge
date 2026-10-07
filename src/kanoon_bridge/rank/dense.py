@@ -1,4 +1,4 @@
-"""Dense channel: multilingual paragraph embeddings.  [owner: C]
+"""Dense channel: multilingual paragraph embeddings.  [owner: C — working]
 
 Model: NLLB-E5 (Hindi-BEIR, NAACL 2025) — zero-shot multilingual, handles Hindi without
 Hindi training data. Fallback: intfloat/multilingual-e5-base. Set in configs: dense.model.
@@ -32,6 +32,48 @@ class DenseRetriever:
     model: object | None = None
     matrix: np.ndarray | None = None
     para_doc: list[str] = field(default_factory=list)
+    _rows: dict[str, np.ndarray] = field(default_factory=dict)   # doc -> its paragraph row indices
+
+    # ------------------------------------------------------------------ model
+    def _model(self):
+        if self.model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError as err:
+                raise RuntimeError('dense channel needs:  pip install -e ".[dense]"') from err
+            name = self.cfg.dense.model
+            try:
+                self.model = SentenceTransformer(name)
+            except Exception:                                        # noqa: BLE001 - fall back, say so
+                fallback = self.cfg.dense.get("fallback_model", "intfloat/multilingual-e5-base")
+                print(f"dense: could not load {name}; using {fallback}")
+                self.model = SentenceTransformer(fallback)
+        return self.model
+
+    def _prefix(self, kind: str) -> str:
+        """E5-family models expect 'query: ' / 'passage: ' prefixes."""
+        return f"{kind}: " if self.cfg.dense.get("e5_prefixes", True) else ""
+
+    def _encode(self, texts: list[str], kind: str, batch_size: int = 32) -> np.ndarray:
+        vecs = self._model().encode([self._prefix(kind) + t for t in texts], batch_size=batch_size,
+                                    normalize_embeddings=True, show_progress_bar=len(texts) > 256)
+        vecs = np.asarray(vecs, dtype=np.float32)
+        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+        return vecs / np.where(norms == 0, 1.0, norms)
+
+    # ------------------------------------------------------------------ files
+    @staticmethod
+    def _paths(cfg: Config, name: str):
+        from kanoon_bridge.config import project_path
+
+        base = project_path(cfg.paths.embeddings)
+        return base / f"{name}.npy", base / f"{name}_ids.json"
+
+    def _index_rows(self) -> None:
+        rows: dict[str, list[int]] = {}
+        for i, d in enumerate(self.para_doc):
+            rows.setdefault(d, []).append(i)
+        self._rows = {d: np.asarray(r) for d, r in rows.items()}
 
     @classmethod
     def load(

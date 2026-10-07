@@ -12,7 +12,6 @@ def build():
     return idx
 
 
-@todo
 def test_df_and_tf():
     idx = build()
     assert idx.df("criminal") == 2
@@ -20,13 +19,11 @@ def test_df_and_tf():
     assert idx.doc_len["d1"] == 5
 
 
-@todo
 def test_phrase_requires_order():
     idx = build()
     assert idx.phrase(["criminal", "breach"]) == {"d1"}
 
 
-@todo
 def test_duplicate_doc_rejected():
     import pytest
 
