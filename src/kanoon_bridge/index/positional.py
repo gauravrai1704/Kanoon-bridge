@@ -25,19 +25,32 @@ from kanoon_bridge.schema import Posting
 
 @dataclass
 class PositionalIndex:
-    postings: dict[str, dict[str, list[int]]] = field(default_factory=lambda: defaultdict(dict))
-    doc_len: dict[str, int] = field(default_factory=dict)       # tokens per document
+    postings: dict[str, dict[str, list[int]]] = field(
+        default_factory=lambda: defaultdict(dict)
+    )
+    doc_len: dict[str, int] = field(default_factory=dict)  # tokens per document
 
     # ------------------------------------------------------------------ build
     def add(self, doc_id: str, tokens: list[str]) -> None:
         """Add one document's tokens with their positions.
 
-        TODO(A): record positions for every token; set doc_len[doc_id]. Adding the same
-        doc_id twice should raise ValueError (catches double-ingest bugs).
+        Raises ValueError if the same document is added more than once.
         """
-        raise NotImplementedError("TODO(A): add a document to the positional index")
+        if doc_id in self.doc_len:
+            raise ValueError(f"Document {doc_id!r} has already been added")
 
-    # ------------------------------------------------------------------ statistics (implement after add)
+        self.doc_len[doc_id] = len(tokens)
+
+        for position, token in enumerate(tokens):
+            if token not in self.postings:
+                self.postings[token] = {}
+
+            if doc_id not in self.postings[token]:
+                self.postings[token][doc_id] = []
+
+            self.postings[token][doc_id].append(position)
+
+    # ------------------------------------------------------------------ statistics
     @property
     def n_docs(self) -> int:
         return len(self.doc_len)
@@ -62,7 +75,10 @@ class PositionalIndex:
 
     def postings_for(self, term: str) -> list[Posting]:
         """Postings sorted by doc_id (needed for linear-merge intersection)."""
-        return [Posting(d, pos) for d, pos in sorted(self.postings.get(term, {}).items())]
+        return [
+            Posting(d, pos)
+            for d, pos in sorted(self.postings.get(term, {}).items())
+        ]
 
     def docs_with(self, term: str) -> set[str]:
         return set(self.postings.get(term, {}))
@@ -71,7 +87,37 @@ class PositionalIndex:
     def phrase(self, terms: list[str]) -> set[str]:
         """Documents containing `terms` consecutively.
 
-        TODO(A): positional intersection — start from the rarest term's docs, check that
-        term i appears at position p+i for some p. Test with tests/test_positional.py.
+        Uses positional intersection: term i must occur at position p+i
+        for some starting position p.
         """
-        raise NotImplementedError("TODO(A): phrase query over positions")
+        if not terms:
+            return set()
+
+        # A single-term phrase is equivalent to a normal term lookup.
+        if len(terms) == 1:
+            return self.docs_with(terms[0])
+
+        # Start from the rarest term to reduce the number of candidate documents.
+        rarest_term = min(terms, key=self.df)
+        candidate_docs = self.docs_with(rarest_term)
+
+        results: set[str] = set()
+
+        for doc_id in candidate_docs:
+            first_positions = self.postings.get(terms[0], {}).get(doc_id, [])
+
+            for start_position in first_positions:
+                matches = True
+
+                for offset, term in enumerate(terms):
+                    positions = self.postings.get(term, {}).get(doc_id, [])
+
+                    if start_position + offset not in positions:
+                        matches = False
+                        break
+
+                if matches:
+                    results.add(doc_id)
+                    break
+
+        return results

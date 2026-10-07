@@ -9,7 +9,7 @@ single zone "statute".
     zidx = ZoneIndex.build(docs, analyze=lambda text, doc: analyze_text(text, date=doc.decision_date))
     zidx.tf("off:murder", "d1", "ratio")
     zidx.zone_len("d1", "ratio"); zidx.avg_zone_len("ratio")
-    zidx.whole                       # PositionalIndex over all zones (for Boolean/phrase)
+    zidx.whole                       # PositionalIndex over all zones
 """
 
 from __future__ import annotations
@@ -25,7 +25,9 @@ Analyzer = Callable[[str, Document], list[str]]
 
 @dataclass
 class ZoneIndex:
-    zones: dict[str, PositionalIndex] = field(default_factory=lambda: {z: PositionalIndex() for z in ZONES})
+    zones: dict[str, PositionalIndex] = field(
+        default_factory=lambda: {z: PositionalIndex() for z in ZONES}
+    )
     whole: PositionalIndex = field(default_factory=PositionalIndex)
     doc_ids: list[str] = field(default_factory=list)
 
@@ -33,11 +35,35 @@ class ZoneIndex:
     def build(cls, docs: Iterable[Document], analyze: Analyzer) -> "ZoneIndex":
         """Index every paragraph under its zone, and the full text in `whole`.
 
-        TODO(A): for each doc, concatenate tokens of paragraphs in the same zone (keep
-        positions continuous within a zone), add to zones[zone]; add all tokens to `whole`.
-        Use tqdm for progress; the precedent corpus has ~3k long documents.
+        Paragraphs belonging to the same zone are concatenated before indexing,
+        so token positions remain continuous within each zone.
         """
-        raise NotImplementedError("TODO(A): build zone index")
+        from tqdm import tqdm
+
+        index = cls()
+
+        for doc in tqdm(docs, desc="Building zone index"):
+            index.doc_ids.append(doc.doc_id)
+
+            zone_tokens: dict[str, list[str]] = {
+                zone: [] for zone in ZONES
+            }
+            all_tokens: list[str] = []
+
+            for paragraph in doc.paragraphs:
+                tokens = analyze(paragraph.text, doc)
+
+                if paragraph.zone in zone_tokens:
+                    zone_tokens[paragraph.zone].extend(tokens)
+
+                all_tokens.extend(tokens)
+
+            for zone, tokens in zone_tokens.items():
+                index.zones[zone].add(doc.doc_id, tokens)
+
+            index.whole.add(doc.doc_id, all_tokens)
+
+        return index
 
     # ------------------------------------------------------------------ accessors (implement with build)
     def tf(self, term: str, doc_id: str, zone: str) -> int:
