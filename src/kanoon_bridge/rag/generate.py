@@ -1,4 +1,4 @@
-"""Generate a short, cited answer from chunks.  [owner: Gaurav — working]
+"""Generate a short, cited answer from chunks.  
 
 Two generators, same output (an Answer whose sentences each carry one [n] citation):
 
@@ -24,7 +24,7 @@ from kanoon_bridge.rag._util import citations, split_sentences, strip_citations,
 from kanoon_bridge.rag.chunker import Chunk
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
-
+OPENAI_DEFAULT_MODEL = "gpt-5-mini"
 SYSTEM = ("You help users understand Indian criminal law. You answer only from the numbered sources "
           "you are given and you never invent section numbers. This is not legal advice.")
 
@@ -94,13 +94,13 @@ def load_env(path: str | Path | None = None) -> None:
 
 def has_api_key() -> bool:
     load_env()
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return bool(os.environ.get("OPENAI_API_KEY")) or bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
 def pick_generator(name: str | None) -> str:
     name = (name or "auto").lower()
     if name == "auto":
-        return "claude" if has_api_key() else "extractive"
+        return "openai" if has_api_key() else "extractive"
     return name
 
 
@@ -129,6 +129,36 @@ def call_claude(prompt: str, model: str | None = None, max_tokens: int = 600, sy
                                  max_tokens=max_tokens, temperature=0, system=system,
                                  messages=[{"role": "user", "content": prompt}])
     return "".join(getattr(b, "text", "") for b in msg.content)
+
+def call_openai(
+    prompt: str,
+    model: str | None = None,
+    max_tokens: int = 2000,
+    system: str = SYSTEM,
+) -> str:
+    load_env()
+    try:
+        from openai import OpenAI
+    except ImportError as err:
+        raise RuntimeError(
+            "OpenAI generator needs: pip install openai"
+        ) from err
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError(
+            "OPENAI_API_KEY is not set (put it in .env)"
+        )
+
+    client = OpenAI()
+
+    response = client.responses.create(
+        model=model or os.environ.get("OPENAI_RAG_MODEL") or OPENAI_DEFAULT_MODEL,
+        instructions=system,
+        input=prompt,
+        max_output_tokens=max_tokens,
+    )
+
+    return response.output_text
 
 
 def extractive(question: str, chunks: list[Chunk], max_sentences: int = 4) -> Answer:
@@ -167,22 +197,75 @@ def _shorten(sentence: str, limit: int = 240) -> str:
     return cut.rsplit(" ", 1)[0] + " …"
 
 
-def generate(question: str, chunks: list[Chunk], incident_date: str = "unknown", state: str = "unknown",
-             generator: str | None = "auto", model: str | None = None, closed_book: bool = False) -> Answer:
+def generate(
+    question: str,
+    chunks: list[Chunk],
+    incident_date: str = "unknown",
+    state: str = "unknown",
+    generator: str | None = "auto",
+    model: str | None = None,
+    closed_book: bool = False,
+) -> Answer:
     gen = pick_generator(generator)
+
     if closed_book:
-        text = call_claude(CLOSED_BOOK_PROMPT.format(question=question, incident_date=incident_date, state=state), model)
+        text = call_claude(
+            CLOSED_BOOK_PROMPT.format(
+                question=question,
+                incident_date=incident_date,
+                state=state,
+            ),
+            model,
+        )
         ans = parse_answer(text, "claude-closed-book")
+
     elif gen == "extractive":
         ans = extractive(question, chunks)
+
     elif gen == "claude":
         if not chunks:
-            return Answer(text="No sources were retrieved for this question.", generator="claude")
-        prompt = PROMPT.format(question=question, incident_date=incident_date, state=state,
-                               sources=format_sources(chunks))
-        ans = parse_answer(call_claude(prompt, model), "claude")
+            return Answer(
+                text="No sources were retrieved for this question.",
+                generator="claude",
+            )
+
+        prompt = PROMPT.format(
+            question=question,
+            incident_date=incident_date,
+            state=state,
+            sources=format_sources(chunks),
+        )
+
+        ans = parse_answer(
+            call_claude(prompt, model),
+            "claude",
+        )
+
+    elif gen == "openai":
+        if not chunks:
+            return Answer(
+                text="No sources were retrieved for this question.",
+                generator="openai",
+            )
+
+        prompt = PROMPT.format(
+            question=question,
+            incident_date=incident_date,
+            state=state,
+            sources=format_sources(chunks),
+        )
+
+        ans = parse_answer(
+            call_openai(prompt, model),
+            "openai",
+        )
+
     else:
-        raise ValueError(f"unknown generator {gen!r} (auto | claude | extractive)")
+        raise ValueError(
+            f"unknown generator {gen!r} "
+            "(auto | openai | claude | extractive)"
+        )
+
     ans.chunks = chunks
     return ans
 
