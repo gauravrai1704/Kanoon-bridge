@@ -70,6 +70,11 @@ class Answer:
     def version_flags(self) -> list[str]:
         return [f for f in self.flags if f.startswith(("wrong code", "bare number"))]
 
+    @property
+    def drift_flags(self) -> list[str]:
+        """From drift/transfer.py: the law under a cited section or precedent changed in the BNS."""
+        return [f for f in self.flags if f.startswith(("law changed", "stale precedent"))]
+
 
 def load_env(path: str | Path | None = None) -> None:
     """Read KEY=VALUE lines from .env into os.environ (python-dotenv if installed)."""

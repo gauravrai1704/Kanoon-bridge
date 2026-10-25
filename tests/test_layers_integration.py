@@ -311,3 +311,24 @@ def test_web_backend_payload(engine, docs):
     groups = [s["group"] for s in out["pipeline"]]
     assert groups[0] == "Understand" and "Research agent" in groups and groups[-1] == "Answer"
     assert b.search({"q": ""})["error"]
+
+
+def test_drift_layer_on_the_engine(engine):
+    """The drift table (committed CSVs) loads into the engine; a BNS-era search with drift on marks
+    each IPC-era precedent with its transfer score and says so in the trace and the explanations."""
+    from kanoon_bridge import present
+    from kanoon_bridge.search import SearchOptions
+
+    if engine.drift is None:
+        pytest.skip("drift table not built")
+    opt = SearchOptions(drift=True)
+    res = engine.search(Query("BNS 103 knife stabbing", **Q), opt)
+    ipc_era = [h for h in res.precedents if h.doc_id in {"P1", "P2", "P3"}]
+    assert ipc_era and all("transfer" in h.components for h in ipc_era)
+    assert all(0 < h.components["transfer"] <= 1 for h in ipc_era)
+    plain = engine.search(Query("BNS 103 knife stabbing", **Q), SearchOptions())
+    assert {h.doc_id for h in plain.precedents} == {h.doc_id for h in res.precedents}   # same recall
+    old = engine.search(Query("IPC 302 knife stabbing", state="delhi", incident_date="2019-01-03"), opt)
+    assert not any("transfer" in h.components for h in old.precedents)                 # IPC-era question: untouched
+    reasons = present.explain(res.statutes[0], res.query, engine, target="statute")
+    assert any(r.startswith("change from the IPC") for r in reasons)

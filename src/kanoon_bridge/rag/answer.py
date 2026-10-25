@@ -11,6 +11,7 @@ Order (the cheap IR checks wrap the expensive LLM call):
     3. generate.generate       Claude (or the offline extractive generator) writes cited sentences
     4. citation_check.check    tf-idf cosine of each sentence vs its cited chunk
     5. version_check.check     wrong code for the incident date, bare colliding numbers
+    6. drift.answer_flags      the law under a cited IPC section or IPC-era precedent changed in the BNS
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ def _query_of(result):
 
 def answer(result, docs, cfg: Config | None = None, idf=None, resolver=None, normalizer=None,
            generator: str | None = None, closed_book: bool = False, check_abstain: bool = True,
-           abstain_idf=None) -> Answer:
+           abstain_idf=None, drift=None, metas=None) -> Answer:
     """`idf` scores support (precedent index); `abstain_idf` (default: idf) judges whether the
     question has a specific term - RagPipeline passes max(precedent idf, statute idf)."""
     cfg = cfg or load_config()
@@ -74,6 +75,9 @@ def answer(result, docs, cfg: Config | None = None, idf=None, resolver=None, nor
         original_query = getattr(result, "query", None)
         incident_date = getattr(original_query, "incident_date", None)
         ans = version_check.check(ans, incident_date, resolver, normalizer)
+    if drift is not None and hasattr(analyzed, "code_in_force"):
+        # drift/transfer.py: IPC sections whose BNS successor changed; IPC-era precedents whose law changed
+        ans.flags += drift.answer_flags(ans, analyzed, metas)
 
     return ans
 
@@ -87,6 +91,8 @@ class RagPipeline:
     resolver: object
     normalizer: object
     statute_idf: object = None
+    drift: object = None                    # drift.transfer.TransferScorer
+    metas: object = None                    # facets.metas, for the precedents' citations
 
     @classmethod
     def load(cls, engine, cfg: Config | None = None, docs=None) -> "RagPipeline":
@@ -97,7 +103,8 @@ class RagPipeline:
             docs = DocStore.load(cfg)
         res = engine.analyzer.text_res
         return cls(cfg=cfg, docs=docs, idf=engine.precedent_index.whole.idf,
-                   resolver=res.resolver, normalizer=res.normalizer, statute_idf=engine.statute_index.whole.idf)
+                   resolver=res.resolver, normalizer=res.normalizer, statute_idf=engine.statute_index.whole.idf,
+                   drift=getattr(engine, "drift", None), metas=engine.facets.metas)
 
     def _abstain_idf(self, term: str) -> float:
         return max(self.idf(term), self.statute_idf(term) if self.statute_idf else 0.0)
@@ -106,7 +113,7 @@ class RagPipeline:
                use_normalizer: bool = True) -> Answer:
         return answer(result, self.docs, self.cfg, self.idf, self.resolver,
                       self.normalizer if use_normalizer else None, generator, closed_book,
-                      abstain_idf=self._abstain_idf)
+                      abstain_idf=self._abstain_idf, drift=self.drift if use_normalizer else None, metas=self.metas)
 
 
 def render(ans: Answer) -> str:

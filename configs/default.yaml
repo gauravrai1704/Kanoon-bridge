@@ -139,3 +139,21 @@ rag:
   abstain_min_idf: 0.3            # no query term with idf >= this (log10 N/df) -> abstain
   abstain_min_coverage: 0.5       # idf-weighted share of question terms found in the sources
   abstain_unseen_idf: 3.0         # weight of a question term no index has seen (~ log10 of corpus size)
+
+# Statutory drift (drift/): how far each BNS section moved from its IPC predecessor(s).
+# Hand-set from legal reasoning, not fitted to the gold labels (see drift/model.py).
+drift:
+  enabled: true                   # load data/crosswalk/drift_*.csv when present
+  mu: 0.5                         # ranking: final -= mu * (1 - transfer) * score spread
+  min_penalised: 0.95             # transfers at or above this are left alone
+  match_min: 0.3                  # clause containment below this = clause added / lost
+  novelty_substantive: 0.25       # novelty at or above this = substantive change
+  retention_substantive: 0.7      # retention at or below this = substantive change
+  added_min: 1                    # this many added clauses = substantive change
+  identical_edit: 0.97            # edit similarity for "identical"
+  w_novelty: 0.5                  # carry-over discount per unit of rewording in matched clauses
+  w_added: 0.15                   # carry-over discount per unit of text in added clauses
+  m_mens_rea: 0.6                 # carry-over multiplier when the mental state changed
+  m_threshold: 0.7                # ... when an age / period / count threshold changed
+  m_punishment: 0.5               # sentencing-part multiplier when the punishment changed
+  w_sentence: 0.15                # share of the sentencing part in the carry-over

@@ -14,6 +14,11 @@ Endpoints (JSON):
                           answer (layer 3), agent plan (layer 2), and a step-by-step pipeline
     GET  /api/similar?id=P01&k=6             similar cases
     GET  /api/doc?id=P01                     full text of one document, by zone
+    GET  /api/drift?ref=ipc:124a             what changed from the IPC to the BNS (drift/explain.py)
+    GET  /api/drift/list                     every section's drift class and carry-over
+    /changes.html                            the "What changed" page; served even when the
+                                             search indexes are not built (drift needs only the
+                                             committed data/crosswalk/drift_*.csv)
 """
 
 from __future__ import annotations
@@ -338,8 +343,45 @@ def _offence_label(norm, ref: str) -> str:
 # --------------------------------------------------------------------------- HTTP
 
 
+class DriftBackend:
+    """The "What changed" data: needs only data/crosswalk/drift_*.csv (and the bare acts for the diff)."""
+
+    def __init__(self) -> None:
+        self._ex = None
+
+    @property
+    def explorer(self):
+        if self._ex is None:
+            from kanoon_bridge.drift.explain import DriftExplorer
+
+            self._ex = DriftExplorer.load()
+        return self._ex
+
+    def view(self, ref: str) -> dict:
+        try:
+            return self.explorer.view(ref)
+        except ValueError as err:
+            return {"found": False, "error": str(err)}
+
+    def rows(self) -> dict:
+        t = self.explorer.table
+        out = [{"bns": r.bns_section, "ipc": ";".join(r.ipc_sections), "class": r.drift_class.value,
+                "carry_over": r.carry_over, "title": r.title or self._title(r)}
+               for r in [*t.sections.values(), *t.repealed.values()]]
+        return {"rows": out, "summary": t.summary()}
+
+    def _title(self, r) -> str:
+        an = self.explorer._an()
+        if an is None:
+            return ""
+        if r.bns_section and r.bns_section in an.bns:
+            return an.bns[r.bns_section].title
+        return an.ipc[r.ipc_sections[0]].title if r.ipc_sections and r.ipc_sections[0] in an.ipc else ""
+
+
 class Handler(SimpleHTTPRequestHandler):
-    backend: Backend = None  # set in main()
+    backend: Backend = None  # set in main(); None = drift-only mode (no search indexes)
+    drift: DriftBackend = DriftBackend()
 
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(WEB_DIR), **kw)
@@ -361,6 +403,12 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         qs = parse_qs(url.query)
         try:
+            if url.path == "/api/drift":
+                return self._json(self.drift.view((qs.get("ref") or [""])[0]))
+            if url.path == "/api/drift/list":
+                return self._json(self.drift.rows())
+            if self.backend is None and url.path.startswith("/api/"):
+                return self._json({"error": "Search indexes are not built; only /changes.html works."}, 503)
             if url.path == "/api/health":
                 return self._json(self.backend.health())
             if url.path == "/api/similar":
@@ -384,13 +432,15 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as err:  # noqa: BLE001 - report to the UI
             return self._json({"error": f"{type(err).__name__}: {err}"}, 500)
         if url.path in ("", "/"):
-            self.path = "/index.html"
+            self.path = "/index.html" if self.backend is not None else "/changes.html"
         return super().do_GET()
 
     def do_POST(self):  # noqa: N802
         url = urlparse(self.path)
         if url.path != "/api/search":
             return self._json({"error": "Unknown endpoint."}, 404)
+        if self.backend is None:
+            return self._json({"error": "Search indexes are not built; only /changes.html works."}, 503)
         try:
             n = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(n) or b"{}")
@@ -408,7 +458,8 @@ def main() -> None:
     try:
         Handler.backend = Backend()
     except FileNotFoundError as err:
-        sys.exit(f"{err}\nBuild the indexes first: make data index graph   (or: make sample)")
+        print(f"{err}\nSearch is off until the indexes are built (make data index graph, or make sample);\n"
+              "serving the 'What changed' page only.", flush=True)
     print(f"Kanoon-Bridge is running at http://{args.host}:{args.port}  (Ctrl+C to stop)", flush=True)
     ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
 

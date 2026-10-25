@@ -175,6 +175,9 @@ def explain(hit, aq, engine, target: str = "precedent") -> list[str]:
             reasons.append(note)
         if ref and aq.code_in_force in (Code.IPC, Code.BNS) and ref.startswith(aq.code_in_force.value + ":"):
             reasons.append(f"in force on the incident date ({aq.code_in_force.value.upper()})")
+        drift = drift_note(ref, engine)
+        if drift:
+            reasons.append(drift)
         return reasons
 
     meta = engine.facets.metas.get(hit.doc_id)
@@ -205,9 +208,28 @@ def explain(hit, aq, engine, target: str = "precedent") -> list[str]:
             reasons.append(f"binding{' in ' + aq.query.state.title() if aq.query.state else ''} ({court})")
         elif status == "persuasive":
             reasons.append(f"persuasive only ({court}; not binding in {aq.query.state.title()})")
-        if meta.decision_date and aq.code_in_force == Code.BNS and meta.decision_date.year < 2024 and shared:
+        transfer = comp.get("transfer")
+        scorer = getattr(engine, "drift", None)
+        if transfer is not None and transfer < 0.95 and scorer is not None:
+            t = scorer.transfer(meta.statutes_cited, scorer.targets(aq))
+            if t.ipc_ref:
+                reasons.append(t.reason())
+        elif meta.decision_date and aq.code_in_force == Code.BNS and meta.decision_date.year < 2024 and shared:
             reasons.append(f"decided {meta.decision_date.year} under the IPC; still relevant through the crosswalk")
     return reasons
+
+
+def drift_note(ref: str, engine) -> str:
+    """'BNS 152: the provision itself changed (48% of the IPC text survives ...)' from the drift table."""
+    scorer = getattr(engine, "drift", None)
+    if scorer is None or not ref or ref.split(":")[0] not in ("ipc", "bns"):
+        return ""
+    rep = scorer.table.report(ref)
+    if rep is None or rep.drift_class.value in ("identical", "new"):
+        return ""
+    head = rep.reasons[0].split(": ", 1)[-1] if rep.reasons else rep.drift_class.value
+    rest = "; ".join(r for r in rep.reasons[1:3] if not r.startswith(("merges", "part of")))
+    return f"change from the IPC: {head}" + (f" ({rest})" if rest else "")
 
 
 # --------------------------------------------------------------------------- facets

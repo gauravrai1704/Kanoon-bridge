@@ -9,6 +9,8 @@
     python app/cli.py "BNS 103 knife" --state delhi --date 2025-01-03 --agent --debug      # layer 2
     python app/cli.py "punishment for murder" --date 2025-01-03 --answer                 # layer 3
     python app/cli.py "punishment for murder" --date 2025-01-03 --answer --generator extractive
+    python app/cli.py "" --drift ipc:124a                 # what changed: IPC 124A -> BNS 152 (no index needed)
+    python app/cli.py "sedition speech" --date 2025-03-01 --no-drift   # without drift-aware transfer
 
 --debug prints each query rewrite (language, normalised text, tokens, code in force,
 cross-code sections), the statutes used by the bridge, and every result's score breakdown.
@@ -44,7 +46,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--feedback", help="relevance feedback: comma-separated precedent ids you found relevant "
                                        "(the query is re-run moved toward them, Rocchio)")
     ap.add_argument("--like", help="find cases similar to this precedent id (no query needed: pass '' as query)")
+    ap.add_argument("--drift", metavar="REF", help="what changed between the IPC and the BNS for a section, e.g. "
+                                                    "ipc:124a or bns:106 (pass '' as query; no index needed)")
+    ap.add_argument("--no-drift", action="store_true", help="switch off drift-aware precedent transfer")
     args = ap.parse_args(argv)
+
+    if args.drift:
+        return _drift(args.drift)
 
     try:
         engine = SearchEngine.load()
@@ -56,6 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         return _similar(engine, args.like, None, args.k)
 
     opt = SearchOptions.baseline() if args.baseline else SearchOptions.interactive()
+    opt.drift = opt.drift and not args.no_drift
     opt.jurisdiction = opt.jurisdiction and not args.no_jurisdiction
     if args.no_ltr:
         opt.ltr = False
@@ -143,6 +152,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.debug and hasattr(res, "timings_ms"):
         print("\n-- timings (ms) --  " + "  ".join(f"{k}={v:.1f}" for k, v in res.timings_ms.items()))
+    print("\nNot legal advice.")
+    return 0
+
+
+def _drift(ref: str) -> int:
+    from kanoon_bridge.drift.explain import DriftExplorer
+
+    try:
+        print(DriftExplorer.load().render(ref))
+    except (ValueError, FileNotFoundError) as err:
+        print(err, file=sys.stderr)
+        return 1
     print("\nNot legal advice.")
     return 0
 
