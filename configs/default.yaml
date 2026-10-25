@@ -145,7 +145,7 @@ rag:
 drift:
   enabled: true                   # load data/crosswalk/drift_*.csv when present
   mu: 0.5                         # ranking: final -= mu * (1 - transfer) * score spread
-  min_penalised: 0.95             # transfers at or above this are left alone
+  min_penalised: 0.85             # transfers at or above this are left alone (wording / added sub-sections)
   match_min: 0.3                  # clause containment below this = clause added / lost
   novelty_substantive: 0.25       # novelty at or above this = substantive change
   retention_substantive: 0.7      # retention at or below this = substantive change

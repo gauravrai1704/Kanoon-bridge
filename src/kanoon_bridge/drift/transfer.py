@@ -9,8 +9,8 @@ offence. This module scores each such match with the drift table:
                       of carry_over(s -> b)           (1.0 when p does not lean on the IPC at all;
                       0.0 when every IPC section p applies was dropped by the BNS)
 
-The question is "about" BNS sections it names, plus the BNS sections of the offence ids it
-was normalised to. A question is BNS-era when its incident date is on/after 1 July 2024, or
+The question is "about" the BNS sections it names or, when it names none, the BNS sections of
+the offence ids it was normalised to. A question is BNS-era when its incident date is on/after 1 July 2024, or
 when it names a BNS section and gives no date. The most favourable reading (max) is used, so
 a precedent that also cites an unchanged section is not penalised for a changed one.
 
@@ -46,7 +46,9 @@ class Transfer:
         i, b = _show(self.ipc_ref), _show(self.bns_ref) if self.bns_ref else ""
         if self.drift_class == DriftClass.REPEALED:
             return f"decided under {i}, which the BNS did not re-enact: does not apply to a BNS-era offence"
-        what = {DriftClass.SUBSTANTIVE: "changed the offence itself",
+        if self.drift_class == DriftClass.SUBSTANTIVE and self.score >= 0.8:
+            return f"interprets {i}; {b} keeps that text and adds new provisions — carry-over {self.score:.2f}"
+        what = {DriftClass.SUBSTANTIVE: "changed the provision itself",
                 DriftClass.PUNISHMENT: "changed the punishment (reasoning on guilt carries over, on sentence it may not)",
                 DriftClass.RESTRUCTURED: "merged or split the section",
                 DriftClass.COSMETIC: "reworded it",
@@ -69,7 +71,7 @@ class TransferScorer:
     table: DriftTable
     normalizer: object                 # text.version_norm.VersionNormalizer
     mu: float = 0.5
-    min_penalised: float = 0.95        # transfers at or above this are left alone
+    min_penalised: float = 0.85        # transfers at or above this are left alone
 
     @classmethod
     def load(cls, normalizer, cfg=None) -> "TransferScorer":
@@ -77,7 +79,7 @@ class TransferScorer:
 
         cfg = cfg or load_config()
         d = cfg.get("drift") or {}
-        return cls(DriftTable.load(), normalizer, mu=d.get("mu", 0.5), min_penalised=d.get("min_penalised", 0.95))
+        return cls(DriftTable.load(), normalizer, mu=d.get("mu", 0.5), min_penalised=d.get("min_penalised", 0.85))
 
     # ------------------------------------------------------------------ the question
     def bns_era(self, aq) -> bool:
@@ -88,11 +90,12 @@ class TransferScorer:
         return any(s.startswith("bns:") for s in aq.sections)
 
     def targets(self, aq) -> list[str]:
-        """BNS base sections the question is about."""
+        """BNS base sections the question is about: the ones it names, else those of its offences."""
         out: list[str] = []
-        offs = list(aq.offence_ids) + [t for t in aq.expanded_terms if t.startswith("off:")]
         refs = [s for s in aq.sections if s.startswith("bns:")]
-        refs += [s for o in dict.fromkeys(offs) for s in self.normalizer.sections_of(o, "bns")]
+        if not refs:
+            offs = list(aq.offence_ids) + [t for t in aq.expanded_terms if t.startswith("off:")]
+            refs = [s for o in dict.fromkeys(offs) for s in self.normalizer.sections_of(o, "bns")]
         for r in refs:
             b = _base(r.partition(":")[2])
             if b and b not in out:

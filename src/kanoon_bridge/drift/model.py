@@ -152,6 +152,7 @@ class DriftAnalyzer:
     predecessors: dict[str, list[str]]       # bns base section -> ipc base sections
     successors: dict[str, list[str]]         # ipc base section -> bns base sections
     relation: dict[tuple[str, str], str]     # (ipc, bns) -> crosswalk relation
+    notes: dict[tuple[str, str], str] = field(default_factory=dict)   # (ipc, bns) -> crosswalk note
     params: dict = field(default_factory=lambda: dict(DEFAULTS))
     renumber: dict[str, str] = field(default_factory=dict)
     renumbering: bool = True                 # ablation switch: renumber IPC cross-references
@@ -173,6 +174,7 @@ class DriftAnalyzer:
         pred: dict[str, list[str]] = defaultdict(list)
         succ: dict[str, list[str]] = defaultdict(list)
         rel: dict[tuple[str, str], str] = {}
+        notes: dict[tuple[str, str], str] = {}
         for r in norm.crosswalk:
             i, b = _base(r.ipc_section), _base(r.bns_section)
             if not i or not b:
@@ -182,9 +184,11 @@ class DriftAnalyzer:
             if b not in succ[i]:
                 succ[i].append(b)
             rel.setdefault((i, b), r.relation)
+            if r.note:
+                notes[(i, b)] = r.note.strip().lower()
         params = dict(DEFAULTS)
         params.update({k: v for k, v in (cfg.get("drift") or {}).items() if k in DEFAULTS})
-        an = cls(ipc=ipc, bns=bns, predecessors=dict(pred), successors=dict(succ), relation=rel, params=params)
+        an = cls(ipc=ipc, bns=bns, predecessors=dict(pred), successors=dict(succ), relation=rel, params=params, notes=notes)
         an.renumber = {i: s[0] for i, s in succ.items() if len(s) == 1}
         return an
 
@@ -290,6 +294,8 @@ class DriftAnalyzer:
                                punishment_new=pun.extract(new.text).describe(),
                                reasons=["new in the BNS: no IPC provision corresponds, so no IPC-era precedent applies directly"])
         f, det = self.compare(olds, new)
+        if all(self._explanation_missing(s, b) for s in olds):
+            f["old_incomplete"] = 1.0
         cls = self.classify(f)
         rel = self.relation.get((olds[0], b), "same")
         rep = DriftReport(b, olds, cls, self.carry_over(f, rel), features=f, title=new.title,
@@ -318,11 +324,19 @@ class DriftAnalyzer:
             f, _ = self.compare([i], self.bns[b])
         else:
             f = self._attributed(i, group, self.bns[b])
+        # the BNS section comes from an Explanation of the IPC section; when our IPC text has no
+        # Explanation, the pair cannot be judged from text
+        if self._explanation_missing(i, b):
+            f["old_incomplete"] = 1.0
         succ = [s for s in self.successors.get(i, []) if s in self.bns]
         if len(succ) > 1:
             union = Provision("bns", "+".join(succ), "", " ".join(self.bns[s].text for s in succ))
             f["retention"] = self.compare([i], union)[0]["retention"]
         return PairDrift(i, b, f["retention"], self.carry_over(f, rel), self.classify(f))
+
+    def _explanation_missing(self, i: str, b: str) -> bool:
+        return ("explanation" in self.notes.get((i, b), "")
+                and not re.search(r"\bexplanation\b", self.ipc[i].text if i in self.ipc else "", re.I))
 
     def _attributed(self, i: str, group: list[str], new: Provision) -> dict:
         owners: list[str] = []

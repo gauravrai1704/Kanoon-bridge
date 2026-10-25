@@ -14,9 +14,12 @@ assuming it away.
     gold.py         the two independent change labels we evaluate against (never used to build reports)
     classify.py     logistic regression over the drift vector (numpy), cross-validated
     transfer.py     precedent transferability for a query, and the ranking / explanation hooks
+    explain.py      the "What changed?" view for the CLI and the web app
 
-Build:   python scripts/13_build_drift.py     -> data/crosswalk/drift_ipc_bns.csv (+ data/processed/drift.json)
+Build:   python scripts/13_build_drift.py     -> data/crosswalk/drift_sections.csv, drift_pairs.csv
 Eval:    python scripts/14_eval_drift.py      -> results/tables/drift_*.csv, results/figures/drift_*.png
+         python scripts/15_drift_retrieval.py -> results/tables/drift_retrieval.csv (needs the indexes)
+Write-up: docs/PROJECT.md
 """
 
 __all__ = ["DriftClass", "DriftReport", "DriftTable"]

@@ -488,3 +488,5 @@ body.changes { display: block; }
   .ch-row .ch-tag { display: none; }
 }
 .changes-link { justify-content: center; text-decoration: none; }
+.statute-drift { font-size: .86rem; color: var(--tape); margin-top: 4px; }
+.statute-drift a { color: var(--brass); margin-left: 4px; }

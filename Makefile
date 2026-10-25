@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: drift drift-eval drift-retrieval build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -87,3 +87,15 @@ sample:
 	$(PY) scripts/02_build_index.py
 	$(PY) scripts/03_build_graph.py --sample
 	$(PY) scripts/06_train_ltr.py --sample --folds 2
+
+# statutory drift (drift/): how far each BNS section moved from the IPC; committed CSVs in data/crosswalk/
+drift:
+	$(PY) scripts/13_build_drift.py --mit-only
+
+# E11-E12: change detection vs two gold sources, ablations, punishment, repeal, hazard audit (needs make fetch)
+drift-eval:
+	$(PY) scripts/14_eval_drift.py
+
+# E13: drift-aware transfer inside retrieval (needs the built indexes)
+drift-retrieval:
+	$(PY) scripts/15_drift_retrieval.py

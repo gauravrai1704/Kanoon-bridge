@@ -201,7 +201,8 @@ class Backend:
                 "title": present.title_of(self.docs, h.doc_id),
                 "version": present.version_note(ref, self.engine.analyzer.text_res.normalizer),
                 "in_force": bool(ref) and aq.code_in_force.value in ("ipc", "bns") and ref.startswith(aq.code_in_force.value + ":"),
-                "code": ref.split(":")[0] if ref else "", "text": text}
+                "code": ref.split(":")[0] if ref else "", "text": text,
+                "drift": present.drift_note(ref, self.engine), "drift_ref": ref if ref.split(":")[0] in ("ipc", "bns") else ""}
 
     def _precedent_json(self, h, aq, agent_res) -> dict:
         from kanoon_bridge import present

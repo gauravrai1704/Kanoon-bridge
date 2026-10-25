@@ -210,13 +210,17 @@ def explain(hit, aq, engine, target: str = "precedent") -> list[str]:
             reasons.append(f"persuasive only ({court}; not binding in {aq.query.state.title()})")
         transfer = comp.get("transfer")
         scorer = getattr(engine, "drift", None)
-        if transfer is not None and transfer < 0.95 and scorer is not None:
+        if transfer is not None and transfer < scorer_min(scorer) and scorer is not None:
             t = scorer.transfer(meta.statutes_cited, scorer.targets(aq))
             if t.ipc_ref:
                 reasons.append(t.reason())
         elif meta.decision_date and aq.code_in_force == Code.BNS and meta.decision_date.year < 2024 and shared:
             reasons.append(f"decided {meta.decision_date.year} under the IPC; still relevant through the crosswalk")
     return reasons
+
+
+def scorer_min(scorer) -> float:
+    return getattr(scorer, "min_penalised", 0.85) if scorer is not None else 0.0
 
 
 def drift_note(ref: str, engine) -> str:
