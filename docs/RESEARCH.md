@@ -92,6 +92,19 @@ systems.
 | E8 / E9 procedure and evidence | E3 / E7 designs on CrPC↔BNSS and Evidence Act↔BSA | `scripts/07_make_test_sets.py` |
 | Citation-language shift, E10 | Monthly share of IPC vs BNS citations in post-2024 High Court criminal judgments (eCourts open data, CC-BY-4.0); BNS-era judgments asked for in IPC numbers | `scripts/11_hc_judgments.py` |
 
+## 7. Statutory drift (the course project extension, see docs/PROJECT.md)
+
+| Feature | Technique and source | File | Measured by |
+| --- | --- | --- | --- |
+| **Clause-level drift between a repealed code and its replacement** | Word-bigram containment (Broder, SEQUENCES 1997) per clause, asymmetric retention / novelty, cross-references renumbered through the crosswalk. **Ours** | `drift/diff.py`, `drift/provisions.py` | E11a, E11b |
+| **Punishment structure from legal English** | Rule-based parser (terms, number words, fine caps, community service) | `drift/punishment.py` | E11c, E11d |
+| Mental-state and threshold reading | Closed list of mens rea markers; quantified thresholds | `drift/elements.py` | E11b (a negative result) |
+| **Pairwise carry-over of IPC-era precedent** | Hand-set, legally motivated; per-predecessor attribution inside merged sections. **Ours** | `drift/model.py` | E11f, E12 |
+| Learned change detector | L2 logistic regression by Newton/IRLS, stratified CV | `drift/classify.py` | E11a |
+| **Drift-aware precedent transfer in ranking** | Score penalty by (1 − transfer) for BNS-era questions. **Ours** | `drift/transfer.py`, `search.py` | E13 |
+| Drift checks on generated answers | Stale-law flags beside ALCE-style citation checks | `drift/transfer.py`, `rag/answer.py` | demo |
+| Evaluation | Two independent gold sources, Cohen's κ, McNemar's exact test (Dietterich 1998), bootstrap CIs, dev/test split | `eval/drift_eval.py` | — |
+
 ## What is new here
 
 These are the claims to make in the report. Each is backed by an experiment above.
@@ -102,3 +115,4 @@ These are the claims to make in the report. Each is backed by an experiment abov
 4. **Typo-robust, Hinglish-robust legal search**, measured with known-item simulation and the E4 language ablation.
 5. **Legal explanations** for every result: which offence matched across codes, and whether the case binds the user.
 6. **QPP-gated legal RAG** that abstains, checks that each sentence is supported by its cited source, and flags out-of-date sections.
+7. **Statutory drift**: a measured, explained notion of *how far* each provision moved from the IPC to the BNS, used to temper precedent transfer in ranking and to check answers (docs/PROJECT.md).
