@@ -18,7 +18,7 @@ import argparse
 from collections import Counter
 
 from kanoon_bridge.config import load_config, project_path
-from kanoon_bridge.ingest import load_ilpcsr, load_statutes, metadata, parse_crosswalk, segment
+from kanoon_bridge.ingest import align_codes, load_ilpcsr, load_statutes, metadata, parse_crosswalk, segment
 from kanoon_bridge.schema import Code, DocType, Paragraph, write_documents
 from kanoon_bridge.text.version_norm import VersionNormalizer
 
@@ -44,13 +44,12 @@ def build(cfg) -> list:
         parse_crosswalk.build_offence_ids(rows, project_path(cfg.paths.offence_ids))
         print(f"crosswalk: {sum(1 for r in rows if r['ipc_section'])} IPC-BNS pairs")
     proc_dir = project_path(cfg.paths.procedure_dir)
-    if (proc_dir / "data" / "raw" / "bnss_sections.json").exists():
-        from kanoon_bridge.ingest import align_codes
-
+    if align_codes.has_procedure(proc_dir):
         ids = []
         for old_code, (new_code, old_file, new_file, _, _) in align_codes.PAIRS.items():
-            rows = align_codes.align(align_codes.load_old(proc_dir / "data" / "raw" / old_file),
-                                     align_codes.load_new(proc_dir / "data" / "raw" / new_file))
+            raw = proc_dir / "data" / "raw"
+            rows = align_codes.align(align_codes.load_old(align_codes.raw_file(raw, old_file)),
+                                     align_codes.load_new(align_codes.raw_file(raw, new_file)))
             align_codes.write(rows, project_path(cfg.paths[f"{old_code}_{new_code}"]), old_code, new_code,
                               "GSMS-B/indian-legal-mcp (MIT)")
             ids += align_codes.build_provision_ids(rows, old_code, new_code)
@@ -64,8 +63,10 @@ def build(cfg) -> list:
         docs += load_statutes.parse_bns(bns_dir)
     else:
         print(f"warning: {bns_dir} missing - BNS statutes not added (run scripts/00_fetch_data.py)")
-    if (proc_dir / "data" / "raw" / "bnss_sections.json").exists():
+    if align_codes.has_procedure(proc_dir):
         docs += load_statutes.parse_new_procedure(proc_dir)
+    else:
+        print(f"warning: {proc_dir} missing - BNSS/BSA statutes not added (run scripts/00_fetch_data.py --only procedure)")
     hc = project_path("data/processed/hc_docs.jsonl")           # post-2024 High Court judgments (scripts/11)
     if hc.exists():
         from kanoon_bridge.schema import read_documents
@@ -73,8 +74,6 @@ def build(cfg) -> list:
         hc_docs = list(read_documents(hc))
         docs += hc_docs
         print(f"High Court open-data judgments added: {len(hc_docs)}")
-    else:
-        print(f"warning: {proc_dir} missing - BNSS/BSA statutes not added (run scripts/00_fetch_data.py --only procedure)")
 
     for doc in docs:
         if doc.doc_type == DocType.STATUTE:

@@ -82,11 +82,11 @@ NEW_ACTS = {  # code -> (file in the indian-legal-mcp checkout, act name)
 
 def parse_new_procedure(root: str | Path) -> list[Document]:
     """BNSS (531) and BSA (170) sections from the indian-legal-mcp checkout (bare-act text, MIT)."""
-    from kanoon_bridge.ingest.align_codes import load_new
+    from kanoon_bridge.ingest.align_codes import load_new, raw_file
 
     docs = []
     for code, (fname, act) in NEW_ACTS.items():
-        path = Path(root) / "data" / "raw" / fname
+        path = raw_file(Path(root) / "data" / "raw", fname)
         if not path.exists():
             continue
         for s in load_new(path):

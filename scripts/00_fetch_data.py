@@ -35,7 +35,9 @@ PROCEDURE_REPO = "https://github.com/GSMS-B/indian-legal-mcp"     # BNSS + BSA b
 
 def fetch_procedure(cfg) -> None:
     dest = project_path(cfg.paths.procedure_dir)
-    if (dest / "data" / "raw" / "bnss_sections.json").exists():
+    from kanoon_bridge.ingest.align_codes import has_procedure
+
+    if has_procedure(dest):
         print(f"procedure: already present at {dest}")
         return
     dest.parent.mkdir(parents=True, exist_ok=True)

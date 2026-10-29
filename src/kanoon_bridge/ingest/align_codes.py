@@ -52,6 +52,29 @@ PAIRS = {  # old code -> (new code, old file, new file, old act name, new act na
     "iea": ("bsa", "iea.json", "bsa_sections.json", "Indian Evidence Act, 1872", "Bharatiya Sakshya Adhiniyam, 2023"),
 }
 
+# the indian-legal-mcp checkout renamed its files; both namings hold the same text (checked: the
+# crosswalks rebuilt from either are identical)
+FILE_ALIASES = {
+    "crpc.json": "code_of_criminal_procedure_1973.json",
+    "iea.json": "indian_evidence_act_1872.json",
+    "bnss_sections.json": "bharatiya_nagarik_suraksha_sanhita_2023.json",
+    "bsa_sections.json": "bharatiya_sakshya_adhiniyam_2023.json",
+}
+
+
+def raw_file(root: str | Path, name: str) -> Path:
+    """`root`/name, or its newer name if only that exists (root = the checkout's data/raw)."""
+    root = Path(root)
+    if (root / name).exists() or name not in FILE_ALIASES:
+        return root / name
+    return root / FILE_ALIASES[name]
+
+
+def has_procedure(checkout: str | Path) -> bool:
+    """True when the checkout holds the BNSS text under either naming."""
+    return raw_file(Path(checkout) / "data" / "raw", "bnss_sections.json").exists()
+
+
 _CONTEXT = re.compile(r"^\[Context:[^\]]*\]\s*", re.S)
 _LEAD = re.compile(r"^\s*\d{1,3}[A-Z]?\.\s+[^\n]*?[—–-]{1,2}\s*")
 
@@ -240,7 +263,7 @@ def main() -> None:
     root = Path(args.source or project_path(cfg.paths.procedure_dir)) / "data" / "raw"
     ids: list[dict] = []
     for old_code, (new_code, old_file, new_file, _, _) in PAIRS.items():
-        old, new = load_old(root / old_file), load_new(root / new_file)
+        old, new = load_old(raw_file(root, old_file)), load_new(raw_file(root, new_file))
         rows = align(old, new)
         out = project_path(cfg.paths[f"{old_code}_{new_code}"])
         write(rows, out, old_code, new_code, "GSMS-B/indian-legal-mcp (MIT)")
