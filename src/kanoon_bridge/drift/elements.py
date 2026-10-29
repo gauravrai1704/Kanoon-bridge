@@ -122,6 +122,13 @@ class ElementDelta:
         return bool(kinds_old & kinds_new)
 
 
+    @property
+    def threshold_added(self) -> bool:
+        """A threshold of a kind the old text did not have ("within six hours" added to an arrest rule)."""
+        kinds_old = {k for k, _ in self.thresholds_removed}
+        return any(k not in kinds_old for k, _ in self.thresholds_added) and bool(self.thresholds_added)
+
+
 def compare(old_text: str, new_text: str) -> ElementDelta:
     mo, mn = mens_rea(old_text), mens_rea(new_text)
     to, tn = thresholds(old_text), thresholds(new_text)

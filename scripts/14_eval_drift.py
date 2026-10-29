@@ -11,7 +11,9 @@ Needs the bare acts and the two gold sources on disk (make fetch). Writes
     results/tables/drift_carry_over.csv         E11f
     results/tables/drift_hazard_offences.csv    E12
     results/tables/drift_classes.csv            how many sections fall in each class
-    results/figures/drift_*.png
+    results/tables/drift_procedure_*.csv        the same E11a/b/e, E12 and classes for CrPC -> BNSS and
+                                                Evidence Act -> BSA (gold: S1 only; no S2 notes exist there)
+    results/figures/drift_*.png                 incl. drift_families.png (E11a test F1 per family)
 
     python scripts/14_eval_drift.py
 """
@@ -25,7 +27,7 @@ from pathlib import Path
 
 from kanoon_bridge.config import load_config, project_path
 from kanoon_bridge.drift.model import DriftAnalyzer, DriftTable
-from kanoon_bridge.drift.provisions import load_bns, load_ipc
+from kanoon_bridge.drift.provisions import FAMILIES, load_bns, load_ipc
 from kanoon_bridge.eval import drift_eval as E
 from kanoon_bridge.eval.plots import INK, INK_MUTED, GRID, PALETTE, _plt
 from kanoon_bridge.text.version_norm import VersionNormalizer
@@ -126,12 +128,64 @@ def fig_ablation(rows: list[dict], out: Path) -> None:
     plt.close(fig)
 
 
+def procedure_families(cfg, norm, figs: Path, penal_rows: list[dict]) -> dict:
+    """E11a/b/e, E12 and class counts for CrPC -> BNSS and Evidence Act -> BSA (S1 gold only)."""
+    out, det, abl, rep, haz, cls, tuned = {}, [], [], [], [], [], []
+    for fam in ("crpc", "iea"):
+        an = DriftAnalyzer.from_sources(cfg, family=fam, normalizer=norm)
+        table = DriftTable.build(an)
+        pop = E.population(an, cfg)
+        rows, extras = E.change_detection(an, table, pop)
+        det += rows
+        tuned += [{"family": fam, "target": t, **p} for t, p in extras["tuned"].items()]
+        abl += E.ablations(cfg, pop, an.old_prov, an.new_prov, norm)
+        rep += E.repeal_detection(an, table, cfg)
+        haz += E.hazard_audit(an, table, norm)
+        counts = Counter(r.drift_class.value for r in [*table.sections.values(), *table.repealed.values()])
+        cls += [{"family": fam, "class": c, "sections": n} for c, n in counts.most_common()]
+        out[fam] = (len(pop.sections), [r for r in rows if r["split"] == "test"])
+    write(det, "drift_procedure_change_detection")
+    write(abl, "drift_procedure_ablation")
+    write(rep, "drift_procedure_repeal")
+    write(haz, "drift_procedure_hazard")
+    write(cls, "drift_procedure_classes")
+    write(tuned, "drift_procedure_rule_tuning")
+    fig_families(penal_rows + det, figs / "drift_families.png")
+    return out
+
+
+def fig_families(rows: list[dict], out: Path) -> None:
+    """Test-half F1 against S1 for the three families, one bar group per system."""
+    plt = _plt()
+    systems = ["v1_crosswalk", "edit_similarity", "drift_rules", "drift_rules_dev", "drift_lr"]
+    fams = [("ipc", "IPC -> BNS"), ("crpc", "CrPC -> BNSS"), ("iea", "Evidence Act -> BSA")]
+    fig, ax = plt.subplots(figsize=(7.6, 4.0))
+    h = 0.26
+    for k, (fam, label) in enumerate(fams):
+        vals = [next((r["f1_changed"] for r in rows if r.get("family", "ipc") == fam and r["target"] == "S1"
+                      and r["split"] == "test" and r["system"] == s), 0.0) for s in systems]
+        ys = [i + (k - 1) * h for i in range(len(systems))]
+        ax.barh(ys, vals, height=h - 0.03, color=PALETTE[k], label=label)
+        for y, v in zip(ys, vals):
+            ax.text(v + 0.01, y, f"{v:.2f}", va="center", fontsize=7.5, color=INK)
+    ax.set_yticks(range(len(systems)), [SYSTEM_LABEL[s] for s in systems], color=INK)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 1.05)
+    ax.set_xlabel("F1 of 'changed' vs S1, test half", color=INK_MUTED)
+    ax.set_title("Drift detection across the three replaced codes", loc="left", color=INK, fontsize=11, pad=24)
+    _style(ax)
+    ax.legend(frameon=False, fontsize=8, loc="lower left", bbox_to_anchor=(0, 1.0), ncol=3)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
 def main() -> None:
     cfg = load_config()
     t0 = time.perf_counter()
     ipc, bns = load_ipc(cfg, docs_path="/nonexistent"), load_bns(cfg)
     norm = VersionNormalizer.load(cfg)
-    an = DriftAnalyzer.from_sources(cfg, ipc=ipc, bns=bns, normalizer=norm)
+    an = DriftAnalyzer.from_sources(cfg, old=ipc, new=bns, normalizer=norm)
     table = DriftTable.build(an)
     pop = E.population(an, cfg)
     figs = project_path("results/figures")
@@ -139,7 +193,7 @@ def main() -> None:
 
     rows, extras = E.change_detection(an, table, pop)
     write(rows, "drift_change_detection")
-    write([{"target": t, **p} for t, p in extras["tuned"].items()], "drift_rule_tuning")
+    write([{"family": "ipc", "target": t, **p} for t, p in extras["tuned"].items()], "drift_rule_tuning")
     write([{"target": t, "feature": f, "coefficient": round(c, 4)} for t, cs in extras["coef"].items() for f, c in cs],
           "drift_lr_coefficients")
     y1 = [pop.y["S1"][b] for b in pop.sections]
@@ -148,6 +202,7 @@ def main() -> None:
     write([{"n": len(y1), "s1_changed": sum(y1), "s2_changed": sum(y2), "agreement": round(m["accuracy"], 4),
             "kappa": round(m["kappa"], 4)}], "drift_source_agreement")
     abl = E.ablations(cfg, pop, ipc, bns, norm)
+    procedure = procedure_families(cfg, norm, figs, rows)
     write(abl, "drift_ablation")
     write(E.punishment_detection(table, pop) + [{"task": f"extraction: {r['field']}", "n": r["n"], "accuracy": r["agreement"]}
                                                 for r in E.punishment_extraction(an, cfg)], "drift_punishment")
@@ -176,6 +231,12 @@ def main() -> None:
                   f"kappa {r['kappa']:.3f}  p vs v1 {r['p_vs_v1']}")
     print(f"S1 vs S2 kappa {m['kappa']:.3f}")
     print(f"E12: {n_haz} of {len(hazard)} offence ids equate an IPC section with a BNS section at carry-over < 0.5")
+    for fam, (n, test_rows) in procedure.items():
+        F = FAMILIES[fam]
+        print(f"{F.old_label} -> {F.new_label} E11a ({n} sections, test half, gold S1):")
+        for r in test_rows:
+            print(f"  {r['system']:18s} F1 {r['f1_changed']:.3f}  macro-F1 {r['macro_f1']:.3f}  kappa {r['kappa']:.3f}  "
+                  f"p vs v1 {r['p_vs_v1']}")
     print(f"done in {time.perf_counter() - t0:.1f}s; tables in results/tables/drift_*.csv, figures in results/figures/drift_*.png")
 
 

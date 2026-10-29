@@ -210,9 +210,9 @@ def explain(hit, aq, engine, target: str = "precedent") -> list[str]:
             reasons.append(f"persuasive only ({court}; not binding in {aq.query.state.title()})")
         transfer = comp.get("transfer")
         scorer = getattr(engine, "drift", None)
-        if transfer is not None and transfer < scorer_min(scorer) and scorer is not None:
+        if transfer is not None and scorer is not None and transfer < scorer_min(scorer):
             t = scorer.transfer(meta.statutes_cited, scorer.targets(aq))
-            if t.ipc_ref:
+            if t.old_ref:
                 reasons.append(t.reason())
         elif meta.decision_date and aq.code_in_force == Code.BNS and meta.decision_date.year < 2024 and shared:
             reasons.append(f"decided {meta.decision_date.year} under the IPC; still relevant through the crosswalk")
@@ -224,16 +224,18 @@ def scorer_min(scorer) -> float:
 
 
 def drift_note(ref: str, engine) -> str:
-    """'BNS 152: the provision itself changed (48% of the IPC text survives ...)' from the drift table."""
+    """'change from the IPC: the provision itself changed (48% of the IPC text survives ...)' from the
+    drift table of the section's family (IPC/BNS, CrPC/BNSS, Evidence Act/BSA)."""
     scorer = getattr(engine, "drift", None)
-    if scorer is None or not ref or ref.split(":")[0] not in ("ipc", "bns"):
+    if scorer is None or not ref:
         return ""
-    rep = scorer.table.report(ref)
+    table = scorer.table_for(ref.split(":")[0])
+    rep = table.report(ref) if table is not None else None
     if rep is None or rep.drift_class.value in ("identical", "new"):
         return ""
     head = rep.reasons[0].split(": ", 1)[-1] if rep.reasons else rep.drift_class.value
     rest = "; ".join(r for r in rep.reasons[1:3] if not r.startswith(("merges", "part of")))
-    return f"change from the IPC: {head}" + (f" ({rest})" if rest else "")
+    return f"change from the {table.family.old_label}: {head}" + (f" ({rest})" if rest else "")
 
 
 # --------------------------------------------------------------------------- facets

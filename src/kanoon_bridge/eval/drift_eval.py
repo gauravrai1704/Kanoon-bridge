@@ -1,4 +1,8 @@
-"""E11-E12: does the drift model see what changed between the IPC and the BNS?  [owner: Gaurav — working]
+"""E11-E12: does the drift model see what changed between the old and the new codes?  [owner: Gaurav — working]
+
+Every function works on any family (IPC -> BNS, CrPC -> BNSS, Evidence Act -> BSA) through the
+analyser's `family`; the S2 gold source and the punishment experiments exist for the penal
+family only. Descriptions below use the penal family.
 
 E11a  change detection per BNS section (sections with an IPC predecessor), against two
       independent gold sources (drift/gold.py). Systems:
@@ -119,7 +123,7 @@ def split_of(section: str) -> str:
 def _tfidf_cosines(an: DriftAnalyzer, items: list[tuple[str, list[str]]]) -> dict[str, float]:
     from kanoon_bridge.drift.diff import normalise
 
-    docs = [normalise(p.text) for p in an.ipc.values()] + [normalise(p.text) for p in an.bns.values()]
+    docs = [normalise(p.text) for p in an.old_prov.values()] + [normalise(p.text) for p in an.new_prov.values()]
     df = Counter(t for d in docs for t in set(d))
     n = len(docs)
 
@@ -131,8 +135,8 @@ def _tfidf_cosines(an: DriftAnalyzer, items: list[tuple[str, list[str]]]) -> dic
 
     out = {}
     for b, olds in items:
-        a = vec(normalise(" ".join(an.ipc[s].text for s in olds)))
-        c = vec(normalise(an.bns[b].text))
+        a = vec(normalise(" ".join(an.old_prov[s].text for s in olds)))
+        c = vec(normalise(an.new_prov[b].text))
         out[b] = sum(w * c.get(t, 0.0) for t, w in a.items())
     return out
 
@@ -153,27 +157,35 @@ def _best_threshold(scores: list[float], y: list[int], below_is_changed: bool = 
 
 @dataclass
 class Population:
-    sections: list[str]                       # BNS sections with an IPC predecessor and a gold label
+    sections: list[str]                       # new-code sections with a predecessor and a gold label
     olds: dict[str, list[str]]
     y: dict[str, dict[str, int]]              # target -> section -> 0/1
     s2: dict[str, set[str]]
+    family: str = "ipc"
+
+    @property
+    def targets(self) -> list[str]:
+        """Gold sources available for this family: S1 everywhere, S2 for the penal family only."""
+        return list(self.y)
 
 
 def population(an: DriftAnalyzer, cfg=None) -> Population:
-    s1 = gold.s1_section_labels(cfg)
-    s2 = gold.s2_section_labels(cfg)
+    family = an.family.old
+    s1 = gold.s1_section_labels(cfg, family)
+    s2 = gold.s2_section_labels(cfg) if family == "ipc" else {}
     secs, olds = [], {}
-    for b in an.bns:
-        o = [s for s in an.predecessors.get(b, []) if s in an.ipc]
+    for b in an.new_prov:
+        o = [s for s in an.predecessors.get(b, []) if s in an.old_prov]
         if not o or s1.get(b) in (None, "new"):
             continue
         secs.append(b)
         olds[b] = o
     # S2 says "NEW: ..." about added content of a section that does have an IPC predecessor
     s2_fixed = {b: ({"substance"} | (v - {"new"})) if "new" in v else v for b, v in s2.items()}
-    y = {"S1": {b: int(s1[b] == "changed") for b in secs},
-         "S2": {b: int(gold.s2_changed(s2_fixed.get(b, set()))) for b in secs}}
-    return Population(secs, olds, y, s2_fixed)
+    y = {"S1": {b: int(s1[b] == "changed") for b in secs}}
+    if s2:
+        y["S2"] = {b: int(gold.s2_changed(s2_fixed.get(b, set()))) for b in secs}
+    return Population(secs, olds, y, s2_fixed, family)
 
 
 def _rules_pred(table: DriftTable, secs: list[str], subst_only: bool = False) -> list[int]:
@@ -181,9 +193,11 @@ def _rules_pred(table: DriftTable, secs: list[str], subst_only: bool = False) ->
     return [int(table.sections[b].drift_class in want) for b in secs]
 
 
-RULE_GRID = {"novelty_substantive": [0.25, 0.35, 0.45, 0.55, 0.65],
-             "retention_substantive": [0.4, 0.55, 0.7],
-             "added_min": [1, 2, 3, 99]}
+RULE_GRID = {"novelty_substantive": [0.05, 0.1, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65],
+             "retention_substantive": [0.4, 0.55, 0.7, 0.8, 0.9, 0.95],
+             "added_min": [1, 2, 3, 99],
+             "inserted_min": [4, 8, 16, 99],
+             "threshold_added_substantive": [0, 1]}
 
 
 def _rules_with(an: DriftAnalyzer, table: DriftTable, secs: list[str], params: dict) -> list[int]:
@@ -218,7 +232,7 @@ def change_detection(an: DriftAnalyzer, table: DriftTable, pop: Population) -> t
     X = np.array([[table.sections[b].features[k] for k in FEATURES] for b in secs])
     rows: list[dict] = []
     extras: dict = {"coef": {}}
-    for target in ("S1", "S2"):
+    for target in pop.targets:
         y_all = [pop.y[target][b] for b in secs]
         dev = [i for i, b in enumerate(secs) if split_of(b) == "dev"]
         test = [i for i, b in enumerate(secs) if split_of(b) == "test"]
@@ -256,7 +270,7 @@ def change_detection(an: DriftAnalyzer, table: DriftTable, pop: Population) -> t
                 m = binary_metrics(y_, p_)
                 lo, hi = bootstrap_ci(y_, p_)
                 base = [preds_all["v1_crosswalk"][i] for i in idx]
-                rows.append({"target": target, "split": split, "system": system, **{k: round(v, 4) for k, v in m.items()},
+                rows.append({"family": pop.family, "target": target, "split": split, "system": system, **{k: round(v, 4) for k, v in m.items()},
                              "f1_ci_low": round(lo, 4), "f1_ci_high": round(hi, 4),
                              "auc": round(auc(y_, s_), 4) if s_ is not None else "",
                              "p_vs_v1": round(mcnemar(y_, p_, base), 4) if system != "v1_crosswalk" else ""})
@@ -264,21 +278,24 @@ def change_detection(an: DriftAnalyzer, table: DriftTable, pop: Population) -> t
     return rows, extras
 
 
-def ablations(cfg, pop: Population, ipc, bns, normalizer) -> list[dict]:
-    """E11b: switch off one component of the drift model at a time."""
+def ablations(cfg, pop: Population, old, new, normalizer=None) -> list[dict]:
+    """E11b: switch off one component of the drift model at a time (punishment only where it is on)."""
     rows = []
-    for name, kw in (("full", {}), ("- renumbering", {"renumbering": False}), ("- punishment", {"use_punishment": False}),
-                     ("- elements (mens rea, thresholds)", {"use_elements": False}),
-                     ("- clause alignment", {"clause_alignment": False})):
-        an = DriftAnalyzer.from_sources(cfg, ipc=ipc, bns=bns, normalizer=normalizer)
+    variants = [("full", {}), ("- renumbering", {"renumbering": False}), ("- punishment", {"use_punishment": False}),
+                ("- elements (mens rea, thresholds)", {"use_elements": False}),
+                ("- clause alignment", {"clause_alignment": False})]
+    for name, kw in variants:
+        an = DriftAnalyzer.from_sources(cfg, old=old, new=new, normalizer=normalizer, family=pop.family)
+        if "use_punishment" in kw and not an.use_punishment:
+            continue
         for k, v in kw.items():
             setattr(an, k, v)
         reps = {b: an.report(b) for b in pop.sections}
-        for target in ("S1", "S2"):
+        for target in pop.targets:
             y = [pop.y[target][b] for b in pop.sections]
             pred = [int(reps[b].drift_class in (DriftClass.SUBSTANTIVE, DriftClass.PUNISHMENT)) for b in pop.sections]
             m = binary_metrics(y, pred)
-            rows.append({"target": target, "variant": name, **{k: round(v, 4) for k, v in m.items()},
+            rows.append({"family": pop.family, "target": target, "variant": name, **{k: round(v, 4) for k, v in m.items()},
                          "auc_carry_over": round(auc(y, [1 - reps[b].carry_over for b in pop.sections]), 4)})
     return rows
 
@@ -296,7 +313,7 @@ def punishment_extraction(an: DriftAnalyzer, cfg=None) -> list[dict]:
     """E11d: extract() on the bare act vs on the source's punishment summary, per field."""
     summ = gold.bns_punishment_summaries(cfg)
     agree: dict[str, list[int]] = defaultdict(list)
-    for b, prov in an.bns.items():
+    for b, prov in an.new_prov.items():
         s = summ.get(b, "")
         if not s or s.lower().startswith("not applicable"):
             continue
@@ -317,21 +334,22 @@ def punishment_extraction(an: DriftAnalyzer, cfg=None) -> list[dict]:
 
 
 def repeal_detection(an: DriftAnalyzer, table: DriftTable, cfg=None) -> list[dict]:
-    """E11e: which IPC sections did the BNS drop? Gold: S1 Deleted."""
-    deleted = gold.s1_deleted_ipc(cfg)
-    pop = sorted(gold.s1_ipc_sections(cfg) & set(an.ipc))
+    """E11e: which old-code sections did the new code drop? Gold: S1 Deleted."""
+    family = an.family.old
+    deleted = gold.s1_deleted(cfg, family)
+    pop = sorted(gold.s1_old_sections(cfg, family) & set(an.old_prov))
     y = [int(s in deleted) for s in pop]
     pred = [int(s in table.repealed) for s in pop]
     best = {s: max((table.pairs[(s, b)].carry_over for b in an.successors.get(s, []) if (s, b) in table.pairs), default=None)
             for s in pop}
     score = [1.0 if s in table.repealed else 1 - (best[s] if best[s] is not None else 0.5) for s in pop]
-    rows = [{"system": "drift: no successor (crosswalk + text search)", **{k: round(v, 4) for k, v in binary_metrics(y, pred).items()},
+    rows = [{"family": family, "system": "drift: no successor (crosswalk + text search)", **{k: round(v, 4) for k, v in binary_metrics(y, pred).items()},
              "auc": round(auc(y, score), 4)}]
     pred_low = [int(s in table.repealed or (best[s] is not None and best[s] < 0.5)) for s in pop]
-    rows.append({"system": "drift: no successor or carry-over < 0.5", **{k: round(v, 4) for k, v in binary_metrics(y, pred_low).items()},
+    rows.append({"family": family, "system": "drift: no successor or carry-over < 0.5", **{k: round(v, 4) for k, v in binary_metrics(y, pred_low).items()},
                  "auc": round(auc(y, score), 4)})
     v1 = [int(not an.successors.get(s)) for s in pop]
-    rows.append({"system": "v1: not in the crosswalk", **{k: round(v, 4) for k, v in binary_metrics(y, v1).items()}, "auc": ""})
+    rows.append({"family": family, "system": "v1: not in the crosswalk", **{k: round(v, 4) for k, v in binary_metrics(y, v1).items()}, "auc": ""})
     return rows
 
 
@@ -348,18 +366,19 @@ def carry_over_by_category(table: DriftTable, pop: Population) -> list[dict]:
 
 
 def hazard_audit(an: DriftAnalyzer, table: DriftTable, normalizer, threshold: float = 0.5) -> list[dict]:
-    """E12: offence ids of layer 1 that equate provisions whose carry-over is below `threshold`."""
+    """E12: offence / provision ids of layer 1 that equate provisions whose carry-over is below `threshold`."""
+    F = table.family
     rows = []
     for oid, info in normalizer.offences.items():
-        ipc = [re.sub(r"\(.*", "", s) for s in info.get("ipc", [])]
-        bns = [re.sub(r"\(.*", "", s) for s in info.get("bns", [])]
-        pairs = [(i, b, table.pairs[(i, b)]) for i in ipc for b in bns if (i, b) in table.pairs]
+        olds = [re.sub(r"\(.*", "", s) for s in info.get(F.old, [])]
+        news = [re.sub(r"\(.*", "", s) for s in info.get(F.new, [])]
+        pairs = [(i, b, table.pairs[(i, b)]) for i in olds for b in news if (i, b) in table.pairs]
         if not pairs:
             continue
         i, b, worst = min(pairs, key=lambda x: x[2].carry_over)
         rep = table.sections.get(b)
-        rows.append({"offence_id": oid, "label": info.get("label", ""), "ipc": ";".join(ipc), "bns": ";".join(bns),
-                     "worst_pair": f"ipc:{i} -> bns:{b}", "carry_over": round(worst.carry_over, 4),
+        rows.append({"family": F.old, "offence_id": oid, "label": info.get("label", ""), "old": ";".join(olds),
+                     "new": ";".join(news), "worst_pair": f"{F.old}:{i} -> {F.new}:{b}", "carry_over": round(worst.carry_over, 4),
                      "class": worst.drift_class.value, "hazard": int(worst.carry_over < threshold),
                      "why": rep.reasons[1:3] if rep else ""})
     rows.sort(key=lambda r: r["carry_over"])

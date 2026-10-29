@@ -25,7 +25,13 @@ from dataclasses import dataclass, field
 
 # systematic BNS wording updates that do not change substance (applied to both sides)
 COSMETIC = [
+    # the replaced Acts' names, old and new, as one token each (references to them are not changes)
+    (r"\bindian penal code(?:,? 1860)?(?: \(45 of 1860\))?|\bbharatiya nyaya sanhita(?:,? 2023)?", "penalcode"),
+    (r"\bcode of criminal procedure(?:,? 1973)?(?: \(2 of 1974\))?|\bbharatiya nagarik suraksha sanhita(?:,? 2023)?",
+     "procedurecode"),
+    (r"\bindian evidence act(?:,? 1872)?(?: \(1 of 1872\))?|\bbharatiya sakshya adhiniyam(?:,? 2023)?", "evidencecode"),
     (r"\bsanhita\b", "code"),
+    (r"\badhiniyam\b", "act"),
     (r"\bperson of unsound mind\b", "unsound mind"),
     (r"\b(?:lunatic|idiot|insane)\b", "unsound mind"),
     (r"\btransportation for life\b", "imprisonment for life"),
@@ -126,6 +132,36 @@ def align(old_clauses: list[str], new_clauses: list[str], match_min: float = 0.3
     return al
 
 
+def edit_counts(old_text: str, new_text: str, renumber: dict[str, str] | None = None,
+                stop: set[str] | None = None, typo_ratio: float = 0.8) -> tuple[int, int]:
+    """(content words inserted, content words deleted) between two texts, in absolute numbers.
+
+    Proportional measures (novelty, retention) cannot see a six-word qualifier added to a long
+    section ("but within six hours from such arrest"), which is often the whole change in the
+    procedure codes. Clause labels, numbers, renumbered references, stop words and one-word
+    replacements that are near-identical strings (PDF damage such as "Judicial" -> "udicial")
+    are not counted.
+    """
+    from kanoon_bridge.drift.elements import STOP
+
+    stop = STOP if stop is None else stop
+
+    def words(chunk: str) -> list[str]:
+        return [w for w in normalise(chunk) if len(w) > 2 and not w.isdigit() and w not in stop]
+
+    ins = dele = 0
+    for op, a, b in token_diff(old_text, new_text, renumber):
+        if op in ("equal", "renumbered"):
+            continue
+        wa, wb = words(a), words(b)
+        if op == "replace" and len(wa) == len(wb) == 1 and \
+                difflib.SequenceMatcher(None, wa[0], wb[0]).ratio() >= typo_ratio:
+            continue
+        ins += len(wb)
+        dele += len(wa)
+    return ins, dele
+
+
 def token_diff(old_text: str, new_text: str, renumber: dict[str, str] | None = None) -> list[tuple[str, str, str]]:
     """[(op, old words, new words)] over raw words, op in equal | replace | delete | insert |
     renumbered (a section number replaced by its BNS successor's number, per `renumber`)."""
@@ -143,4 +179,4 @@ def token_diff(old_text: str, new_text: str, renumber: dict[str, str] | None = N
     return out
 
 
-__all__ = ["COSMETIC", "normalise", "containment", "align", "Alignment", "token_diff"]
+__all__ = ["COSMETIC", "normalise", "containment", "align", "Alignment", "token_diff", "edit_counts"]

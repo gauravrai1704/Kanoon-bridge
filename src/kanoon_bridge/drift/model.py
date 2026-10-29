@@ -1,6 +1,10 @@
-"""Drift reports: how far each BNS section moved from its IPC predecessor(s).  [owner: Gaurav — working]
+"""Drift reports: how far each new-code section moved from its old-code predecessor(s).  [owner: Gaurav — working]
 
-For every BNS section (and every IPC section left without a successor) the analyser builds
+Works for the three code families replaced on 1 July 2024 (provisions.FAMILIES): IPC -> BNS,
+CrPC -> BNSS, Evidence Act -> BSA. The examples below use the penal family; the field names
+are generic (old_sections / new_section).
+
+For every new section (and every old section left without a successor) the analyser builds
 a drift vector, a class and a carry-over score:
 
     drift vector   retention, novelty, edit similarity, clauses added / lost, mental-state
@@ -34,8 +38,9 @@ transfer.py uses, because a precedent cites one IPC section, not the merged grou
 
     table = DriftTable.build()                    # needs IPC + BNS text (make fetch)
     table.report("bns:152").drift_class           # DriftClass.SUBSTANTIVE
-    table.carry_over("ipc:124a", "bns:152")       # ~0.3
+    table.carry_over("ipc:124a", "bns:152")       # ~0.2
     table.save_csv(); DriftTable.load()           # data/crosswalk/drift_*.csv (committed)
+    DriftTable.build(DriftAnalyzer.from_sources(family="crpc"))   # CrPC -> BNSS, same API
 """
 
 from __future__ import annotations
@@ -52,7 +57,7 @@ from kanoon_bridge.config import Config, load_config, project_path
 from kanoon_bridge.drift import diff as dfm
 from kanoon_bridge.drift import elements as elm
 from kanoon_bridge.drift import punishment as pun
-from kanoon_bridge.drift.provisions import Provision, renumber_references, split_clauses
+from kanoon_bridge.drift.provisions import FAMILIES, Family, Provision, renumber_references, split_clauses
 
 
 class DriftClass(str, Enum):
@@ -84,19 +89,22 @@ DEFAULTS = {
     "w_sentence": 0.15,           # share of the sentencing part in the carry-over
     "inferred_min": 0.5,          # an unmapped IPC section this contained in a BNS section is not repealed
     "added_min": 1,               # this many added clauses = substantive
+    "inserted_min": 99,           # this many inserted content words = substantive (99 = off; see drift_eval)
+    "threshold_added_substantive": 0,   # 1 = a newly added time / age / count limit is substantive
     "incomplete_words": 15,       # an old text shorter than this is treated as incomplete
     "prior": {"same": 0.95, "merge": 0.85, "split": 0.8, "modified": 0.6},   # carry-over when unverifiable
 }
 
-FEATURES = ["retention", "novelty", "novelty_matched", "added_share", "edit_similarity", "added_clauses", "lost_clauses", "mens_rea_changed",
+FEATURES = ["retention", "novelty", "novelty_matched", "added_share", "edit_similarity", "inserted_words",
+            "deleted_words", "threshold_added", "added_clauses", "lost_clauses", "mens_rea_changed",
             "threshold_changed", "punishment_changed", "punishment_harsher", "content_jaccard", "merge",
             "split", "title_similarity", "log_length_ratio", "old_incomplete"]
 
 
 @dataclass
 class DriftReport:
-    bns_section: str                         # "" for a repealed IPC section
-    ipc_sections: list[str]
+    new_section: str                         # "" for a repealed old-code section
+    old_sections: list[str]
     drift_class: DriftClass
     carry_over: float                        # group-level (all predecessors together)
     features: dict[str, float] = field(default_factory=dict)
@@ -107,16 +115,18 @@ class DriftReport:
     added_clauses: list[str] = field(default_factory=list)
     lost_clauses: list[str] = field(default_factory=list)
     title: str = ""
+    old_code: str = "ipc"
+    new_code: str = "bns"
 
     @property
     def ref(self) -> str:
-        return f"bns:{self.bns_section}" if self.bns_section else f"ipc:{self.ipc_sections[0]}"
+        return f"{self.new_code}:{self.new_section}" if self.new_section else f"{self.old_code}:{self.old_sections[0]}"
 
 
 @dataclass
 class PairDrift:
-    ipc_section: str
-    bns_section: str
+    old_section: str
+    new_section: str
     retention: float
     carry_over: float
     drift_class: DriftClass
@@ -147,59 +157,90 @@ def _title_similarity(a: str, b: str) -> float:
 
 @dataclass
 class DriftAnalyzer:
-    ipc: dict[str, Provision]
-    bns: dict[str, Provision]
-    predecessors: dict[str, list[str]]       # bns base section -> ipc base sections
-    successors: dict[str, list[str]]         # ipc base section -> bns base sections
-    relation: dict[tuple[str, str], str]     # (ipc, bns) -> crosswalk relation
-    notes: dict[tuple[str, str], str] = field(default_factory=dict)   # (ipc, bns) -> crosswalk note
+    old_prov: dict[str, Provision]           # old-code sections (IPC / CrPC / Evidence Act)
+    new_prov: dict[str, Provision]           # new-code sections (BNS / BNSS / BSA)
+    predecessors: dict[str, list[str]]       # new base section -> old base sections
+    successors: dict[str, list[str]]         # old base section -> new base sections
+    relation: dict[tuple[str, str], str]     # (old, new) -> crosswalk relation
+    notes: dict[tuple[str, str], str] = field(default_factory=dict)   # (old, new) -> crosswalk note
+    family: Family = FAMILIES["ipc"]
     params: dict = field(default_factory=lambda: dict(DEFAULTS))
     renumber: dict[str, str] = field(default_factory=dict)
-    renumbering: bool = True                 # ablation switch: renumber IPC cross-references
-    use_punishment: bool = True              # ablation switches for the evaluation
+    renumber_other: dict[str, dict[str, str]] = field(default_factory=dict)   # other code -> its renumbering
+    renumbering: bool = True                 # ablation switch: renumber old cross-references
+    use_punishment: bool = True              # ablation switches for the evaluation (off for CrPC / IEA)
     use_elements: bool = True
     clause_alignment: bool = True            # False = each text is one clause (ablation)
     inferred: dict[str, tuple[str, float]] = field(default_factory=dict)   # filled by repealed()
 
     @classmethod
-    def from_sources(cls, cfg: Config | None = None, ipc: dict | None = None, bns: dict | None = None,
-                     normalizer=None) -> "DriftAnalyzer":
-        from kanoon_bridge.drift.provisions import load_bns, load_ipc
-        from kanoon_bridge.text.version_norm import VersionNormalizer
+    def from_sources(cls, cfg: Config | None = None, old: dict | None = None, new: dict | None = None,
+                     normalizer=None, family: str = "ipc", crosswalk: list | None = None) -> "DriftAnalyzer":
+        """`family`: "ipc" | "crpc" | "iea". `old` / `new` / `crosswalk` override what is read from
+        disk (tests); `crosswalk` rows are (old section, new section, relation, note)."""
+        from kanoon_bridge.drift.provisions import crosswalk_rows, load_bns, load_ipc, load_procedure
 
         cfg = cfg or load_config()
-        ipc = ipc if ipc is not None else load_ipc(cfg)
-        bns = bns if bns is not None else load_bns(cfg)
-        norm = normalizer or VersionNormalizer.load(cfg)
+        fam = FAMILIES[family]
+        if old is None or new is None:
+            if family == "ipc":
+                o = old if old is not None else load_ipc(cfg)
+                n = new if new is not None else load_bns(cfg)
+            else:
+                o, n = load_procedure(fam, cfg)
+            old, new = (old if old is not None else o), (new if new is not None else n)
+        rows = crosswalk if crosswalk is not None else crosswalk_rows(fam, cfg, normalizer)
         pred: dict[str, list[str]] = defaultdict(list)
         succ: dict[str, list[str]] = defaultdict(list)
         rel: dict[tuple[str, str], str] = {}
         notes: dict[tuple[str, str], str] = {}
-        for r in norm.crosswalk:
-            i, b = _base(r.ipc_section), _base(r.bns_section)
+        for old_sec, new_sec, relation, note in rows:
+            i, b = _base(old_sec), _base(new_sec)
             if not i or not b:
                 continue
             if i not in pred[b]:
                 pred[b].append(i)
             if b not in succ[i]:
                 succ[i].append(b)
-            rel.setdefault((i, b), r.relation)
-            if r.note:
-                notes[(i, b)] = r.note.strip().lower()
+            rel.setdefault((i, b), relation)
+            if note and not note.startswith("sim="):         # align_codes.py notes are similarity scores
+                notes[(i, b)] = note.strip().lower()
         params = dict(DEFAULTS)
         params.update({k: v for k, v in (cfg.get("drift") or {}).items() if k in DEFAULTS})
-        an = cls(ipc=ipc, bns=bns, predecessors=dict(pred), successors=dict(succ), relation=rel, params=params, notes=notes)
+        an = cls(old_prov=old, new_prov=new, predecessors=dict(pred), successors=dict(succ), relation=rel,
+                 params=params, notes=notes, family=fam)
+        # procedure and evidence law rarely prescribe punishment; their "offence punishable with
+        # death ... detention up to 15 days" text would read as one. Time limits there are caught
+        # by the threshold reader (elements.thresholds: "within N days").
+        an.use_punishment = family == "ipc"
         an.renumber = {i: s[0] for i, s in succ.items() if len(s) == 1}
+        # references to the OTHER replaced codes inside this one (CrPC text citing IPC sections)
+        for other in FAMILIES.values():
+            if other.old == fam.old:
+                continue
+            try:
+                m: dict[str, list[str]] = defaultdict(list)
+                for o_sec, n_sec, *_ in crosswalk_rows(other, cfg, normalizer):
+                    if _base(o_sec) and _base(n_sec) and _base(n_sec) not in m[_base(o_sec)]:
+                        m[_base(o_sec)].append(_base(n_sec))
+                an.renumber_other[other.old] = {i: v[0] for i, v in m.items() if len(v) == 1}
+            except (FileNotFoundError, KeyError):
+                continue
         return an
 
     # ------------------------------------------------------------------ helpers
+    def _renumbered(self, text: str) -> str:
+        if not self.renumbering:
+            return text
+        return renumber_references(text, self.renumber, self.renumber_other)
+
     def _old_text(self, sections: list[str]) -> tuple[str, list[str], str]:
         texts, clauses, titles = [], [], []
         for s in sections:
-            p = self.ipc.get(s)
+            p = self.old_prov.get(s)
             if p is None:
                 continue
-            t = renumber_references(p.text, self.renumber) if self.renumbering else p.text
+            t = self._renumbered(p.text)
             texts.append(t)
             clauses += split_clauses(t)
             titles.append(p.title)
@@ -225,6 +266,7 @@ class DriftAnalyzer:
         pd = pun.compare(po, pn) if self.use_punishment else pun.PunishmentDelta()
         ed = elm.compare(old_text, new.text) if self.use_elements else elm.ElementDelta()
         incomplete = self._incomplete(old_text, new.text)
+        ins, dele = dfm.edit_counts(old_text, new.text) if self.use_elements else (0, 0)
         succ_counts = [len(self.successors.get(s, [])) for s in old_sections]
         f = {
             "retention": al.retention,
@@ -236,6 +278,9 @@ class DriftAnalyzer:
             "lost_clauses": float(len(al.lost_clauses)),
             "mens_rea_changed": float(ed.mens_rea_changed),
             "threshold_changed": float(ed.threshold_changed),
+            "threshold_added": float(ed.threshold_added),
+            "inserted_words": float(ins),
+            "deleted_words": float(dele),
             "punishment_changed": float(pd.any),
             "punishment_harsher": float(bool(pd.harsher)),
             "content_jaccard": ed.content_jaccard,
@@ -256,6 +301,8 @@ class DriftAnalyzer:
                 return DriftClass.PUNISHMENT
             return DriftClass.UNVERIFIED
         substantive = (f["mens_rea_changed"] or f["threshold_changed"] or f["added_clauses"] >= p["added_min"]
+                       or f.get("threshold_added", 0) and p["threshold_added_substantive"]
+                       or f.get("inserted_words", 0) >= p["inserted_min"]
                        or (f["lost_clauses"] >= 1 and not f["split"])
                        or f["novelty"] >= p["novelty_substantive"]
                        or (f["retention"] <= p["retention_substantive"] and not f["split"]))
@@ -285,21 +332,25 @@ class DriftAnalyzer:
     # ------------------------------------------------------------------ reports
     def report(self, bns_section: str) -> DriftReport:
         b = _base(bns_section)
-        new = self.bns.get(b)
+        new = self.new_prov.get(b)
         if new is None:
-            raise KeyError(f"BNS {b} not in the source")
-        olds = [s for s in self.predecessors.get(b, []) if s in self.ipc]
+            raise KeyError(f"{self.family.new_label} {b} not in the source")
+        olds = [s for s in self.predecessors.get(b, []) if s in self.old_prov]
         if not olds:
-            return DriftReport(b, [], DriftClass.NEW, 0.0, title=new.title,
-                               punishment_new=pun.extract(new.text).describe(),
-                               reasons=["new in the BNS: no IPC provision corresponds, so no IPC-era precedent applies directly"])
+            F = self.family
+            return DriftReport(b, [], DriftClass.NEW, 0.0, title=new.title, old_code=F.old, new_code=F.new,
+                               punishment_new=pun.extract(new.text).describe() if self.use_punishment else "",
+                               reasons=[f"new in the {F.new_label}: no {F.old_label} provision corresponds, so no "
+                                        f"{F.old_label}-era precedent applies directly"])
         f, det = self.compare(olds, new)
-        if all(self._explanation_missing(s, b) for s in olds):
+        if all(self._explanation_missing(s, b) for s in olds) or new.defective:
             f["old_incomplete"] = 1.0
         cls = self.classify(f)
         rel = self.relation.get((olds[0], b), "same")
         rep = DriftReport(b, olds, cls, self.carry_over(f, rel), features=f, title=new.title,
-                          punishment_old=det["punishment_old"].describe(), punishment_new=det["punishment_new"].describe(),
+                          old_code=self.family.old, new_code=self.family.new,
+                          punishment_old=det["punishment_old"].describe() if self.use_punishment else "",
+                          punishment_new=det["punishment_new"].describe() if self.use_punishment else "",
                           added_clauses=det["alignment"].added_clauses, lost_clauses=det["alignment"].lost_clauses)
         rep.flags = [k for k in ("mens_rea_changed", "threshold_changed", "punishment_changed", "merge", "split",
                                  "old_incomplete") if f[k]]
@@ -317,32 +368,32 @@ class DriftAnalyzer:
         """
         i, b = _base(ipc_section), _base(bns_section)
         rel = self.relation.get((i, b), "same")
-        if i not in self.ipc or b not in self.bns:
+        if i not in self.old_prov or b not in self.new_prov:
             return PairDrift(i, b, float("nan"), self.params["prior"].get(rel, 0.8), DriftClass.UNVERIFIED)
-        group = [s for s in self.predecessors.get(b, [i]) if s in self.ipc] or [i]
+        group = [s for s in self.predecessors.get(b, [i]) if s in self.old_prov] or [i]
         if len(group) == 1:
-            f, _ = self.compare([i], self.bns[b])
+            f, _ = self.compare([i], self.new_prov[b])
         else:
-            f = self._attributed(i, group, self.bns[b])
+            f = self._attributed(i, group, self.new_prov[b])
         # the BNS section comes from an Explanation of the IPC section; when our IPC text has no
         # Explanation, the pair cannot be judged from text
-        if self._explanation_missing(i, b):
+        if self._explanation_missing(i, b) or self.new_prov[b].defective:
             f["old_incomplete"] = 1.0
-        succ = [s for s in self.successors.get(i, []) if s in self.bns]
+        succ = [s for s in self.successors.get(i, []) if s in self.new_prov]
         if len(succ) > 1:
-            union = Provision("bns", "+".join(succ), "", " ".join(self.bns[s].text for s in succ))
+            union = Provision(self.family.new, "+".join(succ), "", " ".join(self.new_prov[s].text for s in succ))
             f["retention"] = self.compare([i], union)[0]["retention"]
         return PairDrift(i, b, f["retention"], self.carry_over(f, rel), self.classify(f))
 
     def _explanation_missing(self, i: str, b: str) -> bool:
         return ("explanation" in self.notes.get((i, b), "")
-                and not re.search(r"\bexplanation\b", self.ipc[i].text if i in self.ipc else "", re.I))
+                and not re.search(r"\bexplanation\b", self.old_prov[i].text if i in self.old_prov else "", re.I))
 
     def _attributed(self, i: str, group: list[str], new: Provision) -> dict:
         owners: list[str] = []
         clauses: list[str] = []
         for s in group:
-            t = renumber_references(self.ipc[s].text, self.renumber) if self.renumbering else self.ipc[s].text
+            t = self._renumbered(self.old_prov[s].text)
             cs = _no_illustrations(split_clauses(t))
             clauses += cs
             owners += [s] * len(cs)
@@ -353,7 +404,7 @@ class DriftAnalyzer:
         mine_new = [n for n, j, c in al.pairs if kept_owners[j] == i and c >= self.params["match_min"]]
         own_text = " ".join(al.old_clauses[k] for k in mine_old)
         new_text = " ".join(al.new_clauses[n] for n in mine_new)
-        sub = Provision("bns", new.section, new.title, new_text or new.text, clauses=[al.new_clauses[n] for n in mine_new])
+        sub = Provision(self.family.new, new.section, new.title, new_text or new.text, clauses=[al.new_clauses[n] for n in mine_new])
         f, _ = self.compare([i], sub)
         w = [len(dfm.normalise(al.old_clauses[k])) for k in mine_old]
         if w:
@@ -374,34 +425,40 @@ class DriftAnalyzer:
         """
         out = []
         self.inferred = {}
-        bns_tokens = {b: dfm.normalise(p.text) for b, p in self.bns.items()}
-        for s, p in self.ipc.items():
+        bns_tokens = {b: dfm.normalise(p.text) for b, p in self.new_prov.items()}
+        for s, p in self.old_prov.items():
             if s in self.successors or _PRE_REPEALED.search(p.title + " " + p.text[:60]):
                 continue
-            old = dfm.normalise(renumber_references(p.text, self.renumber))
+            old = dfm.normalise(self._renumbered(p.text))
             if len(old) >= 5:
                 b, score = max(((b, dfm.containment(old, t)) for b, t in bns_tokens.items()), key=lambda x: x[1])
                 if score >= self.params["inferred_min"]:
                     self.inferred[s] = (b, round(score, 3))
                     continue
-            out.append(DriftReport("", [s], DriftClass.REPEALED, 0.0, title=p.title,
-                                   punishment_old=pun.extract(p.text).describe(),
-                                   reasons=[f"IPC {s.upper()} has no successor in the BNS: an IPC-era precedent on it "
-                                            "does not apply to an offence committed on or after 1 July 2024"]))
+            F = self.family
+            out.append(DriftReport("", [s], DriftClass.REPEALED, 0.0, title=p.title, old_code=F.old, new_code=F.new,
+                                   punishment_old=pun.extract(p.text).describe() if self.use_punishment else "",
+                                   reasons=[f"{F.old_label} {s.upper()} has no successor in the {F.new_label}: an "
+                                            f"{F.old_label}-era precedent on it does not apply on or after 1 July 2024"]))
         return out
 
     def reasons(self, rep: DriftReport, det: dict) -> list[str]:
         f = rep.features
         out: list[str] = []
-        olds = ", ".join(f"IPC {s.upper()}" for s in rep.ipc_sections)
+        F = self.family
+        olds = ", ".join(f"{F.old_label} {s.upper()}" for s in rep.old_sections)
         head = {DriftClass.IDENTICAL: "same text", DriftClass.COSMETIC: "same law, reworded",
                 DriftClass.RESTRUCTURED: "same law, sections merged or split",
                 DriftClass.PUNISHMENT: "same offence, different punishment",
                 DriftClass.SUBSTANTIVE: "the provision itself changed",
-                DriftClass.UNVERIFIED: "the IPC text in our source is incomplete; change not verified"}
-        out.append(f"BNS {rep.bns_section.upper()} <- {olds}: {head.get(rep.drift_class, rep.drift_class.value)}")
+                DriftClass.UNVERIFIED: f"the {F.old_label} text in our source is incomplete; change not verified"}
+        defect = self.new_prov[rep.new_section].defective if rep.new_section in self.new_prov else ""
+        if defect and rep.drift_class == DriftClass.UNVERIFIED:
+            head[DriftClass.UNVERIFIED] = f"not verified: {defect}"
+        out.append(f"{F.new_label} {rep.new_section.upper()} <- {olds}: {head.get(rep.drift_class, rep.drift_class.value)}")
         if not f.get("old_incomplete"):
-            out.append(f"{f['retention']:.0%} of the IPC text survives; {f['novelty']:.0%} of the BNS text is new")
+            out.append(f"{f['retention']:.0%} of the {F.old_label} text survives; {f['novelty']:.0%} of the "
+                       f"{F.new_label} text is new")
         ed: elm.ElementDelta = det["elements"]
         if ed.mens_rea_added:
             out.append("mental state added: " + ", ".join(sorted(m.replace("_", " ") for m in ed.mens_rea_added)))
@@ -415,11 +472,12 @@ class DriftAnalyzer:
         if pd.any:
             out.append(f"punishment {pd.direction}: {rep.punishment_old} -> {rep.punishment_new}")
         if det["alignment"].added_clauses:
-            out.append(f"{len(det['alignment'].added_clauses)} clause(s) with no IPC counterpart")
+            out.append(f"{len(det['alignment'].added_clauses)} clause(s) with no {F.old_label} counterpart")
         if f.get("merge"):
-            out.append(f"merges {len(rep.ipc_sections)} IPC sections")
+            out.append(f"merges {len(rep.old_sections)} {F.old_label} sections")
         if f.get("split"):
-            out.append("part of an IPC section that the BNS split")
+            article = "an" if F.old_label[0] in "AEIOU" else "a"
+            out.append(f"part of {article} {F.old_label} section that the {F.new_label} split")
         return out
 
 
@@ -430,27 +488,28 @@ class DriftAnalyzer:
 class DriftTable:
     """All reports and pair carry-overs; what the search engine and the app load."""
 
-    sections: dict[str, DriftReport] = field(default_factory=dict)    # bns base section -> report
-    repealed: dict[str, DriftReport] = field(default_factory=dict)    # ipc base section -> report
+    sections: dict[str, DriftReport] = field(default_factory=dict)    # new base section -> report
+    repealed: dict[str, DriftReport] = field(default_factory=dict)    # old base section -> report
     pairs: dict[tuple[str, str], PairDrift] = field(default_factory=dict)
-    inferred: dict[str, tuple[str, float]] = field(default_factory=dict)   # unmapped IPC -> (BNS, containment)
+    inferred: dict[str, tuple[str, float]] = field(default_factory=dict)   # unmapped old -> (new, containment)
+    family: Family = FAMILIES["ipc"]
 
     @classmethod
     def build(cls, analyzer: DriftAnalyzer | None = None, cfg: Config | None = None) -> "DriftTable":
         an = analyzer or DriftAnalyzer.from_sources(cfg)
-        t = cls()
-        for b in an.bns:
+        t = cls(family=an.family)
+        for b in an.new_prov:
             t.sections[b] = an.report(b)
         for r in an.repealed():
-            t.repealed[r.ipc_sections[0]] = r
+            t.repealed[r.old_sections[0]] = r
         for (i, b) in an.relation:
-            if b in an.bns:
+            if b in an.new_prov:
                 t.pairs[(i, b)] = an.pair(i, b)
         # a section's carry-over is the mean over its predecessors of the pairwise carry-over: how
         # safely a precedent on one of its IPC sections reads onto it (merges are not penalised
         # for the parts that came from the other merged sections)
         for b, rep in t.sections.items():
-            cs = [t.pairs[(i, b)].carry_over for i in rep.ipc_sections if (i, b) in t.pairs]
+            cs = [t.pairs[(i, b)].carry_over for i in rep.old_sections if (i, b) in t.pairs]
             if cs:
                 rep.carry_over = round(sum(cs) / len(cs), 4)
         t.inferred = dict(an.inferred)
@@ -460,26 +519,27 @@ class DriftTable:
     def report(self, ref: str) -> DriftReport | None:
         code, _, sec = ref.lower().partition(":")
         sec = _base(sec)
-        if code == "bns":
+        if code == self.family.new:
             return self.sections.get(sec)
-        if code == "ipc":
+        if code == self.family.old:
             if sec in self.repealed:
                 return self.repealed[sec]
             succ = [b for (i, b) in self.pairs if i == sec]
             return self.sections.get(succ[0]) if succ else None
         return None
 
-    def carry_over(self, ipc_ref: str, bns_ref: str) -> float | None:
-        """c(ipc -> bns) for a crosswalk pair; 0 for a repealed IPC section; None if not a pair."""
-        i = _base(ipc_ref.lower().removeprefix("ipc:"))
-        b = _base(bns_ref.lower().removeprefix("bns:"))
+    def carry_over(self, old_ref: str, new_ref: str) -> float | None:
+        """c(old -> new) for a crosswalk pair; 0 for a repealed old section; None if not a pair.
+        Refs may carry their code ("ipc:302") or not ("302")."""
+        i = _base(old_ref.lower().removeprefix(self.family.old + ":"))
+        b = _base(new_ref.lower().removeprefix(self.family.new + ":"))
         if i in self.repealed:
             return 0.0
         p = self.pairs.get((i, b))
         return p.carry_over if p else None
 
-    def successors(self, ipc_ref: str) -> list[str]:
-        i = _base(ipc_ref.lower().removeprefix("ipc:"))
+    def successors(self, old_ref: str) -> list[str]:
+        i = _base(old_ref.lower().removeprefix(self.family.old + ":"))
         return [b for (x, b) in self.pairs if x == i]
 
     def summary(self) -> dict[str, int]:
@@ -490,55 +550,63 @@ class DriftTable:
         return dict(out)
 
     # ------------------------------------------------------------------ CSV (committed)
-    SECTION_COLS = ["bns_section", "ipc_sections", "title", "drift_class", "carry_over", *FEATURES, "flags",
+    SECTION_COLS = ["new_section", "old_sections", "title", "drift_class", "carry_over", *FEATURES, "flags",
                     "punishment_old", "punishment_new", "reasons"]
-    PAIR_COLS = ["ipc_section", "bns_section", "drift_class", "retention", "carry_over"]
+    PAIR_COLS = ["old_section", "new_section", "drift_class", "retention", "carry_over"]
+
+    @staticmethod
+    def paths(directory: str | Path | None = None, family: str = "ipc") -> tuple[Path, Path]:
+        """drift_sections.csv / drift_pairs.csv for the penal family, drift_<old>_<new>_*.csv otherwise."""
+        d = Path(directory) if directory else project_path("data/crosswalk")
+        fam = FAMILIES[family]
+        stem = "drift" if family == "ipc" else f"drift_{fam.old}_{fam.new}"
+        return d / f"{stem}_sections.csv", d / f"{stem}_pairs.csv"
 
     def save_csv(self, directory: str | Path | None = None) -> tuple[Path, Path]:
-        d = Path(directory) if directory else project_path("data/crosswalk")
-        d.mkdir(parents=True, exist_ok=True)
-        sp, pp = d / "drift_sections.csv", d / "drift_pairs.csv"
+        F = self.family
+        sp, pp = self.paths(directory, F.old)
+        sp.parent.mkdir(parents=True, exist_ok=True)
         with open(sp, "w", newline="", encoding="utf-8") as fh:
-            fh.write("# Generated by scripts/13_build_drift.py (kanoon_bridge.drift): one row per BNS section\n"
-                     "# plus one per IPC section with no successor (bns_section empty, class 'repealed').\n")
+            fh.write(f"# Generated by scripts/13_build_drift.py (kanoon_bridge.drift): one row per {F.new_label} section\n"
+                     f"# plus one per {F.old_label} section with no successor (new_section empty, class 'repealed').\n")
             w = csv.writer(fh)
             w.writerow(self.SECTION_COLS)
             for r in [*self.sections.values(), *self.repealed.values()]:
-                w.writerow([r.bns_section, ";".join(r.ipc_sections), r.title, r.drift_class.value, f"{r.carry_over:.4f}",
+                w.writerow([r.new_section, ";".join(r.old_sections), r.title, r.drift_class.value, f"{r.carry_over:.4f}",
                             *[f"{r.features.get(k, 0.0):.4f}" if r.features else "" for k in FEATURES],
                             ";".join(r.flags), r.punishment_old, r.punishment_new, " | ".join(r.reasons)])
         with open(pp, "w", newline="", encoding="utf-8") as fh:
-            fh.write("# Generated by scripts/13_build_drift.py: carry-over c(ipc -> bns) per crosswalk pair\n")
+            fh.write(f"# Generated by scripts/13_build_drift.py: carry-over c({F.old} -> {F.new}) per crosswalk pair\n")
             w = csv.writer(fh)
             w.writerow(self.PAIR_COLS)
             for p in self.pairs.values():
-                w.writerow([p.ipc_section, p.bns_section, p.drift_class.value,
+                w.writerow([p.old_section, p.new_section, p.drift_class.value,
                             "" if math.isnan(p.retention) else f"{p.retention:.4f}", f"{p.carry_over:.4f}"])
         return sp, pp
 
     @classmethod
-    def load(cls, directory: str | Path | None = None) -> "DriftTable":
-        d = Path(directory) if directory else project_path("data/crosswalk")
-        sp, pp = d / "drift_sections.csv", d / "drift_pairs.csv"
+    def load(cls, directory: str | Path | None = None, family: str = "ipc") -> "DriftTable":
+        sp, pp = cls.paths(directory, family)
         if not sp.exists() or not pp.exists():
             raise FileNotFoundError(f"{sp} missing: run scripts/13_build_drift.py")
-        t = cls()
+        t = cls(family=FAMILIES[family])
         with open(sp, encoding="utf-8") as fh:
             for row in csv.DictReader(l for l in fh if not l.startswith("#")):
                 feats = {k: float(row[k]) for k in FEATURES if row.get(k)}
-                r = DriftReport(row["bns_section"], [s for s in row["ipc_sections"].split(";") if s],
+                r = DriftReport(row["new_section"], [s for s in row["old_sections"].split(";") if s],
                                 DriftClass(row["drift_class"]), float(row["carry_over"]), features=feats,
                                 flags=[x for x in row["flags"].split(";") if x], punishment_old=row["punishment_old"],
                                 punishment_new=row["punishment_new"],
-                                reasons=[x for x in row["reasons"].split(" | ") if x], title=row.get("title", ""))
-                if r.bns_section:
-                    t.sections[r.bns_section] = r
+                                reasons=[x for x in row["reasons"].split(" | ") if x], title=row.get("title", ""),
+                                old_code=t.family.old, new_code=t.family.new)
+                if r.new_section:
+                    t.sections[r.new_section] = r
                 else:
-                    t.repealed[r.ipc_sections[0]] = r
+                    t.repealed[r.old_sections[0]] = r
         with open(pp, encoding="utf-8") as fh:
             for row in csv.DictReader(l for l in fh if not l.startswith("#")):
-                t.pairs[(row["ipc_section"], row["bns_section"])] = PairDrift(
-                    row["ipc_section"], row["bns_section"], float(row["retention"]) if row["retention"] else float("nan"),
+                t.pairs[(row["old_section"], row["new_section"])] = PairDrift(
+                    row["old_section"], row["new_section"], float(row["retention"]) if row["retention"] else float("nan"),
                     float(row["carry_over"]), DriftClass(row["drift_class"]))
         return t
 

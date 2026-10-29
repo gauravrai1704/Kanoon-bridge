@@ -14,8 +14,9 @@ Endpoints (JSON):
                           answer (layer 3), agent plan (layer 2), and a step-by-step pipeline
     GET  /api/similar?id=P01&k=6             similar cases
     GET  /api/doc?id=P01                     full text of one document, by zone
-    GET  /api/drift?ref=ipc:124a             what changed from the IPC to the BNS (drift/explain.py)
-    GET  /api/drift/list                     every section's drift class and carry-over
+    GET  /api/drift?ref=ipc:124a             what changed from the old code to the new (IPC/BNS, CrPC/BNSS,
+                                             Evidence Act/BSA; drift/explain.py)
+    GET  /api/drift/list                     every section's drift class and carry-over, all three families
     /changes.html                            the "What changed" page; served even when the
                                              search indexes are not built (drift needs only the
                                              committed data/crosswalk/drift_*.csv)
@@ -202,7 +203,7 @@ class Backend:
                 "version": present.version_note(ref, self.engine.analyzer.text_res.normalizer),
                 "in_force": bool(ref) and aq.code_in_force.value in ("ipc", "bns") and ref.startswith(aq.code_in_force.value + ":"),
                 "code": ref.split(":")[0] if ref else "", "text": text,
-                "drift": present.drift_note(ref, self.engine), "drift_ref": ref if ref.split(":")[0] in ("ipc", "bns") else ""}
+                "drift": present.drift_note(ref, self.engine), "drift_ref": ref if ref.split(":")[0] in ("ipc", "bns", "crpc", "bnss", "iea", "bsa") else ""}
 
     def _precedent_json(self, h, aq, agent_res) -> dict:
         from kanoon_bridge import present
@@ -365,19 +366,10 @@ class DriftBackend:
             return {"found": False, "error": str(err)}
 
     def rows(self) -> dict:
-        t = self.explorer.table
-        out = [{"bns": r.bns_section, "ipc": ";".join(r.ipc_sections), "class": r.drift_class.value,
-                "carry_over": r.carry_over, "title": r.title or self._title(r)}
-               for r in [*t.sections.values(), *t.repealed.values()]]
-        return {"rows": out, "summary": t.summary()}
-
-    def _title(self, r) -> str:
-        an = self.explorer._an()
-        if an is None:
-            return ""
-        if r.bns_section and r.bns_section in an.bns:
-            return an.bns[r.bns_section].title
-        return an.ipc[r.ipc_sections[0]].title if r.ipc_sections and r.ipc_sections[0] in an.ipc else ""
+        ex = self.explorer
+        families = [{"family": f, "old_label": t.family.old_label, "new_label": t.family.new_label,
+                     "summary": t.summary()} for f, t in ex.tables.items()]
+        return {"rows": ex.rows(), "families": families}
 
 
 class Handler(SimpleHTTPRequestHandler):

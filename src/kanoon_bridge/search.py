@@ -433,7 +433,8 @@ class SearchEngine:
             final, hit = self.drift.rerank(final, aq, self.facets.metas, components,
                                            depth=max(100, opt.top_k * 3))
             if hit:
-                aq.trace.append(("drift", f"{len(hit)} IPC-era precedent(s) down-weighted: the BNS changed the law they apply"))
+                aq.trace.append(("drift", f"{len(hit)} precedent(s) under the old codes down-weighted: the BNS / BNSS / BSA "
+                                          "changed the law they apply"))
 
         # --- near-duplicate collapse (index/dedup.py) ----------------------------------
         ranked = top_k(final, opt.top_k)

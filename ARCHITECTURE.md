@@ -124,8 +124,8 @@ With only the `original` sub-query the agent returns exactly the layer-1 ranking
 
 | Step | Module | What happens |
 | --- | --- | --- |
-| Offline | `scripts/13_build_drift.py` | IPC + BNS bare-act text and the crosswalk give a drift vector, class and carry-over per section and per (IPC, BNS) pair -> `data/crosswalk/drift_*.csv` (committed) |
-| Layer 1 | `drift/transfer.py` via `SearchOptions.drift` | for a BNS-era question, IPC-era precedents are down-weighted by (1 − transfer); recall unchanged |
+| Offline | `scripts/13_build_drift.py` | old- and new-code bare-act text and the crosswalk give a drift vector, class and carry-over per section and per (old, new) pair, for IPC→BNS, CrPC→BNSS and Evidence Act→BSA -> `data/crosswalk/drift_*.csv` (committed) |
+| Layer 1 | `drift/transfer.py` via `SearchOptions.drift` | for a question dated on/after 1 July 2024, precedents applying an IPC, CrPC or Evidence Act section are down-weighted by (1 − transfer) onto its BNS / BNSS / BSA successor; recall unchanged |
 | Presentation | `present.drift_note`, `present.explain` | "change from the IPC: ..." on statutes, "interprets IPC 124A; BNS 152 changed the provision itself" on precedents |
 | Layer 3 | `TransferScorer.answer_flags` | "law changed" / "stale precedent" flags on answers |
 | App | `app/web/changes.html`, `/api/drift` | the "What changed" page; served even without the search indexes |

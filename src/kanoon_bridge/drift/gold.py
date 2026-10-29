@@ -5,11 +5,13 @@ crosswalk); both are read at evaluation time from data/raw/ and never committed.
 
 S1  indian-legal-mcp mapping tables (MIT): `bns_to_ipc.json` gives every BNS (sub-)section a
     status -- Retained | Change | New Section | New Sub-Section -- and `ipc_to_bns.json` marks
-    IPC sections Deleted. Section label:
+    IPC sections Deleted. The same tables exist for the BNSS (`bnss_to_crpc.json`,
+    `crpc_to_bnss.json`) and the BSA (`bsa_to_iea.json`, `iea_to_bsa.json`): pass `family`.
+    Section label:
         new        if any record of the section is "New Section"
         changed    if any record is "Change" or "New Sub-Section"
         retained   otherwise
-S2  bns-study-platform `ipcReference.changeNote` (free text per BNS section, e.g. "Re-enacts
+S2  bns-study-platform `ipcReference.changeNote` (free text per BNS section; penal family only, e.g. "Re-enacts
     s.282 IPC; the fine limit is raised to ₹5,000."). `note_labels` turns a note into a set of
     categories with sentence-level rules:
         new           a new provision / offence
@@ -43,14 +45,24 @@ def _sec(s) -> str:
     return re.sub(r"\(.*", "", str(s or "")).strip().lower()
 
 
-def s1_section_labels(cfg: Config | None = None) -> dict[str, str]:
-    """BNS section -> new | changed | retained (S1)."""
-    cfg = cfg or load_config()
-    path = _raw(cfg, "bns_to_ipc.json")
+# family -> (new -> old mapping file, old -> new mapping file) in the indian-legal-mcp checkout
+S1_FILES = {"ipc": ("bns_to_ipc.json", "ipc_to_bns.json"),
+            "crpc": ("bnss_to_crpc.json", "crpc_to_bnss.json"),
+            "iea": ("bsa_to_iea.json", "iea_to_bsa.json")}
+
+
+def _s1(cfg: Config, family: str, which: int) -> list[dict]:
+    path = _raw(cfg, S1_FILES[family][which])
     if not path.exists():
         raise FileNotFoundError(f"{path} missing (make fetch)")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def s1_section_labels(cfg: Config | None = None, family: str = "ipc") -> dict[str, str]:
+    """New-code section -> new | changed | retained (S1), for the BNS, BNSS or BSA."""
+    cfg = cfg or load_config()
     statuses: dict[str, set[str]] = defaultdict(set)
-    for rec in json.loads(path.read_text(encoding="utf-8")):
+    for rec in _s1(cfg, family, 0):
         statuses[_sec(rec.get("source", {}).get("section"))].add(rec.get("status", ""))
     out = {}
     for sec, st in statuses.items():
@@ -60,21 +72,20 @@ def s1_section_labels(cfg: Config | None = None) -> dict[str, str]:
     return out
 
 
-def s1_deleted_ipc(cfg: Config | None = None) -> set[str]:
-    """IPC sections S1 marks Deleted (not carried into the BNS)."""
+def s1_deleted(cfg: Config | None = None, family: str = "ipc") -> set[str]:
+    """Old-code sections S1 marks Deleted (not carried into the new code)."""
     cfg = cfg or load_config()
-    path = _raw(cfg, "ipc_to_bns.json")
-    if not path.exists():
-        raise FileNotFoundError(f"{path} missing (make fetch)")
-    return {_sec(r.get("source", {}).get("section")) for r in json.loads(path.read_text(encoding="utf-8"))
-            if r.get("status") == "Deleted"}
+    return {_sec(r.get("source", {}).get("section")) for r in _s1(cfg, family, 1) if r.get("status") == "Deleted"}
 
 
-def s1_ipc_sections(cfg: Config | None = None) -> set[str]:
-    """Every IPC section S1 has a record for (the population for repeal detection)."""
+def s1_old_sections(cfg: Config | None = None, family: str = "ipc") -> set[str]:
+    """Every old-code section S1 has a record for (the population for repeal detection)."""
     cfg = cfg or load_config()
-    return {_sec(r.get("source", {}).get("section"))
-            for r in json.loads(_raw(cfg, "ipc_to_bns.json").read_text(encoding="utf-8"))}
+    return {_sec(r.get("source", {}).get("section")) for r in _s1(cfg, family, 1)}
+
+
+s1_deleted_ipc = s1_deleted              # names from before the procedure families were added
+s1_ipc_sections = s1_old_sections
 
 
 _NEW = re.compile(r"\bnew provision\b|^\s*new\b|no ipc equivalent|\bnew offence\b|\bnewly (?:created|introduced)\b", re.I)
@@ -157,5 +168,5 @@ def bns_punishment_summaries(cfg: Config | None = None) -> dict[str, str]:
             for r in iter_section_records(project_path(cfg.paths.bns_dir))}
 
 
-__all__ = ["s1_section_labels", "s1_deleted_ipc", "s1_ipc_sections", "note_labels", "s2_section_labels",
+__all__ = ["S1_FILES", "s1_section_labels", "s1_deleted", "s1_old_sections", "s1_deleted_ipc", "s1_ipc_sections", "note_labels", "s2_section_labels",
            "s2_changed", "bns_punishment_summaries"]

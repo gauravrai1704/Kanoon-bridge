@@ -1,0 +1,7 @@
+family,system,n,accuracy,precision,recall,f1_changed,macro_f1,kappa,auc
+crpc,drift: no successor (crosswalk + text search),523,0.9866,1.0,0.4167,0.5882,0.7907,0.5826,0.9754
+crpc,drift: no successor or carry-over < 0.5,523,0.9713,0.4118,0.5833,0.4828,0.734,0.4685,0.9754
+crpc,v1: not in the crosswalk,523,0.9847,0.8333,0.4167,0.5556,0.7739,0.5487,
+iea,drift: no successor (crosswalk + text search),184,0.9783,0.8,0.5714,0.6667,0.8277,0.6558,0.9645
+iea,drift: no successor or carry-over < 0.5,184,0.9565,0.4615,0.8571,0.6,0.7885,0.5792,0.9645
+iea,v1: not in the crosswalk,184,0.9674,0.5714,0.5714,0.5714,0.7772,0.5545,

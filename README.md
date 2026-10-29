@@ -11,7 +11,8 @@ CSD358 (Information Retrieval) IR Hackathon · Track T6 (vertical search: law) w
 ![Architecture](docs/architecture.svg)
 
 Three layers on one core: **(1) core retriever** → **(2) research agent** → **(3) grounded answer**,
-plus the **statutory drift layer** (`drift/`) that measures how far each provision moved from the IPC to the BNS.
+plus the **statutory drift layer** (`drift/`) that measures how far each provision moved from the IPC, CrPC and
+Evidence Act to the BNS, BNSS and BSA.
 See `ARCHITECTURE.md` and the pipeline figure in `docs/report/pipeline.png`.
 
 ## Quick start (from the zip)
@@ -24,7 +25,7 @@ pip install -e ".[dev]"
 mkdir -p data/raw/ilpcsr && cp /path/to/raw/ilpcsr/*.parquet data/raw/ilpcsr/
 make build          # corpus + indexes + citation graph + LTR model, about 6 minutes
 make web            # http://localhost:8000
-make test           # 179 tests
+make test           # 184 tests
 ```
 
 The BNS sections (`data/raw/bns-study-platform`) and the government crosswalk PDF are
@@ -41,27 +42,35 @@ higher punishment. The drift layer measures the change from the bare-act texts:
 - punishment structure;
 - mental-state words and thresholds.
 
-It turns these into a class and a **carry-over score** for IPC-era precedent. The search engine
+It turns these into a class and a **carry-over score** for old-code precedent. The search engine
 down-weights precedents whose law changed, and explains why. Answers are checked for stale law.
 A new **What changed** page shows every section side by side.
+
+It covers all three codes replaced on 1 July 2024: IPC → BNS, CrPC → BNSS and Evidence Act → BSA.
+For example, CrPC 438 bail precedents carry over to BNSS 482 at 0.53, because the BNSS dropped the
+factors the CrPC told courts to weigh.
 
 ```bash
 make drift                                   # build data/crosswalk/drift_*.csv (committed; needs make fetch to rebuild)
 make drift-eval                              # E11-E12 against two independent gold sources
 python app/cli.py "" --drift ipc:124a        # what changed for one section (no index needed)
+python app/cli.py "" --drift "CrPC 438"      # also CrPC / BNSS / Evidence Act / BSA sections
 make web                                     # then open /changes.html (works even before the indexes are built)
 ```
 
 | E11a, test half (184 BNS sections) | F1 "changed" vs S1 | vs S2 |
 | --- | --- | --- |
 | v1 crosswalk relation | 0.20 | 0.32 |
-| Edit similarity (tuned on dev) | 0.50 | 0.63 |
+| Edit similarity (tuned on dev) | 0.52 | 0.63 |
 | Drift rules (hand-set) | 0.68 | 0.68 |
-| Drift vector + logistic regression | **0.79** (κ 0.69) | **0.76** (κ 0.62) |
+| Drift vector + logistic regression | **0.81** (κ 0.72) | **0.75** (κ 0.61) |
 
 - The two gold sources agree with each other at κ = 0.75.
 - Repeal detection: AUC 0.95; F1 0.53 vs 0.38 for v1.
 - Punishment parsing agrees with the source's own summaries on 95–100% of fields.
+- **CrPC → BNSS:** dev-tuned drift rules 0.73 vs edit similarity 0.68. The CIs overlap, and the
+  CrPC source is partly pre-2009 text.
+- **Evidence Act → BSA:** unreliable. Only 13 changed sections fall in the test half.
 
 Full write-up, ablations, negative results and limitations: **[docs/PROJECT.md](docs/PROJECT.md)**.
 
@@ -122,7 +131,7 @@ Report and video script: `docs/report/`.
 | Agent vs core and RAG evaluation | Gaurav | **working** |
 | RAG answer, layer 3: abstain, chunks, Claude/extractive generation, citation + version checks | Gaurav | **working** |
 | Web app (app/web_server.py + app/web/): bridge search, advocate answers, history, step-by-step "how this was found" | Gaurav | **working** |
-| Statutory drift (drift/): drift vector, classes, carry-over, transfer in ranking, answer checks, "What changed" page, E11-E13 | Gaurav | **working** (E13 needs the IL-PCSR indexes) |
+| Statutory drift (drift/) for IPC→BNS, CrPC→BNSS and Evidence Act→BSA: drift vector, classes, carry-over, transfer in ranking, answer checks, "What changed" page, E11-E13 | Gaurav | **working** (E13 needs the IL-PCSR indexes) |
 | Tolerant retrieval: spelling correction + did-you-mean, wildcards; snippets, highlighting, "why this result"; similar cases; relevance feedback; learning to rank; near-duplicate collapse; typo experiment | Gaurav | **working** |
 
 Every feature, the paper or textbook section it builds on, and what is new: **[docs/RESEARCH.md](docs/RESEARCH.md)**.

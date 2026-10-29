@@ -104,6 +104,7 @@ systems.
 | **Drift-aware precedent transfer in ranking** | Score penalty by (1 − transfer) for BNS-era questions. **Ours** | `drift/transfer.py`, `search.py` | E13 |
 | Drift checks on generated answers | Stale-law flags beside ALCE-style citation checks | `drift/transfer.py`, `rag/answer.py` | demo |
 | Evaluation | Two independent gold sources, Cohen's κ, McNemar's exact test (Dietterich 1998), bootstrap CIs, dev/test split | `eval/drift_eval.py` | — |
+| **Drift for CrPC → BNSS and Evidence Act → BSA** | Same pipeline per code family; renumbering of references *across* codes (CrPC text citing IPC sections); absolute inserted-word counts for short qualifiers; detection of mis-filed source sections | `drift/provisions.py`, `drift/diff.py`, `drift/model.py` | E11a/e, E12 per family (docs/PROJECT.md §5) |
 
 ## What is new here
 
