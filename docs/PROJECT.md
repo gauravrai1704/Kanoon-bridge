@@ -102,6 +102,29 @@ score and the score range, which keeps the penalty sign-safe for learned scores.
 Reproduce: `make fetch && make drift && make drift-eval`. All tables are in
 `results/tables/drift_*.csv` and all figures in `results/figures/drift_*.png`.
 
+### Text sources
+
+- **Old codes, BNSS and BSA: India Code.** The IPC, CrPC and Evidence Act come from India Code's
+  current consolidated text, as packaged by [kanoonhq/open-laws](https://github.com/kanoonhq/open-laws)
+  (CC0). So do the BNSS and BSA.
+- **BNS: bns-study-platform.** The BNS text comes from that project, verified against the Gazette.
+- **Cleaning.** Amendment footnote markers ("1[", "]"), "* * *" omissions and the State
+  amendments India Code appends after the central text are removed before comparing.
+- **Why this matters.** We first used the MIT indian-legal-mcp copies. Their IPC truncates
+  sections (s.300 was a 10-word fragment; s.304B was empty), and their CrPC is partly pre-2009
+  (no §41A–41D, old §41 and §54). Switching sources changed the results more than any modelling
+  choice:
+
+  | Test-half F1 (vs S1) | MIT copies | India Code |
+  | --- | --- | --- |
+  | IPC → BNS, drift rules (hand-set) | 0.68 | **0.85** |
+  | IPC → BNS, learned model | 0.81 | **0.89** |
+  | CrPC → BNSS, edit similarity | 0.68 | **0.78** |
+  | CrPC → BNSS, drift rules (dev-tuned) | 0.73 | 0.75 |
+  | Evidence Act → BSA, edit similarity | 0.12 | **0.53** |
+
+  `drift.text_source: legacy` in `configs/default.yaml` reproduces the old runs.
+
 ### Gold labels: two independent sources
 
 Neither source is used to build the drift reports.
@@ -112,62 +135,61 @@ Neither source is used to build the drift reports.
   them into categories (unchanged, structure, punishment, substance, new) with sentence-level
   rules in `drift/gold.py`.
 
-Population: the 347 BNS sections that have an IPC predecessor and an S1 label. S1 marks 103 of
-them changed and S2 marks 119. **The two sources agree with Cohen's κ = 0.75**. That is a rough
-ceiling for any automatic detector: "did it change?" has more than one defensible answer.
+Population: the 346 BNS sections that have an IPC predecessor and an S1 label. S1 marks 102 of
+them changed and S2 marks 118. **The two sources agree with Cohen's κ = 0.75.** "Did it change?"
+has more than one defensible answer.
 
 ### E11a — which provisions changed?
 
-Test half (184 sections, split by a hash of the section number). Thresholds and the
-dev-trained model only ever saw the dev half.
+Test half (split by a hash of the section number). Thresholds and the dev-trained model only
+ever saw the dev half.
 
 | System | F1 changed (S1) | κ (S1) | F1 changed (S2) | κ (S2) |
 | --- | --- | --- | --- | --- |
-| v1 crosswalk relation ≠ "same" | 0.20 | −0.03 | 0.32 | 0.10 |
-| Edit similarity, threshold tuned on dev | 0.52 | 0.23 | 0.63 | 0.35 |
-| tf-idf cosine, threshold tuned on dev | 0.55 | 0.24 | 0.59 | 0.27 |
-| **Drift rules, hand-set (no tuning)** | 0.68 | 0.50 | 0.68 | 0.46 |
-| **Drift rules, thresholds tuned on dev** | 0.72 | 0.57 | 0.70 | 0.52 |
-| **Drift vector + logistic regression (trained on dev)** | **0.81** | **0.72** | **0.75** | **0.61** |
+| v1 crosswalk relation ≠ "same" | 0.21 | −0.03 | 0.32 | 0.10 |
+| Edit similarity, threshold tuned on dev | 0.62 | 0.39 | 0.68 | 0.45 |
+| tf-idf cosine, threshold tuned on dev | 0.60 | 0.34 | 0.64 | 0.38 |
+| **Drift rules, hand-set (no tuning)** | 0.85 | 0.78 | 0.76 | 0.65 |
+| **Drift rules, thresholds tuned on dev** | 0.84 | 0.77 | 0.77 | 0.66 |
+| **Drift vector + logistic regression (trained on dev)** | **0.89** | **0.85** | **0.81** | **0.73** |
 
-- McNemar's exact test against v1: p = 0.0003 (S1) and 0.015 (S2) for the dev-tuned rules;
-  p < 0.001 for the learned model on both sources.
-- 95% bootstrap CIs are in the CSV and in `drift_change_detection.png`.
-- The learned detector's agreement with S1 (κ = 0.72) is about as high as the two human
-  sources' agreement with each other (κ = 0.75).
-- Its strongest standardised weights are punishment_changed (+2.1) and lost_clauses (−1.1).
-- These numbers include the inserted-word and threshold-added features introduced for the
-  procedure codes (Section 5). They moved the learned model from 0.79 to 0.81 on S1 and from
-  0.76 to 0.75 on S2. The hand-set rules keep those features off by default, so their rows
-  did not change.
-  The negative weight is a source artefact: our IPC text lacks some Explanations.
+- Every drift system beats v1 (McNemar's exact test, p < 0.001 on both sources).
+- **Drift vs edit similarity.** The hand-set rules beat the best text-similarity baseline by
+  0.22 F1 on S1 and 0.08 on S2. The 95% bootstrap CIs (in the CSV and
+  `drift_change_detection.png`) do not overlap on S1: 0.77–0.91 vs 0.53–0.71.
+- **The learned model's κ against S1 (0.85) is higher than the two sources' agreement with each
+  other (0.75).** That should not be read as better-than-human. S1's labels may themselves come
+  from comparing these texts, which would favour any text-based detector. S2, written as prose
+  notes, is the more independent test; there the learned model reaches κ 0.73.
+- The strongest standardised weights are punishment_changed (+1.8), lost_clauses (−1.0) and
+  punishment_harsher (+1.0).
 
-### E11b — ablation (hand-set rules, all 347 sections)
+### E11b — ablation (hand-set rules, all 346 sections)
 
 | Variant | F1 (S1) | F1 (S2) | AUC of 1−carry-over (S1) |
 | --- | --- | --- | --- |
-| full | 0.655 | 0.660 | 0.748 |
-| − renumbering | 0.653 | 0.665 | 0.741 |
-| − punishment | 0.333 | 0.369 | 0.662 |
-| − elements (mens rea, thresholds) | 0.664 | 0.669 | 0.803 |
-| − clause alignment | 0.634 | 0.640 | 0.659 |
+| full | 0.851 | 0.783 | 0.844 |
+| − renumbering | 0.851 | 0.783 | 0.834 |
+| − punishment | 0.196 | 0.228 | 0.725 |
+| − elements (mens rea, thresholds) | 0.861 | 0.782 | 0.848 |
+| − clause alignment | 0.865 | 0.786 | 0.834 |
 
-- **Punishment parsing carries most of the signal.** Many BNS changes are raised fine caps
-  and terms, one-word edits that text similarity cannot see.
-- **Clause alignment helps.** It is the difference between "a sub-section was added" and "the
-  section was rewritten".
-- **Renumbering hardly matters for detection.** It does matter for the explanation shown to users
-  (e.g. "section 334" → "section 122" is shown as renumbered, not as a change).
-- **Negative result: the regex reading of mental-state words hurts detection slightly** (removing
-  it raises AUC from 0.75 to 0.80). Mental-state words get flagged when BNS adds a clause that
-  happens to contain "knowingly". We keep the component because the explanation needs it (it
-  catches "purposely or knowingly" in BNS 152). Its detection weight should be lower or learned;
-  see future work.
+- **Punishment parsing carries almost all of the detection signal.** Most BNS changes are raised
+  fine caps and terms, one-word edits that text similarity cannot see.
+- **The other components matter for the score and the explanation, not for detection.**
+  - Renumbering and clause alignment add about 0.01 AUC to the carry-over score. They are what
+    let the explanation say "a sub-section was added" or "section 334 became 122" instead of
+    "the text changed".
+  - The mental-state reading slightly *hurts* detection, a negative result. Mental-state words
+    are flagged when the BNS adds a clause that happens to contain "knowingly". It stays for the
+    explanation: it catches "purposely or knowingly" in BNS 152.
+  - With the clean India Code text, dropping clause alignment no longer costs F1. Its earlier
+    benefit came from routing around truncated IPC clauses.
 
 ### E11c/d — punishment
 
-- **Change detection** against S2's "punishment" category: precision 0.71, recall 0.89,
-  F1 0.79, κ 0.72 (344 sections).
+- **Change detection** against S2's "punishment" category: precision 0.82, recall 0.90,
+  F1 0.86, κ 0.81 (346 sections).
 - **Extraction accuracy:** `punishment.extract` on the bare act vs on the source's own one-line
   punishment summary, field by field (273 sections):
 
@@ -181,47 +203,48 @@ dev-trained model only ever saw the dev half.
   | minimum term | 100% |
   | fine cap | 96% |
 
-### E11e — repeal detection (553 IPC sections; gold: S1 Deleted, 19 sections)
+### E11e — repeal detection (gold: S1 Deleted)
 
-| System | Precision | Recall | F1 | AUC |
-| --- | --- | --- | --- | --- |
-| v1: IPC section not in the crosswalk | 0.25 | 0.84 | 0.38 | — |
-| drift: no successor after a text search of the BNS | **0.60** | 0.47 | **0.53** | **0.95** |
+| Family | System | Precision | Recall | F1 | AUC |
+| --- | --- | --- | --- | --- | --- |
+| IPC (19 deleted) | v1: not in the crosswalk | 0.24 | 0.84 | 0.38 | — |
+| IPC | drift: no successor after a text search | **0.56** | 0.53 | **0.54** | **0.96** |
+| CrPC (12 deleted) | v1 | 0.28 | 0.42 | 0.33 | — |
+| CrPC | drift: no successor or carry-over < 0.5 | **0.70** | 0.58 | **0.64** | **0.98** |
+| Evidence Act (7 deleted) | v1 | 0.50 | 0.57 | 0.53 | — |
+| Evidence Act | drift: no successor or carry-over < 0.5 | 0.56 | 0.71 | **0.63** | **0.97** |
 
-- The text search found 50 IPC sections that the crosswalk misses but whose wording sits in a
-  BNS section. Most are definitions consolidated into BNS 1–3. This removes most of v1's false
-  repeals.
-- The misses are sections the crosswalk maps to a replacement offence: 124A, 309, 377, 497 →
-  replacement. Our carry-over gives them low scores instead.
+- The text search finds IPC sections the crosswalk misses but whose wording sits in a BNS section
+  (48, mostly definitions consolidated into BNS 1–3). Sections repealed long before 2023 ("Rep. by
+  the Prevention of Corruption Act, 1988") are excluded.
+- The misses are sections the crosswalk maps to a replacement offence, such as 124A → 152. The
+  carry-over score gives those low values instead.
 
 ### E11f — carry-over by S2 category (mean)
 
 | S2 category | Mean carry-over |
 | --- | --- |
-| unchanged | 0.92 |
-| punishment | 0.81 |
-| substance | 0.80 |
-| structure | 0.78 |
+| unchanged | 0.95 |
+| structure | 0.89 |
+| substance | 0.84 |
+| punishment | 0.84 |
 
-The score falls once a provision changes. It does not separate substance from structure well;
-merges score low partly because of source-text gaps.
+The score falls once a provision changes. It does not separate substance from punishment changes.
 
 ### E12 — hazard audit of v1's offence ids
 
-**26 of 343** offence ids equate an IPC section with a BNS section whose carry-over is below 0.5
-(`drift_hazard_offences.csv`).
+**14 of 343** offence ids equate an IPC section with a BNS section whose carry-over is below 0.5
+(`drift_hazard_offences.csv`). It was 26 with the truncated MIT text.
 
 - Real changes found:
-  - **sedition** (124A → 152): a different offence;
-  - **house-breaking by night** (446 → 330): the "by night" aggravation moved out of the
-    definition into the punishment section 331, according to the S2 note;
-  - **dishonest misappropriation** (403 → 314): a new mandatory minimum of 6 months. That is a
-    real change, though our class calls it *substantive* where *punishment* would be more
-    accurate.
-- Others are artefacts of incomplete IPC text or definition chapters, e.g. general explanations.
+  - **sedition** (124A → 152, carry-over 0.24): a different offence;
+  - **house-breaking by night** (446 → 330, 0.14): the "by night" aggravation moved out of the
+    definition into the punishment section 331, according to the S2 note.
+- Others are consolidations rather than changes of law: IPC 33 → BNS 3 (general explanations),
+  and the coin and currency offences (242 → 180, 230 → 178).
 
-So this is an **upper bound that needs legal review**, not a count of errors. It shows where
-silent transfer is possible.
+This is an **upper bound that needs legal review**, not a count of errors. It shows where silent
+transfer is possible.
 
 ### E13 — transfer inside retrieval
 
@@ -237,7 +260,7 @@ system with drift off and on and reports, per drift class:
 The hypothesis: nothing moves for identical and cosmetic sections, and stale@10 falls for
 substantive ones, at some cost in citation-MAP, because citation relevance counts a stale
 precedent as relevant. On the synthetic sample (`make sample`) the script runs end to end. A
-murder question leaves the ranking unchanged (carry-over 0.89 ≥ 0.85); a BNS 152 question
+murder question leaves the ranking unchanged (carry-over ≥ 0.85); a BNS 152 question
 down-weights sedition-era precedent. **Run it with the real indexes before reporting E13.**
 
 ## 5. Extension: CrPC → BNSS and Evidence Act → BSA
@@ -247,9 +270,7 @@ Evidence Act. Kanoon-Bridge v1 already bridges both through shared provision ids
 layer now covers them too, with the same API: `DriftAnalyzer.from_sources(family="crpc")` or
 `family="iea"`. Their tables are committed as `data/crosswalk/drift_crpc_bnss_*.csv` and
 `drift_iea_bsa_*.csv`. Search, explanations, answer checks, the CLI and the What changed page
-use all three families. For example, a 2025 bail question citing BNSS 482 down-weights CrPC 438
-precedents (carry-over 0.53). The diff shows why: BNSS 482 dropped the list of factors CrPC
-438(1) told the court to weigh.
+use all three families.
 
 ### What had to change
 
@@ -261,14 +282,18 @@ precedents (carry-over 0.53). The diff shows why: BNSS 482 dropped the list of f
 - **Cross-code renumbering.** CrPC text cites "section 302 of the Indian Penal Code", and BNSS
   text cites "section 103 of the Bharatiya Nyaya Sanhita". A reference followed by another
   code's name is renumbered through that code's crosswalk. The six Act names are treated as
-  cosmetic.
+  cosmetic. Ranges ("sections 121 to 126") are not renumbered.
+- **Short qualifiers.** S1 counts a six-word insertion in a long section ("but within six hours
+  from such arrest") as a change. Two features were added for this: absolute inserted/deleted
+  content words, and newly added time or count limits. They were designed **after error
+  analysis on the S1 procedure labels**, so the procedure numbers below are optimistic. The
+  hand-set rules keep them off; only dev tuning switches them on.
 - **Source repairs.**
-  - Headings that wrap over a line break are stripped.
-  - Three new-code sections whose source text is actually the next section's (BNSS 58 and 275,
-    BSA 80) are detected and marked *unverified*. This is a chunking error in the source.
-  - `ingest/` was still looking for the checkout's old file names, so BNSS and BSA sections had
-    silently dropped out of the corpus. They are indexed again (531 + 170 sections). The
-    crosswalks rebuilt from the renamed files are identical to the committed ones.
+  - The sections filed under the wrong number in the source (BNSS 58 holds §59's text, as does
+    India Code's own extraction; BSA 80) are detected and marked *unverified*.
+  - `ingest/` was still looking for the indian-legal-mcp checkout's old file names, so BNSS and
+    BSA sections had silently dropped out of the corpus. They are indexed again (531 + 170
+    sections). The crosswalks rebuilt from the renamed files are identical to the committed ones.
 
 ### Results (gold: S1 only; no S2 notes exist for these codes)
 
@@ -276,64 +301,49 @@ Test half; dev-tuned rows were tuned on the dev half only.
 
 | System | CrPC → BNSS F1 (κ) | Evidence Act → BSA F1 (κ) |
 | --- | --- | --- |
-| v1 crosswalk relation | 0.27 (0.16) | **0.40** (0.23) |
-| Edit similarity (tuned) | 0.68 (0.50) | 0.12 (0.05) |
-| Drift rules, hand-set | 0.53 (0.39) | 0.29 (0.09) |
-| Drift rules, dev-tuned | **0.73** (0.61) | 0.32 (0.17) |
-| Drift vector + logistic regression | 0.62 (0.48) | 0.00 (−0.02) |
+| v1 crosswalk relation | 0.27 (0.16) | 0.40 (0.23) |
+| Edit similarity (tuned) | **0.78** (0.68) | **0.53** (0.43) |
+| Drift rules, penal thresholds | 0.48 (0.37) | 0.46 (0.36) |
+| Drift rules, dev-tuned (what the committed tables use) | 0.75 (0.62) | 0.40 (0.29) |
+| Drift vector + logistic regression | 0.74 (0.64) | 0.45 (0.37) |
 
-- **CrPC → BNSS** (513 sections, 171 changed per S1; 82 changed in the test half):
-  - The dev-tuned rules are best, but only slightly ahead of edit similarity: the 95% CIs
-    overlap (0.65–0.80 vs 0.60–0.75), so this is not a significant win.
-  - The hand-set rules, calibrated on penal law, are too coarse here. S1 counts a six-word
-    insertion in a long section ("but within six hours from such arrest") as a change.
-  - The two features that capture this were added **after error analysis on these same
-    labels**: absolute inserted/deleted content words, and newly added time or count limits.
-    The dev/test split guards the tuned thresholds, but the feature design saw both halves'
-    errors, so treat the CrPC numbers as optimistic.
-  - The dev half chose novelty ≥ 0.25, retention ≤ 0.7, ≥ 1 added clause, or ≥ 4 inserted
-    content words.
-- **Evidence Act → BSA** (168 sections, only 24 changed per S1; 13 in the test half):
-  - Every method is unreliable. The learned model predicts "unchanged" everywhere, and v1's
-    similarity-based relation is the best of a weak field.
-  - Ranking quality is better than these F1s suggest (AUC 0.73–0.75 for edit similarity and
-    the drift rules), but 13 positives are too few to set a threshold.
-  - S1 is also questionable here: it marks Evidence Act 65B "Deleted", though BSA 63 is its
-    well-known successor.
-- **Repeal detection** stays strong:
-
-  | Family | F1 | AUC | v1 F1 |
-  | --- | --- | --- | --- |
-  | CrPC | 0.59 (precision 1.0) | 0.98 | 0.56 |
-  | Evidence Act | 0.67 | 0.96 | 0.57 |
-
-- **Hazard audit (E12).** 13 of 511 CrPC/BNSS provision ids and 8 of 168 Evidence/BSA ids
-  pair sections at carry-over < 0.5. Read them with two source problems in mind:
-  - **The CrPC source mixes versions.** It lacks sections 41A–41D, 55A, 60A, 195A and 437A
-    (the 2008–2010 amendments), and holds pre-2009 text for at least §41 (arrest without warrant)
-    and §54 (medical examination). BNSS 35 and 53 carry over the *amended* CrPC text. So their
-    low carry-over (0.40 and 0.23) mostly measures the outdated source, not the BNSS.
-  - **The procedure crosswalk is built by text similarity** (`ingest/align_codes.py`), and some
-    pairs are wrong: CrPC 10, 15 and 19 merged into BNSS 13; CrPC 57 and 58 into BNSS 58. This
-    also makes "v1 relation" a similarity baseline rather than an independent one.
-  - Until a current CrPC text and a checked crosswalk are used, treat the procedure hazards as
-    leads for review, not findings.
+- **Edit similarity is the best change detector for procedure and evidence law,** a negative
+  result for the drift vector outside penal law.
+  - The penal signal was punishment, which these codes do not have.
+  - What is left is wording, and a whole-text edit ratio measures wording as well as our
+    clause-level features do.
+  - On CrPC the drift systems are close (0.75 vs 0.78, CIs 0.67–0.82 vs 0.71–0.85).
+- **The committed procedure tables use the dev-tuned thresholds** (`drift.family_params` in
+  `configs/default.yaml`). With them, the "insertion" rule fires on CrPC 167 → BNSS 187, where
+  the 15 days of police custody may now be taken "in parts, at any time during the initial forty
+  days or sixty days". Its carry-over stays 0.91: the carry-over formula does not use inserted
+  words yet (future work).
+- **The drift layer is still what the system uses for these codes.** Its value is the carry-over
+  score per (old, new) pair and the explanation (which clause, which time limit, which
+  renumbered reference), which edit similarity does not give.
+- **Evidence Act → BSA:** 168 sections and only 24 changed per S1, so every number here has wide
+  CIs (0.28–0.73 for edit similarity). S1 is also questionable: it marks Evidence Act 65B
+  "Deleted", though BSA 63 is its well-known successor.
+- **Repeal detection** is strong (E11e above: AUC 0.98 and 0.97).
+- **Hazard audit (E12):** 5 of 511 CrPC/BNSS provision ids and 5 of 168 Evidence/BSA ids pair
+  sections at carry-over < 0.5. It was 13 and 8 with the MIT text. The remaining CrPC ones are
+  mostly crosswalk errors from text-similarity alignment (`ingest/align_codes.py`): CrPC 10, 15
+  and 19 merged into BNSS 13. The CrPC 39 → BNSS 33 range references ("sections 121 to 126")
+  are not renumbered. Treat them as leads for review.
 
 `make drift-eval` writes these as `results/tables/drift_procedure_*.csv` and
 `results/figures/drift_families.png`.
 
 ## 6. Limitations
 
-- **Old-code source versions (procedure).** The CrPC text in the MIT checkout is partly
-  pre-2009 (Section 5). Drift on amended sections is overstated. A current consolidated CrPC
-  (India Code) would fix this; the loader takes any file in the same format.
-
-- **IPC source text.** The MIT IPC text omits some Explanations and illustrations and truncates
-  a few sections (e.g. s.300). We detect the worst cases (*unverified*: 4 sections) and prefer
-  IL-PCSR's IPC text when the corpus is built. Some false "substantive" calls remain.
-- **Gold labels are coarse.** S1 is section-level Retained/Change; S2 is our rule-based reading of
-  free-text notes. Neither labels carry-over directly, so carry-over is validated only indirectly
-  (E11f, AUC).
+- **Source text.** India Code's consolidated text is current but machine-extracted: one BNSS
+  and one BSA section are filed under the wrong number (flagged), and footnote and State-amendment
+  cleanup is rule-based.
+- **Gold labels are coarse, and S1 may be text-derived.** S1 is section-level Retained/Change;
+  S2 is our rule-based reading of free-text notes. Neither labels carry-over directly, so
+  carry-over is validated only indirectly (E11f, AUC).
+- **Procedure crosswalk.** It is built by text similarity and has some wrong merges. The
+  open-laws dataset has a 107-provision curated crosswalk that could be used to check it.
 - **Carry-over weights are hand-set.** They are principled but not learned. A small set of
   lawyer-graded (precedent, BNS section) pairs would let us fit and test them.
 - **Citation relevance ≠ legal applicability.** IL-PCSR's gold cannot reward drift-aware ranking;
@@ -341,9 +351,10 @@ Test half; dev-tuned rows were tuned on the dev half only.
 
 ## 7. Future work
 
-- Learn the carry-over weights from graded pairs; give the mental-state reading a learned weight.
-- Procedure and evidence (Section 5): a better crosswalk than text-similarity alignment, and
-  graded labels with more positives for the Evidence Act.
+- Learn the carry-over weights from graded pairs; give the mental-state reading a learned weight;
+  let inserted qualifiers (time limits, new conditions) lower the carry-over.
+- Procedure and evidence (Section 5): check the procedure crosswalk against open-laws' curated
+  mappings, and get graded labels with more positives for the Evidence Act.
 - Zone-aware transfer: down-weight only a precedent's sentencing paragraphs when only the
   punishment changed.
 - A user study with law students: does the "What changed" view reduce wrong-code citations?
@@ -352,7 +363,7 @@ Test half; dev-tuned rows were tuned on the dev half only.
 
 | File | Role |
 | --- | --- |
-| `src/kanoon_bridge/drift/provisions.py` | IPC/BNS texts, clause splitting, cross-reference renumbering |
+| `src/kanoon_bridge/drift/provisions.py` | code families, India Code / legacy text loaders, clause splitting, cross-reference renumbering |
 | `src/kanoon_bridge/drift/punishment.py` | punishment parser and comparison |
 | `src/kanoon_bridge/drift/elements.py` | mental-state words, thresholds, content words |
 | `src/kanoon_bridge/drift/diff.py` | clause alignment, word diff |
@@ -373,8 +384,10 @@ Test half; dev-tuned rows were tuned on the dev half only.
 - Bare-act text:
   - BNS via bns-study-platform (PSKprem); only `number`, `title` and `bareActText` are used to
     build reports. Its `changeNote` and `punishment` fields are used only as evaluation labels.
-  - IPC via GSMS-B/indian-legal-mcp (MIT).
-- Neither raw source is committed.
+  - IPC, CrPC, Evidence Act, BNSS and BSA: India Code's consolidated text via
+    [kanoonhq/open-laws](https://github.com/kanoonhq/open-laws) (CC0). The earlier runs used the
+    GSMS-B/indian-legal-mcp copies (MIT), which still serve as the fallback and as gold source S1.
+- No raw source is committed.
 - Related ideas:
   - legal change and versioning of legislation (consolidated-law diffing, e.g. the EU's
     EUR-Lex consolidation);

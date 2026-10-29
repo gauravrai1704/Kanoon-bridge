@@ -1,4 +1,4 @@
 family,system,n,accuracy,precision,recall,f1_changed,macro_f1,kappa,auc
-ipc,drift: no successor (crosswalk + text search),553,0.9711,0.6,0.4737,0.5294,0.7572,0.5147,0.9495
-ipc,drift: no successor or carry-over < 0.5,553,0.9096,0.2182,0.6316,0.3243,0.6379,0.288,0.9495
-ipc,v1: not in the crosswalk,553,0.906,0.2462,0.8421,0.381,0.665,0.3462,
+ipc,drift: no successor (crosswalk + text search),554,0.9693,0.5556,0.5263,0.5405,0.7623,0.5247,0.9623
+ipc,drift: no successor or carry-over < 0.5,554,0.9368,0.3095,0.6842,0.4262,0.6964,0.3978,0.9623
+ipc,v1: not in the crosswalk,554,0.9043,0.2424,0.8421,0.3765,0.6623,0.3414,

@@ -132,7 +132,7 @@ class PairDrift:
     drift_class: DriftClass
 
 
-_PRE_REPEALED = re.compile(r"^\s*(?:rep\.|repealed|omitted)\b|\brepealed by\b", re.I)
+_PRE_REPEALED = re.compile(r"^\s*(?:rep\.|repealed|omitted)\b|\brepealed by\b|\brep\.\s+by\b", re.I)
 
 
 def _base(section: str) -> str:
@@ -207,6 +207,8 @@ class DriftAnalyzer:
                 notes[(i, b)] = note.strip().lower()
         params = dict(DEFAULTS)
         params.update({k: v for k, v in (cfg.get("drift") or {}).items() if k in DEFAULTS})
+        fam_params = ((cfg.get("drift") or {}).get("family_params") or {}).get(family) or {}
+        params.update({k: v for k, v in fam_params.items() if k in DEFAULTS})
         an = cls(old_prov=old, new_prov=new, predecessors=dict(pred), successors=dict(succ), relation=rel,
                  params=params, notes=notes, family=fam)
         # procedure and evidence law rarely prescribe punishment; their "offence punishable with
@@ -427,7 +429,7 @@ class DriftAnalyzer:
         self.inferred = {}
         bns_tokens = {b: dfm.normalise(p.text) for b, p in self.new_prov.items()}
         for s, p in self.old_prov.items():
-            if s in self.successors or _PRE_REPEALED.search(p.title + " " + p.text[:60]):
+            if s in self.successors or _PRE_REPEALED.search(p.title.lstrip("[ ") + " " + p.text[:60].lstrip("[ ")):
                 continue
             old = dfm.normalise(self._renumbered(p.text))
             if len(old) >= 5:

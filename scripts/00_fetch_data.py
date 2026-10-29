@@ -4,6 +4,7 @@
     python scripts/00_fetch_data.py  # both sources
     python scripts/00_fetch_data.py --only bns
     python scripts/00_fetch_data.py --only procedure    # BNSS + BSA (CrPC/IEA bridge)
+    python scripts/00_fetch_data.py --only india-code   # current consolidated text of the six codes (drift/)
 
 Sources
 -------
@@ -17,6 +18,12 @@ Sources
    -> data/raw/bns-study-platform/
    We use only the bare-act text (government material) and the section correspondences
    (facts); none of the repository's commentary. Credit it in the README and report.
+
+3. India Code text of all central Acts, from kanoonhq/open-laws (CC0)
+   https://github.com/kanoonhq/open-laws  (data/indian_central_act_sections.parquet)
+   -> data/raw/open-laws/
+   The current consolidated IPC, CrPC and Evidence Act (with amendments, e.g. CrPC 41A-41D) and
+   the BNSS / BSA; the drift layer reads these. Amendment footnote markers are stripped.
 
 Check the result with: python scripts/00_check_access.py
 """
@@ -43,6 +50,19 @@ def fetch_procedure(cfg) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(["git", "clone", "--depth", "1", PROCEDURE_REPO, str(dest)], check=True)
     print(f"procedure: cloned to {dest}")
+
+
+OPEN_LAWS_REPO = "https://github.com/kanoonhq/open-laws"   # India Code text of all central Acts (CC0)
+
+
+def fetch_open_laws(cfg) -> None:
+    dest = project_path(cfg.paths.get("open_laws_dir", "data/raw/open-laws"))
+    if (dest / "data" / "indian_central_act_sections.parquet").exists():
+        print(f"india-code: already present at {dest}")
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "clone", "--depth", "1", OPEN_LAWS_REPO, str(dest)], check=True)
+    print(f"india-code: cloned to {dest}")
 
 
 def fetch_bns(cfg) -> None:
@@ -72,13 +92,15 @@ def fetch_ilpcsr(cfg) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", choices=["ilpcsr", "bns", "procedure"])
+    ap.add_argument("--only", choices=["ilpcsr", "bns", "procedure", "india-code"])
     args = ap.parse_args()
     cfg = load_config()
     if args.only in (None, "bns"):
         fetch_bns(cfg)
     if args.only in (None, "procedure"):
         fetch_procedure(cfg)
+    if args.only in (None, "india-code"):
+        fetch_open_laws(cfg)
     if args.only in (None, "ilpcsr"):
         fetch_ilpcsr(cfg)
 

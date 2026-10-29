@@ -183,9 +183,60 @@ def ipc_json_path(cfg: Config | None = None) -> Path:
     return project_path(cfg.paths.procedure_dir) / "data" / "raw" / "indian_penal_code_1860.json"
 
 
-def load_ipc(cfg: Config | None = None, docs_path: str | Path | None = None) -> dict[str, Provision]:
-    """IPC sections from the MIT checkout, upgraded with IL-PCSR statute text where that is longer."""
+# --------------------------------------------------------------------------- India Code (kanoonhq/open-laws)
+
+INDIA_CODE_ACTS = {"ipc": "A1860-45", "crpc": "A1974-2", "iea": "A1872-1",
+                   "bns": "A2023-45", "bnss": "A2023-46", "bsa": "A2023-47"}
+_FOOTNOTE = re.compile(r"(?<![\w\]])\d{1,2}\[")      # "1[(a) who commits ..." -> "(a) who commits ..."
+_OMISSION = re.compile(r"(?:\*\s*){3,}")             # "* * *" marks text omitted by an amendment
+
+
+def use_india_code(cfg: Config) -> bool:
+    return (cfg.get("drift") or {}).get("text_source", "india_code") == "india_code"
+
+
+def clean_india_code(text: str) -> str:
+    """Strip amendment footnote markers ("1[", "]"), omission stars and the State amendments India
+    Code appends after the central text ("STATE AMENDMENTS West Bengal.— ..."; 51 CrPC and 16 IPC
+    sections): the drift is between the central codes."""
+    text = (text or "").split("STATE AMENDMENT", 1)[0]
+    text = _FOOTNOTE.sub("", text)
+    text = _OMISSION.sub(" ", text.replace("]", ""))
+    text = re.sub(r"^[\s”\"’'.,;:]*[—–]+\s*", "", text)    # "”.—A “special law” is ...": a heading's tail
+    return " ".join(text.split())
+
+
+def load_india_code(code: str, cfg: Config | None = None) -> dict[str, Provision] | None:
+    """Sections of one of the six codes as consolidated on India Code (kanoonhq/open-laws, CC0),
+    or None when the checkout is missing (make fetch)."""
     cfg = cfg or load_config()
+    root = project_path(cfg.paths.get("open_laws_dir", "data/raw/open-laws"))
+    path = root / "data" / "indian_central_act_sections.parquet"
+    if not path.exists():
+        return None
+    import pandas as pd
+
+    df = pd.read_parquet(path, columns=["act_id", "section_number", "heading", "full_text"])
+    df = df[df.act_id == INDIA_CODE_ACTS[code]]
+    out: dict[str, Provision] = {}
+    for num, head, text in zip(df.section_number, df.heading, df.full_text):
+        n = re.sub(r"^\s*section\s+", "", str(num), flags=re.I).strip().rstrip(".").lower()
+        if not n or n in out:
+            continue
+        body = clean_india_code(text)
+        out[n] = Provision(code, n, clean_india_code(head).rstrip("."), body, "India Code (kanoonhq/open-laws)",
+                           split_clauses(body))
+    return dict(sorted(out.items(), key=lambda kv: _section_key(kv[0]))) or None
+
+
+def load_ipc(cfg: Config | None = None, docs_path: str | Path | None = None) -> dict[str, Provision]:
+    """IPC sections: India Code's consolidated text when available (drift.text_source); otherwise
+    the MIT checkout, upgraded with IL-PCSR statute text where that is longer."""
+    cfg = cfg or load_config()
+    if use_india_code(cfg):
+        ic = load_india_code("ipc", cfg)
+        if ic:
+            return ic
     out: dict[str, Provision] = {}
     path = ipc_json_path(cfg)
     if path.exists():
@@ -214,7 +265,7 @@ def load_ipc(cfg: Config | None = None, docs_path: str | Path | None = None) -> 
     return dict(sorted(out.items(), key=lambda kv: _section_key(kv[0])))
 
 
-__all__ = ["Provision", "Family", "flag_shifted", "FAMILIES", "CODE_FAMILY", "split_clauses", "renumber_references", "load_bns",
+__all__ = ["Provision", "Family", "flag_shifted", "load_india_code", "clean_india_code", "INDIA_CODE_ACTS", "FAMILIES", "CODE_FAMILY", "split_clauses", "renumber_references", "load_bns",
            "load_ipc", "load_procedure", "crosswalk_rows", "procedure_file"]
 
 
@@ -243,10 +294,16 @@ def flag_shifted(provisions: dict[str, Provision], threshold: float = 0.8) -> li
 
 
 def load_procedure(fam: Family, cfg: Config | None = None) -> tuple[dict[str, Provision], dict[str, Provision]]:
-    """Old and new sections of the CrPC or Evidence Act family (indian-legal-mcp checkout)."""
+    """Old and new sections of the CrPC or Evidence Act family: India Code's consolidated text
+    when available (drift.text_source), else the indian-legal-mcp checkout."""
     from kanoon_bridge.ingest.align_codes import load_new, load_old
 
     cfg = cfg or load_config()
+    if use_india_code(cfg):
+        old_ic, new_ic = load_india_code(fam.old, cfg), load_india_code(fam.new, cfg)
+        if old_ic and new_ic:
+            flag_shifted(new_ic)
+            return old_ic, new_ic
     src = "indian-legal-mcp (bare act)"
     old = {s.number: Provision(fam.old, s.number, s.title, s.text, src, split_clauses(s.text))
            for s in load_old(procedure_file(cfg, fam.old_files))}

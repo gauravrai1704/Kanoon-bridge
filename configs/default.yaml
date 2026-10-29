@@ -20,6 +20,7 @@ paths:
   bns_dir: data/raw/bns-study-platform    # git clone with BNS bare-act JSON + IPC references
   crosswalk_pdf: data/raw/crosswalk/comparison_summary_BNS_to_IPC.pdf   # optional second source
   procedure_dir: data/raw/indian-legal-mcp   # git clone: BNSS + BSA bare acts, CrPC + IEA text (MIT)
+  open_laws_dir: data/raw/open-laws          # git clone of kanoonhq/open-laws: India Code text of all central Acts (CC0)
   crpc_bnss: data/crosswalk/crpc_bnss.csv     # aligned by ingest/align_codes.py
   iea_bsa: data/crosswalk/iea_bsa.csv
   provision_ids: data/crosswalk/provision_ids.csv   # shared ids for CrPC/BNSS and IEA/BSA sections
@@ -144,6 +145,9 @@ rag:
 # Hand-set from legal reasoning, not fitted to the gold labels (see drift/model.py).
 drift:
   enabled: true                   # load data/crosswalk/drift_*.csv when present
+  text_source: india_code         # old codes (IPC, CrPC, Evidence Act) and BNSS / BSA from India Code
+                                  # (kanoonhq/open-laws, current consolidated text); "legacy" = the MIT
+                                  # indian-legal-mcp copies (CrPC partly pre-2009, IPC sections truncated)
   mu: 0.5                         # ranking: final -= mu * (1 - transfer) * score spread
   min_penalised: 0.85             # transfers at or above this are left alone (wording / added sub-sections)
   match_min: 0.3                  # clause containment below this = clause added / lost
@@ -157,3 +161,11 @@ drift:
   m_threshold: 0.7                # ... when an age / period / count threshold changed
   m_punishment: 0.5               # sentencing-part multiplier when the punishment changed
   w_sentence: 0.15                # share of the sentencing part in the carry-over
+  family_params:                  # per-family overrides of the class thresholds above. The penal family
+                                  # keeps the hand-set values; these two were grid-searched on the DEV half
+                                  # of the S1 labels (results/tables/drift_procedure_rule_tuning.csv), so
+                                  # the test-half numbers stay valid. Procedure law changes by short
+                                  # insertions ("or in parts ... during the initial forty days"), which
+                                  # the proportional thresholds above miss.
+    crpc: {novelty_substantive: 0.15, retention_substantive: 0.95, added_min: 1, inserted_min: 4}
+    iea: {novelty_substantive: 0.35, retention_substantive: 0.4, added_min: 1, inserted_min: 16}

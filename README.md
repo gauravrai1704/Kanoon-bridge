@@ -47,8 +47,10 @@ down-weights precedents whose law changed, and explains why. Answers are checked
 A new **What changed** page shows every section side by side.
 
 It covers all three codes replaced on 1 July 2024: IPC → BNS, CrPC → BNSS and Evidence Act → BSA.
-For example, CrPC 438 bail precedents carry over to BNSS 482 at 0.53, because the BNSS dropped the
-factors the CrPC told courts to weigh.
+For example, BNSS 187 is flagged as changed from CrPC 167, because the 15 days of police custody
+may now be taken "in parts, at any time during the initial forty days or sixty days".
+The old and procedure codes are read from India Code's current consolidated text
+([kanoonhq/open-laws](https://github.com/kanoonhq/open-laws), CC0).
 
 ```bash
 make drift                                   # build data/crosswalk/drift_*.csv (committed; needs make fetch to rebuild)
@@ -58,19 +60,20 @@ python app/cli.py "" --drift "CrPC 438"      # also CrPC / BNSS / Evidence Act /
 make web                                     # then open /changes.html (works even before the indexes are built)
 ```
 
-| E11a, test half (184 BNS sections) | F1 "changed" vs S1 | vs S2 |
+| E11a, test half (BNS sections) | F1 "changed" vs S1 | vs S2 |
 | --- | --- | --- |
-| v1 crosswalk relation | 0.20 | 0.32 |
-| Edit similarity (tuned on dev) | 0.52 | 0.63 |
-| Drift rules (hand-set) | 0.68 | 0.68 |
-| Drift vector + logistic regression | **0.81** (κ 0.72) | **0.75** (κ 0.61) |
+| v1 crosswalk relation | 0.21 | 0.32 |
+| Edit similarity (tuned on dev) | 0.62 | 0.68 |
+| Drift rules (hand-set) | 0.85 | 0.76 |
+| Drift vector + logistic regression | **0.89** (κ 0.85) | **0.81** (κ 0.73) |
 
 - The two gold sources agree with each other at κ = 0.75.
-- Repeal detection: AUC 0.95; F1 0.53 vs 0.38 for v1.
+- Repeal detection: AUC 0.96; F1 0.54 vs 0.38 for v1.
 - Punishment parsing agrees with the source's own summaries on 95–100% of fields.
-- **CrPC → BNSS:** dev-tuned drift rules 0.73 vs edit similarity 0.68. The CIs overlap, and the
-  CrPC source is partly pre-2009 text.
-- **Evidence Act → BSA:** unreliable. Only 13 changed sections fall in the test half.
+- **CrPC → BNSS and Evidence Act → BSA:** plain edit similarity detects changes as well as or
+  better than the drift rules (0.78 vs 0.75; 0.53 vs 0.40), a negative result outside penal
+  law. The drift layer still supplies the per-pair carry-over and the explanations.
+- Switching from the MIT copies to India Code's text lifted the penal rules from 0.68 to 0.85 F1.
 
 Full write-up, ablations, negative results and limitations: **[docs/PROJECT.md](docs/PROJECT.md)**.
 
