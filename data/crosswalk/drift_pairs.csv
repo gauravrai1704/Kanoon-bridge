@@ -355,7 +355,7 @@ old_section,new_section,drift_class,retention,carry_over
 376b,67,identical,1.0000,1.0000
 376c,68,identical,0.9875,0.9790
 376d,70,punishment,0.9805,0.8690
-376e,71,cosmetic,0.8269,0.7839
+376e,71,punishment,0.8269,0.7251
 378,303,restructured,0.9776,0.9575
 379,303,substantive,1.0000,0.6563
 380,305,substantive,0.8723,0.7075
@@ -367,7 +367,7 @@ old_section,new_section,drift_class,retention,carry_over
 386,308,restructured,1.0000,0.9887
 387,308,restructured,1.0000,0.9887
 388,308,restructured,0.8025,0.7757
-389,308,restructured,0.8375,0.8281
+389,308,punishment,0.8375,0.7660
 390,309,substantive,0.9718,0.5813
 391,310,restructured,1.0000,1.0000
 392,309,restructured,1.0000,1.0000
@@ -427,8 +427,8 @@ old_section,new_section,drift_class,retention,carry_over
 446,330,substantive,0.4667,0.1400
 447,329,punishment,0.9310,0.8315
 448,329,punishment,0.9643,0.8612
-449,332,restructured,1.0000,1.0000
-450,332,restructured,1.0000,1.0000
+449,332,punishment,1.0000,0.9250
+450,332,punishment,1.0000,0.9250
 451,332,restructured,0.9655,0.9449
 452,333,identical,0.9643,0.9555
 453,331,restructured,1.0000,1.0000

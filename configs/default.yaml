@@ -128,12 +128,35 @@ agent:
   boolean_terms: 3                # clauses in the Boolean sub-query
   boolean_min_df: 2               # Boolean terms must occur in at least this many precedents
   facet_weight: 0.8               # fusion weight of the binding-only sub-query
+  # research agent v2 (agent/router.py, verify.py, issues.py, memo.py)
+  version: 2                      # 1 = the plan-execute-fuse-reflect agent; 2 = routed, verified, issue-driven
+  case_text_weight: 0.3           # fusion weight of the extra sub-queries for a pasted judgment (core dominates)
+  family_weight: 1.0              # fusion weight of the statutes-of-the-code-in-force sub-query
+  vote_weight: 2.0                # fusion weight of the statutes the top precedents cite (citation votes): a
+                                  # judge's citation is stronger evidence of the statute than a fact
+                                  # narrative's word overlap with bare-act text (hand-set; ablated in E16)
+  min_voters: 2                   # a voted statute must be cited by at least this many top precedents
+  vote_gate: 0.3                  # use votes only if no top-5 statute heading overlaps the question this much
+                                  # (offence-name questions match headings; votes are for fact narratives).
+                                  # Set after E16 showed ungated votes cost 1-3 points on heading-style sets.
+  verify_k: 5                     # statute candidates the verifier inspects
+  verify_family: 0.5              # bonus: the candidate's code family is the routed one
+  verify_force: 0.5               # bonus: the candidate's code is in force on the incident date
+  verify_heading: 1.0             # bonus per unit of heading word overlap (exact heading beats a longer one)
+  verify_general: 1.0             # penalty: definitions / general-explanations sections for a fact question
+  max_issues: 5                   # ingredient issues per provision
+  issue_weight: 0.6               # fusion weight of an issue sub-query
+  issue_rounds: 1                 # extra rounds for open issues
+  min_coverage: 0.8               # stop when this share of the issues has evidence
 
 # Layer 3: grounded answers (rag/)
 rag:
   enabled: false                  # switch on only if the agent is done by ~hour 30
   model: ""                       # "" = claude-haiku-4-5-20251001 (or env KB_RAG_MODEL); key in .env, never in git
   generator: auto                 # auto (Claude if ANTHROPIC_API_KEY is set, else extractive) | claude | extractive
+  version: 2                      # 1 = generate + cosine / version checks; 2 = structured answer, claim
+                                  # verification and correction (rag/structured.py, claim_check.py, correct.py)
+  regenerate: true                # v2 with an LLM: one regeneration with the verifier's problems listed
   max_chunks: 8
   max_chunk_chars: 1200
   support_threshold: 0.2          # tf-idf cosine below this = unsupported sentence

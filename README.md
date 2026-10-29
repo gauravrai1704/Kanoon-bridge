@@ -25,7 +25,7 @@ pip install -e ".[dev]"
 mkdir -p data/raw/ilpcsr && cp /path/to/raw/ilpcsr/*.parquet data/raw/ilpcsr/
 make build          # corpus + indexes + citation graph + LTR model, about 6 minutes
 make web            # http://localhost:8000
-make test           # 184 tests
+make test           # 192 tests
 ```
 
 The BNS sections (`data/raw/bns-study-platform`) and the government crosswalk PDF are
@@ -76,6 +76,30 @@ make web                                     # then open /changes.html (works ev
 - Switching from the MIT copies to India Code's text lifted the penal rules from 0.68 to 0.85 F1.
 
 Full write-up, ablations, negative results and limitations: **[docs/PROJECT.md](docs/PROJECT.md)**.
+
+## New: verified research agent and computed answers (agent v2, RAG v2)
+
+The agent now routes each question (pasted judgment / section lookup / fact question), picks the
+code family from what it retrieved, verifies its top statutes (family, code in force, heading,
+no definition sections) and writes a research memo with issue coverage. The answer layer
+computes the punishment from the statute text, checks every sentence against its source
+(numbers, sections, code in force, negation, verbatim quotes) and repairs or removes what fails,
+listing each correction. Runs without IL-PCSR and without an API key:
+
+```bash
+make open           # all six codes from India Code + the BNS, synthetic precedents
+make layers-eval    # E14-E16
+```
+
+| | v1 | v2 |
+| --- | --- | --- |
+| E14 right punishment, 273 BNS questions | 0.05 | **0.82** |
+| E15 injected wrong term of years caught | 0.05 | **0.89** |
+| E15 false alarms on clean answers | 0.98 | **0.00** |
+| E16 right section of the right code @1, CrPC/BNSS questions (E9) | 0.75 | **0.83** |
+
+E15 injects the error types the verifier was built for (an upper bound), and E7/E9/E14 use
+heading-style questions. Details, ablations and caveats: [docs/PROJECT.md §6](docs/PROJECT.md).
 
 ## Results (IL-PCSR test split and our test sets)
 

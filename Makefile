@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: drift drift-eval drift-retrieval build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: layers-eval open drift drift-eval drift-retrieval build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -99,3 +99,15 @@ drift-eval:
 # E13: drift-aware transfer inside retrieval (needs the built indexes)
 drift-retrieval:
 	$(PY) scripts/15_drift_retrieval.py
+
+# open corpus: all six codes' statutes (India Code + BNS) and the synthetic precedents, no IL-PCSR needed
+open:
+	$(PY) tests/data/make_ilpcsr_sample.py
+	$(PY) scripts/01_build_corpus.py --sample --open-statutes
+	$(PY) scripts/02_build_index.py
+	$(PY) scripts/03_build_graph.py --sample
+	$(PY) scripts/06_train_ltr.py --sample --folds 2
+
+# E14-E16: agent v2 and RAG v2 on the open corpus (run make open first)
+layers-eval:
+	$(PY) scripts/17_eval_layers.py

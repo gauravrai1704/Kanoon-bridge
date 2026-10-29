@@ -67,6 +67,9 @@ systems.
 | Fusion | Reciprocal rank fusion (Cormack, Clarke & Büttcher, SIGIR 2009, Waterloo); CombSUM (Fox & Shaw, TREC-2 1994) | `agent/fuse.py` |
 | Reflection + pseudo-relevance feedback round | QPP-triggered PRF (relevance models: Lavrenko & Croft, SIGIR 2001, UMass) | `agent/reflect.py` |
 | Optional LLM planner | The LLM only *proposes* sub-query text; ranking stays IR | `agent/plan.py` |
+| **v2: query routing** (case text / section lookup / fact question) and code family refined from retrieved statutes and precedent citations | Adaptive retrieval by question type (Adaptive-RAG, Jeong et al., NAACL 2024). Family refinement from evidence: **ours** | `agent/router.py` |
+| **v2: statute verifier** (family, code in force, stemmed heading specificity, general-section penalty) and gated citation votes | Re-ranking by verified constraints. **Ours** | `agent/verify.py`, `agent/research.py` |
+| v2: issue decomposition, evidence coverage, research memo | Sub-sections of the chosen statute as issues; targeted search for uncovered ones | `agent/issues.py`, `agent/memo.py` |
 
 ## 5. Layer 3: grounded answers
 
@@ -75,6 +78,9 @@ systems.
 | Abstention before generation | QPP signals + idf-weighted question coverage by the retrieved sources | `rag/abstain.py`, `rag/answer.py` |
 | Citation-support check | tf-idf cosine of each sentence vs its cited chunk. Citation evaluation for LLM answers: ALCE (Gao et al., EMNLP 2023, Princeton) | `rag/citation_check.py` |
 | **Version-validity check** (wrong code for the incident date; bare colliding numbers) | Reuses the crosswalk and the collision resolver. **Ours** | `rag/version_check.py` |
+| **v2: structured answer** (punishment computed per sub-section from the statute text) | Compute, don't generate: the drift punishment parser. **Ours** | `rag/structured.py` |
+| **v2: claim verification** (quantities, sections, code in force, modal negation, verbatim quotes, against the full statute) | Fine-grained attribution checks beyond ALCE's sentence support. **Ours** | `rag/claim_check.py` |
+| v2: corrective step (regenerate once with feedback; swap to code in force, replace with source words, remove) | Corrective RAG (CRAG, Yan et al. 2024); self-refinement with feedback | `rag/correct.py`, `rag/answer.py` |
 
 ## 6. Evaluation
 
@@ -91,6 +97,7 @@ systems.
 | Typed-question proxies (E1q) | First 40 words of the facts zone of each IL-PCSR test judgment; same qrels as E1 (simulated queries, Azzopardi et al. SIGIR 2007) | `eval/run_eval.py` |
 | E8 / E9 procedure and evidence | E3 / E7 designs on CrPC↔BNSS and Evidence Act↔BSA | `scripts/07_make_test_sets.py` |
 | Citation-language shift, E10 | Monthly share of IPC vs BNS citations in post-2024 High Court criminal judgments (eCourts open data, CC-BY-4.0); BNS-era judgments asked for in IPC numbers | `scripts/11_hc_judgments.py` |
+| E14–E16 agent v2 / RAG v2 | Punishment QA against an independent gold; error injection for the verifier (upper bound); ablations of each agent part | `eval/layers_eval.py`, `eval/open_eval.py` |
 
 ## 7. Statutory drift (the course project extension, see docs/PROJECT.md)
 
@@ -117,3 +124,4 @@ These are the claims to make in the report. Each is backed by an experiment abov
 5. **Legal explanations** for every result: which offence matched across codes, and whether the case binds the user.
 6. **QPP-gated legal RAG** that abstains, checks that each sentence is supported by its cited source, and flags out-of-date sections.
 7. **Statutory drift**: a measured, explained notion of *how far* each provision moved from the IPC to the BNS, used to temper precedent transfer in ranking and to check answers (docs/PROJECT.md).
+8. **Verified answers for statute questions**: the punishment is computed from the statute, every claim is checked against its source and repaired, and the agent verifies the code and family of the statutes it returns (docs/PROJECT.md §6).

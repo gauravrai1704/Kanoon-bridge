@@ -36,7 +36,7 @@ def heading(doc) -> str:
     return f"{doc.title}."
 
 
-def build(cfg) -> list:
+def build(cfg, open_statutes: bool = False, sample: bool = False) -> list:
     bns_dir = project_path(cfg.paths.bns_dir)
     if (bns_dir / "data" / "sections").exists():
         rows = parse_crosswalk.extract_rows_from_bns_json(bns_dir)
@@ -67,6 +67,14 @@ def build(cfg) -> list:
         docs += load_statutes.parse_new_procedure(proc_dir)
     else:
         print(f"warning: {proc_dir} missing - BNSS/BSA statutes not added (run scripts/00_fetch_data.py --only procedure)")
+    if open_statutes:
+        if sample:   # the synthetic sample's old-code statutes are fictional: India Code's real text replaces them
+            docs = [d for d in docs if not (d.doc_type == DocType.STATUTE and d.code in (Code.IPC, Code.CRPC, Code.IEA))]
+        have = {d.meta.get("ref") for d in docs if d.doc_type == DocType.STATUTE}
+        extra = load_statutes.parse_india_code_old(cfg, skip_refs=have)
+        docs += extra
+        print(f"India Code IPC / CrPC / Evidence Act sections added: {len(extra)}"
+              + ("" if extra else " (run scripts/00_fetch_data.py --only india-code)"))
     hc = project_path("data/processed/hc_docs.jsonl")           # post-2024 High Court judgments (scripts/11)
     if hc.exists():
         from kanoon_bridge.schema import read_documents
@@ -108,9 +116,11 @@ def report(docs) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", action="store_true", help="use the synthetic sample (tests/data)")
+    ap.add_argument("--open-statutes", action="store_true",
+                    help="also index the IPC, CrPC and Evidence Act from India Code (sections IL-PCSR lacks)")
     args = ap.parse_args()
     cfg = load_config(overrides=SAMPLE_OVERRIDES if args.sample else None)
-    docs = build(cfg)
+    docs = build(cfg, open_statutes=args.open_statutes, sample=args.sample)
     out = project_path(cfg.paths.docs)
     n = write_documents(docs, out)
     print(f"wrote {n} documents to {out}")

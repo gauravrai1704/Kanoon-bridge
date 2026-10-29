@@ -52,6 +52,12 @@ IPC-era precedent counts for a BNS-era question?
    successor changed is flagged. So is one grounded in an IPC-era precedent whose law changed.
 6. **An evaluation against two independent gold sources**, with baselines, ablations, significance
    tests and a dev/test split (Section 4).
+7. **A verified research agent and a computed, verified answer layer** (Section 6). The agent
+   routes the question, refines the code family from what it retrieved and verifies its statutes;
+   the answer computes the punishment from the statute text and checks every claim (quantities,
+   sections, code in force, negation, verbatim quotes), then repairs what fails. Right punishment
+   in 82% of 273 BNS questions vs 5% for v1; injected errors caught 82–100% vs 5–100%, with no
+   false alarms on clean answers.
 
 ## 3. Method
 
@@ -168,11 +174,11 @@ ever saw the dev half.
 
 | Variant | F1 (S1) | F1 (S2) | AUC of 1−carry-over (S1) |
 | --- | --- | --- | --- |
-| full | 0.851 | 0.783 | 0.844 |
-| − renumbering | 0.851 | 0.783 | 0.834 |
+| full | 0.843 | 0.776 | 0.843 |
+| − renumbering | 0.843 | 0.776 | 0.833 |
 | − punishment | 0.196 | 0.228 | 0.725 |
-| − elements (mens rea, thresholds) | 0.861 | 0.782 | 0.848 |
-| − clause alignment | 0.865 | 0.786 | 0.834 |
+| − elements (mens rea, thresholds) | 0.853 | 0.775 | 0.847 |
+| − clause alignment | 0.857 | 0.779 | 0.832 |
 
 - **Punishment parsing carries almost all of the detection signal.** Most BNS changes are raised
   fine caps and terms, one-word edits that text similarity cannot see.
@@ -188,18 +194,18 @@ ever saw the dev half.
 
 ### E11c/d — punishment
 
-- **Change detection** against S2's "punishment" category: precision 0.82, recall 0.90,
-  F1 0.86, κ 0.81 (346 sections).
+- **Change detection** against S2's "punishment" category: precision 0.80, recall 0.90,
+  F1 0.85, κ 0.80 (346 sections).
 - **Extraction accuracy:** `punishment.extract` on the bare act vs on the source's own one-line
   punishment summary, field by field (273 sections):
 
   | Field | Agreement |
   | --- | --- |
   | death | 95% |
-  | life | 96% |
+  | life | 97% |
   | fine | 99.6% |
   | community service | 100% |
-  | maximum term | 99.6% |
+  | maximum term | 98% |
   | minimum term | 100% |
   | fine cap | 96% |
 
@@ -334,7 +340,118 @@ Test half; dev-tuned rows were tuned on the dev half only.
 `make drift-eval` writes these as `results/tables/drift_procedure_*.csv` and
 `results/figures/drift_families.png`.
 
-## 6. Limitations
+## 6. Advanced layers: agent v2 and RAG v2
+
+Layers 2 (research agent) and 3 (grounded answers) were rebuilt around one idea: **compute and
+verify what can be computed, never trust the generator with a section number or a punishment.**
+Both v1 layers stay available (`agent.version: 1`, `rag.version: 1` in `configs/default.yaml`)
+and are the baselines below.
+
+### Agent v2 (`agent/router.py`, `verify.py`, `issues.py`, `memo.py`, `research.py`)
+
+1. **Route** the question (cf. Adaptive-RAG, Jeong et al., NAACL 2024): `case_text` (a pasted
+   judgment, > 50 words: no pseudo-relevance feedback, case text down-weighted),
+   `section_lookup` (names a section) or `fact_question`.
+2. **Pick the code family** (penal / procedure / evidence). Cue words give a first guess; after
+   the first round it is *refined from the evidence*: the codes of the top retrieved statutes
+   and the codes the retrieved precedents cite. Cue words alone misrouted questions such as
+   "false evidence" (a penal offence), and dropped E9 to 0.32 before this step.
+3. **Family sub-query**: a statutes-only search restricted to the family's code in force.
+4. **Citation votes**: statutes cited by several retrieved precedents get a fused bonus
+   (at least `min_voters` precedents). Votes are used only when no top-5 statute heading matches
+   the question well (`vote_gate`).
+5. **Verify** the top statutes: family match, code in force on the incident date, stemmed
+   heading specificity, and a penalty for definition / general-explanation sections
+   (BNS 3 was being pulled up by IPC 34 citations).
+6. **Issues**: for a fact question, the chosen statute is split into its sub-sections (issues),
+   each issue's key terms are looked for in the retrieved precedents, and the coverage is
+   reported; uncovered issues get one more targeted search round.
+7. **Research memo**: law in force with its old-code counterpart, punishment, what changed
+   (drift table), issues covered or [OPEN], searches made.
+
+### RAG v2 (`rag/structured.py`, `claim_check.py`, `correct.py`, `answer.py`)
+
+1. **Structured answer** (offline generator): the law in force named with its heading, the
+   punishment *computed* by the drift punishment parser per sub-section, one quoted precedent
+   sentence; the counterpart section and what changed go in separate notes, not in the answer.
+   With an API key the LLM answers instead and is checked the same way.
+2. **Claim verification** of every sentence against its cited source (full statute text, not
+   the chunk): idf-weighted support; every quantity (years, rupees, days) must appear in the
+   source; every section named must be the source's own, cited by it, or its crosswalk
+   equivalent; code in force; a modal negation the source does not have (or a dropped one) is a
+   contradiction; quotations must be verbatim.
+3. **Correction** (cf. CRAG, Yan et al. 2024): an LLM answer is regenerated once with the list of
+   problems; then deterministically, a wrong-code section is swapped to its counterpart in force
+   (and re-verified), a contradicted sentence is replaced by the source's own words, an
+   unsupported one is removed. Every action is listed in `answer.corrections`.
+
+### Results (open corpus: `make open && make layers-eval`)
+
+The open corpus has all six codes from India Code plus the BNS, and the eight synthetic
+precedents; no IL-PCSR and no API key are needed, so every number below is reproducible.
+
+**E14 — punishment QA, end to end.** 273 questions, "What is the punishment for
+<BNS heading>?", incident date 2025-01-01. Gold: bns-study-platform's one-line punishment
+summary (written independently of the bare act), parsed; a punishment is right only if every
+field matches (death, life, maximum and minimum term, fine and its caps, community service).
+
+| System | Right statute @1 | Right punishment | … given the right statute | Corrections / answer |
+| --- | --- | --- | --- | --- |
+| core + RAG v1 (extractive quote) | 0.894 | 0.051 | 0.053 | — |
+| core + RAG v2 (structured + verified) | 0.894 | 0.821 | 0.914 | 0.022 |
+| agent v2 + RAG v2 | **0.908** | **0.824** | 0.903 | 0.026 |
+
+v1 quotes the best sentence of the statute, which usually is not the punishment clause; v2
+computes it. The remaining errors are mostly gold summaries that describe one sub-section only.
+
+**E15 — does verification catch errors? (error injection).** One error per type is injected
+into each right-statute answer, in the sentence that cites the statute.
+
+| Injected error | n | v1 checks (cosine + code) | v2 claim verification |
+| --- | --- | --- | --- |
+| term of years changed | 185 | 0.05 | **0.89** |
+| fine amount × 10 | 63 | 0.71 | **1.00** |
+| negation flipped | 241 | 0.25 | **0.82** |
+| old-code section for a 2025 incident | 235 | 1.00 | 1.00 |
+| section number changed | 241 | 0.66 | **1.00** |
+| another statute's punishment added | 244 | 0.40 | **0.84** |
+| *false alarm on the clean answers* | 244 | 0.98 | **0.00** |
+
+On RAG v1's extractive answers as the base, v2 still detects 75–100% per type with a 0.8%
+false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`.
+
+**E16 — the agent on the statute-level sets** (right provision of the right code at rank 1).
+
+| System | E2 collisions (expected@1) | E7 penal (both@1) | E9 procedure (both@1) |
+| --- | --- | --- | --- |
+| baseline BM25 | 0.83 | 0.40 | 0.37 |
+| core | 0.81 | 0.79 | 0.75 |
+| agent v1 | 0.88 | 0.79 | 0.75 |
+| **agent v2** | **0.92** | **0.88** | **0.83** |
+| v2 − verification | 0.92 | 0.79 | 0.71 |
+| v2 − citation votes | 0.93 | 0.88 | 0.83 |
+| v2, votes not gated | 0.92 | 0.86 | 0.82 |
+| v2 − family search | 0.88 | 0.90 | 0.86 |
+
+- **Verification is the part that matters**: without it E7 and E9 fall back to core.
+- **Family search is mixed**: +0.05 on E2, −0.02 / −0.03 on E7 / E9. On E9 the family is
+  sometimes refined from the eight synthetic precedents, which are mostly penal, so code@1 drops
+  from 0.95 (core) to 0.92. With a real precedent pool this should improve; it is reported as is.
+- **Citation votes do nothing here once gated**, and cost 1–2 points ungated. With eight
+  precedents there is little to vote with; they are kept for the IL-PCSR corpus, untested there.
+
+### Caveats
+
+- E7, E9 and E14 questions are written from section headings, which favours heading matching
+  (the verifier's specificity term). Typed, fact-style questions (E4) need the IL-PCSR indexes
+  and the judged pool, and were not re-run.
+- E15 injects the error types the verifier was designed to catch: it is an upper bound, not an
+  estimate of how often real LLM errors are caught.
+- The vote gate (`vote_gate`) was set after looking at E16; there is no held-out set for it.
+- No LLM was called (no API key in the build environment): the regeneration step is tested only
+  by unit tests, and RAG v2's numbers are for the structured generator.
+
+## 7. Limitations
 
 - **Source text.** India Code's consolidated text is current but machine-extracted: one BNSS
   and one BSA section are filed under the wrong number (flagged), and footnote and State-amendment
@@ -349,7 +466,7 @@ Test half; dev-tuned rows were tuned on the dev half only.
 - **Citation relevance ≠ legal applicability.** IL-PCSR's gold cannot reward drift-aware ranking;
   E13 therefore reports stale@10 next to MAP.
 
-## 7. Future work
+## 8. Future work
 
 - Learn the carry-over weights from graded pairs; give the mental-state reading a learned weight;
   let inserted qualifiers (time limits, new conditions) lower the carry-over.
@@ -357,9 +474,11 @@ Test half; dev-tuned rows were tuned on the dev half only.
   mappings, and get graded labels with more positives for the Evidence Act.
 - Zone-aware transfer: down-weight only a precedent's sentencing paragraphs when only the
   punishment changed.
+- Agent v2 and RAG v2 on IL-PCSR and with an LLM generator: typed fact questions (E4), real
+  LLM errors instead of injected ones, and a held-out set for the vote gate.
 - A user study with law students: does the "What changed" view reduce wrong-code citations?
 
-## 8. Files
+## 9. Files
 
 | File | Role |
 | --- | --- |
@@ -378,8 +497,12 @@ Test half; dev-tuned rows were tuned on the dev half only.
 | `data/crosswalk/drift_crpc_bnss_*.csv`, `drift_iea_bsa_*.csv` | the same for CrPC → BNSS and Evidence Act → BSA |
 | `app/web/changes.html`, `changes.js` | the "What changed" page |
 | `tests/test_drift.py` | unit tests; `tests/test_layers_integration.py::test_drift_layer_on_the_engine` |
+| `src/kanoon_bridge/agent/router.py`, `verify.py`, `issues.py`, `memo.py` | agent v2: routing and family, statute verifier, issue coverage, research memo |
+| `src/kanoon_bridge/rag/structured.py`, `claim_check.py`, `correct.py` | RAG v2: structured answer, claim verification, correction |
+| `src/kanoon_bridge/eval/open_eval.py`, `layers_eval.py`, `scripts/17_eval_layers.py` | E14–E16 on the open corpus |
+| `tests/test_layers_v2.py` | unit tests; `tests/test_layers_integration.py::test_agent_v2_and_rag_v2` |
 
-## 9. Sources
+## 10. Sources
 
 - Bare-act text:
   - BNS via bns-study-platform (PSKprem); only `number`, `title` and `bareActText` are used to
@@ -393,4 +516,6 @@ Test half; dev-tuned rows were tuned on the dev half only.
     EUR-Lex consolidation);
   - containment as a near-duplicate measure (Broder, SEQUENCES 1997);
   - McNemar's test for paired classifiers (Dietterich, *Neural Computation* 1998);
-  - Cohen's κ (1960).
+  - Cohen's κ (1960);
+  - query routing by question type (Adaptive-RAG, Jeong et al., NAACL 2024); corrective
+    retrieval-augmented generation (CRAG, Yan et al. 2024); citation evaluation (ALCE, Gao et al., EMNLP 2023).

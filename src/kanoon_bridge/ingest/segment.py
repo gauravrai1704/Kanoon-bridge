@@ -91,7 +91,8 @@ def segment_judgment(text: str | list[str], role_labels: list[str] | None = None
     return out
 
 
-_SUBSECTION_RE = re.compile(r"(?=\(\d{1,2}\)\s)")
+# a sub-section starts at "(2) " -- but not at a reference to one ("sub-section (2) of section 122")
+_SUBSECTION_RE = re.compile(r"(?<!sub-section )(?<!sub-sections )(?<!section )(?<!clause )(?<!and )(?<!or )(?=\(\d{1,2}\)\s)", re.I)
 
 
 def segment_statute(doc: Document) -> Document:

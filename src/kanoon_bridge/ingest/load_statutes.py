@@ -122,3 +122,37 @@ def parse_bns(path: str | Path) -> list[Document]:
     if path.suffix == ".json":
         return parse_bns_json(path.parent)
     return parse_bns_text(path)
+
+
+OLD_ACTS = {  # code -> act name, for the India Code old-code sections (--open-statutes)
+    Code.IPC: "Indian Penal Code, 1860",
+    Code.CRPC: "Code of Criminal Procedure, 1973",
+    Code.IEA: "Indian Evidence Act, 1872",
+}
+
+
+def parse_india_code_old(cfg=None, skip_refs: set[str] | None = None) -> list[Document]:
+    """IPC, CrPC and Evidence Act sections from India Code's consolidated text (kanoonhq/open-laws,
+    CC0), as statute documents with ids like "crpc:438". Used by scripts/01_build_corpus.py
+    --open-statutes so statute search works for the old codes without IL-PCSR; sections already
+    in the corpus (`skip_refs`, e.g. IL-PCSR's IPC statutes) are not added twice."""
+    from datetime import date
+
+    from kanoon_bridge.drift.provisions import load_india_code
+
+    skip = skip_refs or set()
+    docs: list[Document] = []
+    for code, act in OLD_ACTS.items():
+        provs = load_india_code(code.value, cfg) or {}
+        for num, p in provs.items():
+            ref = section_ref(code, num)
+            if ref in skip or not p.text.strip() or re.match(r"^\[?(?:rep\.|repealed|omitted)", p.title, re.I):
+                continue
+            doc = Document(doc_id=ref, doc_type=DocType.STATUTE, title=p.title,
+                           paragraphs=[Paragraph(p.text, "statute", 0)], code=code, section=num,
+                           decision_date={Code.IPC: date(1860, 10, 6), Code.CRPC: date(1974, 4, 1),
+                                          Code.IEA: date(1872, 9, 1)}[code],
+                           meta={"act": act, "act_code": code.value, "ref": ref,
+                                 "source": "India Code (kanoonhq/open-laws)"})
+            docs.append(segment_statute(doc))
+    return docs

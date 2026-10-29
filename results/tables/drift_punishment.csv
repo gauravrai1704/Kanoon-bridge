@@ -1,9 +1,9 @@
 task,n,accuracy,precision,recall,f1_changed,macro_f1,kappa
-punishment changed (vs S2),346,0.9306,0.8202,0.9012,0.8588,0.9064,0.813
-extraction: death,273,0.9524,,,,,
-extraction: life,273,0.9634,,,,,
+punishment changed (vs S2),346,0.9249,0.8022,0.9012,0.8488,0.8994,0.7991
+extraction: death,273,0.9451,,,,,
+extraction: life,273,0.9707,,,,,
 extraction: fine,273,0.9963,,,,,
 extraction: community_service,273,1.0,,,,,
-extraction: max_years,245,0.9959,,,,,
+extraction: max_years,245,0.9796,,,,,
 extraction: min_years,31,1.0,,,,,
 extraction: fine_max,68,0.9559,,,,,

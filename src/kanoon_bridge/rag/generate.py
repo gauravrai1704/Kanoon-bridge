@@ -58,6 +58,9 @@ class Answer:
     generator: str = ""
     chunks: list[Chunk] = field(default_factory=list)
     support: list[float] = field(default_factory=list)                     # cosine per sentence
+    notes: list[str] = field(default_factory=list)                         # system facts (crosswalk, drift), not claims
+    claims: list = field(default_factory=list)                             # rag/claim_check.ClaimCheck per sentence (v2)
+    corrections: list[str] = field(default_factory=list)                   # what rag/correct.py changed (v2)
 
     @property
     def supported_rate(self) -> float:

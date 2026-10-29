@@ -35,6 +35,10 @@ _FINE_AMOUNT = re.compile(rf"(?:(?P<kw>may\s+extend\s+to|not\s+(?:be\s+)?less\s+
                           re.I)
 
 
+_PREDICATE = re.compile(r"\b(?:an?\s+|any\s+|the\s+)?offences?\s+(?:which\s+is\s+|that\s+is\s+)?punishable\s+"
+                        r"(?:under\s+[^,;]{0,60}?\s+)?with\s+[^;:]{0,140}?(?=,|;|:|\bshall\b|\bif\b|$)")
+
+
 def words_to_number(text: str) -> float | None:
     """'two thousand and five hundred' -> 2500; '1,000' -> 1000; 'ten lakh' -> 1_000_000."""
     t = text.strip().lower().replace(",", "")
@@ -136,7 +140,11 @@ def extract(text: str) -> Punishment:
     low = " ".join((text or "").lower().split())
     if not re.search(r"punish|imprisonment|fine|liable", low):
         return p
-    if re.search(r"punish\w*\s+with\s+death|with\s+death\b|\bdeath\s+(?:sentence|penalty)|\bdeath,?\s+or\b", low):
+    # "abets an offence punishable with death or imprisonment for life ... shall be punished with
+    # ... seven years": the first phrase describes ANOTHER offence, not this section's punishment
+    low = _PREDICATE.sub(" ", low)
+    if re.search(r"punish\w*\s+with\s+death|with\s+death\b|\bdeath\s+(?:sentence|penalty)|\bdeath,?\s+or\b"
+                 r"|\bor\s+(?:with\s+)?death\b|^\s*death\b", low):
         p.death = True
         p.kinds.add("death")
     if re.search(r"imprisonment\s+for\s+life|life\s+imprisonment|remainder\s+of\s+(?:that\s+)?person'?s?\s+natural\s+life", low):
