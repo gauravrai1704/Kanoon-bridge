@@ -94,8 +94,9 @@ def _base(ref: str) -> str:
     return re.sub(r"\(.*$", "", ref)
 
 
-def score(rows: list[dict], run, engine) -> dict[str, float]:
-    """`run(Query) -> result with .statutes`; code-blind scoring (module docstring)."""
+def score(rows: list[dict], run, engine, per_query: dict | None = None) -> dict[str, float]:
+    """`run(Query) -> result with .statutes`; code-blind scoring (module docstring). `per_query`,
+    if given, is filled with {metric: {row id: value}} for paired significance tests."""
     from kanoon_bridge.eval.metrics import average_precision
     from kanoon_bridge.eval.open_eval import statute_ref
 
@@ -123,6 +124,9 @@ def score(rows: list[dict], run, engine) -> dict[str, float]:
         acc["R@10"].append(len(set(ranking[:10]) & set(rels)) / len(rels))
         acc["MAP"].append(average_precision(ranking, rels))
         acc["hit@1"].append(float(bool(ranking) and ranking[0] in rels))
+        if per_query is not None:
+            for k in ("MAP", "hit@1"):
+                per_query.setdefault(k, {})[row["id"]] = acc[k][-1]
     return {**{k: round(sum(v) / len(v), 4) for k, v in acc.items()}, "n": len(acc["MAP"])}
 
 

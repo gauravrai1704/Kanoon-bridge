@@ -45,17 +45,30 @@ def facts(engine, tag, limit, words):
                "agent v1": (lambda a: lambda q: a.run(q, SearchOptions.full()))(ResearchAgent.load(engine)),
                "agent v2": (lambda a: lambda q: a.run(q, SearchOptions.full()))(v2(engine)),
                "v2 + ToC navigation": (lambda a: lambda q: a.run(q, SearchOptions.full()))(v2(engine, toc_weight=1.0))}
-    rows = []
+    rows, sig_rows = [], []
     for source, loader in (("bail", F.load_bail), ("ilsi", F.load_ilsi)):
         data = loader(words=words, limit=limit)
         if not data:
             print(f"  {source}: no data - skipped")
             continue
+        per = {}
         for name, run in systems.items():
-            r = {"source": source, "system": name, "words": words, **F.score(data, run, engine)}
+            per[name] = {}
+            r = {"source": source, "system": name, "words": words, **F.score(data, run, engine, per[name])}
             rows.append(r)
             print("E19", r)
+        from kanoon_bridge.eval import significance as sig
+
+        comps = [{"source": source, "a": a, "b": b, "metric": m, **sig.compare(per[a][m], per[b][m])}
+                 for a, b in (("core", "agent v2"), ("agent v1", "agent v2"), ("agent v2", "v2 + ToC navigation"))
+                 for m in ("MAP", "hit@1")]
+        for c, p in zip(comps, sig.holm([c["p"] for c in comps])):
+            c["p_holm"] = round(p, 5)
+            print("E19 sig", c)
+        sig_rows.extend(comps)
     write(rows, f"facts_{tag}")
+    if sig_rows:
+        write(sig_rows, f"facts_{tag}_significance")
 
 
 def toc(engine, tag, limit):
