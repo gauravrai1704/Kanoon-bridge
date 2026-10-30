@@ -16,6 +16,8 @@ the agent returns the same ranking as the core.
 
 from __future__ import annotations
 
+import re
+
 import time
 from dataclasses import dataclass, field
 
@@ -151,6 +153,27 @@ class ResearchAgent:
 
 
 # --------------------------------------------------------------------------- agent v2
+
+
+_BARE_TITLE = re.compile(r"^\s*Section\s+\S+\s+(?:of|in)\s+The\b", re.I)
+_LEAD_HEADING = re.compile(r"^\s*([A-Z][^.;:]{2,120}?)\.(?=\s*(?:[A-Z(]|\u2014|-))")
+
+
+def statute_heading(doc) -> str:
+    """A statute's heading. IL-PCSR titles are bare ("Section 463 of The Indian Penal Code,
+    1860"): the heading is then read from the start of the text ("Forgery. Whoever makes ..."),
+    else the provision's crosswalk label."""
+    title = doc.title or ""
+    if not _BARE_TITLE.match(title):
+        return title
+    for p in doc.paragraphs:
+        if p.para_id < 0:
+            continue
+        m = _LEAD_HEADING.match(p.text or "")
+        if m:
+            return m.group(1).strip()
+        break
+    return (doc.meta or {}).get("label") or title
 
 
 @dataclass
@@ -398,7 +421,7 @@ class ResearchAgentV2(ResearchAgent):
 
     def _title(self, doc_id: str) -> str:
         doc = self.docs.get(doc_id) if self.docs is not None else None
-        return (doc.title if doc is not None else "") or ""
+        return statute_heading(doc) if doc is not None else ""
 
     def _statute_text(self, doc_id: str) -> str:
         doc = self.docs.get(doc_id) if self.docs is not None else None

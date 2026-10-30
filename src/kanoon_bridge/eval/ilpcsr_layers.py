@@ -67,8 +67,9 @@ def systems(engine, ablations: bool = True) -> dict:
 
 
 def retrieval(engine, sets=SETS, limit: int | None = None, ev: Config | None = None, ablations: bool = True,
-              ablation_sets=None) -> tuple[list[dict], list[dict]]:
-    """E17: score rows and significance rows."""
+              ablation_sets=None, only_systems=None) -> tuple[list[dict], list[dict]]:
+    """E17: score rows and significance rows. `only_systems`: run just these; the others needed
+    for the comparisons (core, agent v1) are read from their run files of an earlier run."""
     from kanoon_bridge.eval import significance as sig
     from kanoon_bridge.eval.run_eval import evaluate_set, load_test_set, read_run
     from kanoon_bridge.search import SearchOptions
@@ -89,6 +90,11 @@ def retrieval(engine, sets=SETS, limit: int | None = None, ev: Config | None = N
         runs = {}
         for system, agent in systems_all.items():
             if system.startswith("v2 -") and ablation_sets is not None and name not in ablation_sets:
+                continue
+            if only_systems and system not in only_systems:
+                path = out_dir / f"{name}.{system.replace(' ', '_')}.run"
+                if system in ("core", "agent v1") and path.exists():
+                    runs[system] = read_run(path)
                 continue
             counted = _Counting(agent) if agent is not None else None
             scores = evaluate_set(engine, ts, SearchOptions.full(), system.replace(" ", "_"), ev, out_dir, agent=counted)
@@ -127,7 +133,12 @@ def merge(tables_dir) -> tuple[list[dict], list[dict]]:
                 out += list(csv.DictReader(f))
         return sorted(out, key=lambda r: SETS.index(r["set"]) if r["set"] in SETS else len(SETS))
 
-    rows, comps = read("ilpcsr_layers_retrieval"), read("ilpcsr_layers_significance")
+    # a later file (sorted by tag) replaces an earlier one's rows for the same set and system
+    rows = list({(r["set"], r["system"]): r for r in read("ilpcsr_layers_retrieval")}.values())
+    comps = list({(r["set"], r["a"], r["b"], r["metric"]): r for r in read("ilpcsr_layers_significance")}.values())
+    rank = {s: i for i, s in enumerate(SETS)}
+    rows.sort(key=lambda r: rank.get(r["set"], len(SETS)))
+    comps.sort(key=lambda r: rank.get(r["set"], len(SETS)))
     for c, p in zip(comps, holm([float(c["p"]) for c in comps])):
         c["p_holm"] = round(p, 5)
     return rows, comps

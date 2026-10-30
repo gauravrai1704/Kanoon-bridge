@@ -51,6 +51,7 @@ def main() -> None:
     ap.add_argument("--sets", nargs="*", default=list(IL.SETS))
     ap.add_argument("--ablation-sets", nargs="*", default=[s for s in IL.SETS if not s.startswith("e1")],
                     help="sets the ablations run on (default: all but the three E1 sets, for time)")
+    ap.add_argument("--systems", nargs="*", default=None, help="run only these systems (others' runs are reused)")
     ap.add_argument("--skip-retrieval", action="store_true")
     ap.add_argument("--skip-answers", action="store_true")
     ap.add_argument("--tag", default="", help="suffix for the retrieval tables, to run sets in parallel processes")
@@ -88,7 +89,7 @@ def main() -> None:
 
     if not args.skip_retrieval:
         rows, comps = IL.retrieval(engine, args.sets, args.limit, ablations=not args.no_ablations,
-                                    ablation_sets=args.ablation_sets)
+                                    ablation_sets=args.ablation_sets, only_systems=args.systems)
         tag = f"_{args.tag}" if args.tag else ""
         write(rows, f"ilpcsr_layers_retrieval{tag}")
         write(comps, f"ilpcsr_layers_significance{tag}")

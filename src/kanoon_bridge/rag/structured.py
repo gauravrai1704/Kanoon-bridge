@@ -91,6 +91,11 @@ def structured(question: str, chunks: list[Chunk], docs, code_in_force: str | No
         when = {"bns": "on or after 1 July 2024", "ipc": "before 1 July 2024"}.get(code_in_force or "", "")
         name = _show(ref) if ref else ""
         heading = (law.title.split(" - ", 1)[1] if " - " in (law.title or "") else "") or label
+        doc = docs.get(law.doc_id) if docs is not None and hasattr(docs, "get") else None
+        if doc is not None and heading == law.title:
+            from kanoon_bridge.agent.research import statute_heading
+
+            heading = statute_heading(doc)          # IL-PCSR's bare "Section 302 of The Indian Penal Code"
         sentences.append(f"The provision that applies{(' to an incident ' + when) if when else ''} is "
                          f"{name + ', ' if name else ''}\"{heading}\". [{law.n}]")
         text = statute_text(law.doc_id) if statute_text else law.text
