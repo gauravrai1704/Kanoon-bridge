@@ -1,15 +1,15 @@
 base,error,n,v1_detected,v2_detected
-RAG v2,years,185,0.0486,0.8865
-RAG v2,fine,63,0.7143,1.0
-RAG v2,negation,241,0.249,0.8216
-RAG v2,wrong_code,235,0.9957,1.0
-RAG v2,section,241,0.6556,1.0
-RAG v2,unsupported,244,0.4016,0.8443
-RAG v2,none (false alarm on clean answers),244,0.9754,0.0
-RAG v1,years,88,0.0,0.75
-RAG v1,fine,6,0.5,1.0
-RAG v1,negation,115,0.0609,0.8609
-RAG v1,wrong_code,238,0.9958,1.0
-RAG v1,section,244,0.1434,1.0
-RAG v1,unsupported,244,0.4016,0.8443
-RAG v1,none (false alarm on clean answers),244,0.5041,0.0082
+RAG v2,years,186,0.2312,0.8871
+RAG v2,fine,65,0.4769,1.0
+RAG v2,negation,244,0.2377,0.8197
+RAG v2,wrong_code,239,0.9958,1.0
+RAG v2,section,245,0.1714,1.0
+RAG v2,unsupported,245,0.3878,0.8939
+RAG v2,none (false alarm on clean answers),245,0.8041,0.0122
+RAG v1,years,86,0.0,0.7558
+RAG v1,fine,6,0.0,1.0
+RAG v1,negation,113,0.0,0.8673
+RAG v1,wrong_code,239,1.0,1.0
+RAG v1,section,245,0.0,1.0
+RAG v1,unsupported,245,0.3878,0.8939
+RAG v1,none (false alarm on clean answers),245,0.2776,0.0367

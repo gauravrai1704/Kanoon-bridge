@@ -56,8 +56,8 @@ IPC-era precedent counts for a BNS-era question?
    routes the question, refines the code family from what it retrieved and verifies its statutes;
    the answer computes the punishment from the statute text and checks every claim (quantities,
    sections, code in force, negation, verbatim quotes), then repairs what fails. Right punishment
-   in 82% of 273 BNS questions vs 5% for v1; injected errors caught 82–100% vs 5–100%, with no
-   false alarms on clean answers.
+   in 86% of 273 BNS questions vs 5% for v1; injected errors caught 82–100% vs 17–100%, with
+   1% false alarms on clean answers (v1: 80%).
 8. **Evidence on the real corpus and on real questions** (Section 7). Agent v2 on every judged
    IL-PCSR set with Holm-corrected tests (E17); written facts of 995 bail orders → charged
    sections, where agent v2 doubles core's MAP (E19); and 1,701 BNS-era High Court judgments
@@ -396,8 +396,11 @@ and are the baselines below.
 
 ### Results (open corpus: `make open && make layers-eval`)
 
-The open corpus has all six codes from India Code plus the BNS, and the eight synthetic
-precedents; no IL-PCSR and no API key are needed, so every number below is reproducible.
+The open corpus has all six codes from India Code plus the BNS, and, once fetched
+(`scripts/11_hc_judgments.py fetch` + `ingest`), 1,701 real High Court judgments from eCourts
+(CC-BY-4.0); without them it falls back to eight synthetic precedents. No IL-PCSR and no API key
+are needed, so every number below is reproducible. The tables are the run with the eCourts
+judgments; the earlier synthetic-precedent run is noted where it differs.
 
 **E14 — punishment QA, end to end.** 273 questions, "What is the punishment for
 <BNS heading>?", incident date 2025-01-01. Gold: bns-study-platform's one-line punishment
@@ -406,9 +409,9 @@ field matches (death, life, maximum and minimum term, fine and its caps, communi
 
 | System | Right statute @1 | Right punishment | … given the right statute | Corrections / answer |
 | --- | --- | --- | --- | --- |
-| core + RAG v1 (extractive quote) | 0.894 | 0.051 | 0.053 | — |
-| core + RAG v2 (structured + verified) | 0.894 | 0.821 | 0.914 | 0.022 |
-| agent v2 + RAG v2 | **0.908** | **0.824** | 0.903 | 0.026 |
+| core + RAG v1 (extractive quote) | 0.897 | 0.051 | 0.053 | — |
+| core + RAG v2 (structured + verified) | 0.897 | 0.846 | 0.939 | 0.044 |
+| agent v2 + RAG v2 | **0.919** | **0.857** | 0.928 | 0.051 |
 
 v1 quotes the best sentence of the statute, which usually is not the punishment clause; v2
 computes it. The remaining errors are mostly gold summaries that describe one sub-section only.
@@ -418,16 +421,16 @@ into each right-statute answer, in the sentence that cites the statute.
 
 | Injected error | n | v1 checks (cosine + code) | v2 claim verification |
 | --- | --- | --- | --- |
-| term of years changed | 185 | 0.05 | **0.89** |
-| fine amount × 10 | 63 | 0.71 | **1.00** |
-| negation flipped | 241 | 0.25 | **0.82** |
-| old-code section for a 2025 incident | 235 | 1.00 | 1.00 |
-| section number changed | 241 | 0.66 | **1.00** |
-| another statute's punishment added | 244 | 0.40 | **0.84** |
-| *false alarm on the clean answers* | 244 | 0.98 | **0.00** |
+| term of years changed | 186 | 0.23 | **0.89** |
+| fine amount × 10 | 65 | 0.48 | **1.00** |
+| negation flipped | 244 | 0.24 | **0.82** |
+| old-code section for a 2025 incident | 239 | 1.00 | 1.00 |
+| section number changed | 245 | 0.17 | **1.00** |
+| another statute's punishment added | 245 | 0.39 | **0.89** |
+| *false alarm on the clean answers* | 245 | 0.80 | **0.01** |
 
-On RAG v1's extractive answers as the base, v2 still detects 75–100% per type with a 0.8%
-false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`.
+On RAG v1's extractive answers as the base, v2 still detects 76–100% per type with a 3.7%
+false-alarm rate (v1: 28%). Figure: `results/figures/layers_error_injection.png`.
 
 **E16 — the agent on the statute-level sets** (right provision of the right code at rank 1).
 
@@ -435,19 +438,20 @@ false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`
 | --- | --- | --- | --- |
 | baseline BM25 | 0.83 | 0.40 | 0.37 |
 | core | 0.81 | 0.79 | 0.75 |
-| agent v1 | 0.88 | 0.79 | 0.75 |
-| **agent v2** | **0.92** | **0.88** | **0.83** |
-| v2 − verification | 0.92 | 0.79 | 0.71 |
-| v2 − citation votes | 0.93 | 0.88 | 0.83 |
-| v2, votes not gated | 0.92 | 0.86 | 0.82 |
-| v2 − family search | 0.88 | 0.90 | 0.86 |
+| agent v1 | **0.88** | 0.79 | 0.75 |
+| **agent v2** | 0.79 | **0.87** | **0.82** |
+| v2 − verification | 0.79 | 0.79 | 0.70 |
+| v2 − citation votes | **0.93** | 0.87 | 0.82 |
+| v2, votes not gated | 0.73 | 0.75 | 0.78 |
+| v2 − family search | 0.72 | **0.90** | **0.87** |
 
 - **Verification is the part that matters**: without it E7 and E9 fall back to core.
-- **Family search is mixed**: +0.05 on E2, −0.02 / −0.03 on E7 / E9. On E9 the family is
-  sometimes refined from the eight synthetic precedents, which are mostly penal, so code@1 drops
-  from 0.95 (core) to 0.92. With a real precedent pool this should improve; it is reported as is.
-- **Citation votes do nothing here once gated**, and cost 1–2 points ungated. With eight
-  precedents there is little to vote with; they are kept for the IL-PCSR corpus, untested there.
+- **Citation votes are harmful once the precedents are real.** With eight synthetic precedents
+  they did nothing (E2 0.925 with them); with 1,701 real judgments they vote for the most cited
+  sections, and on bare-number questions (E2), where no heading matches and the gate stays open,
+  they cost 0.15 (0.79 vs 0.93 without). They are neutral on E7 / E9. The shipped configuration
+  keeps them so that every reported number matches it; **we recommend `vote_weight: 0`**.
+- **Family search is mixed**, as on IL-PCSR: −0.07 on E2 without it, +0.03 / +0.05 on E7 / E9.
 
 ### Caveats
 

@@ -1,25 +1,25 @@
 set,system,expected@1,wrong_hit@10,searches,n,code@1,offence@1,both@1
 e2_collision,baseline BM25,0.8294,0.0675,1.0,252,,,
 e2_collision,core,0.8056,0.0,1.0,252,,,
-e2_collision,agent v1,0.877,0.0,3.5317,252,,,
-e2_collision,agent v2,0.9246,0.0,4.7103,252,,,
-e2_collision,v2 - verification,0.9246,0.0,4.6944,252,,,
-e2_collision,v2 - citation votes,0.9325,0.0,4.7103,252,,,
-e2_collision,"v2, votes ungated",0.9206,0.0,4.7103,252,,,
-e2_collision,v2 - family search,0.877,0.0,4.7103,252,,,
+e2_collision,agent v1,0.877,0.0,4.0119,252,,,
+e2_collision,agent v2,0.7857,0.0,4.5159,252,,,
+e2_collision,v2 - verification,0.7857,0.0,4.496,252,,,
+e2_collision,v2 - citation votes,0.9325,0.0,4.5159,252,,,
+e2_collision,"v2, votes ungated",0.7262,0.0,4.4881,252,,,
+e2_collision,v2 - family search,0.7222,0.0,4.5159,252,,,
 e7_temporal,baseline BM25,,,1.0,200,0.48,0.79,0.395
 e7_temporal,core,,,1.0,200,0.945,0.785,0.785
-e7_temporal,agent v1,,,1.825,200,0.945,0.785,0.785
-e7_temporal,agent v2,,,3.61,200,0.955,0.875,0.875
-e7_temporal,v2 - verification,,,3.61,200,0.955,0.79,0.79
-e7_temporal,v2 - citation votes,,,3.61,200,0.955,0.875,0.875
-e7_temporal,"v2, votes ungated",,,3.615,200,0.955,0.86,0.86
-e7_temporal,v2 - family search,,,3.62,200,0.98,0.9,0.9
+e7_temporal,agent v1,,,2.005,200,0.945,0.785,0.785
+e7_temporal,agent v2,,,3.66,200,0.95,0.87,0.87
+e7_temporal,v2 - verification,,,3.66,200,0.95,0.785,0.785
+e7_temporal,v2 - citation votes,,,3.665,200,0.95,0.87,0.87
+e7_temporal,"v2, votes ungated",,,3.635,200,0.95,0.75,0.75
+e7_temporal,v2 - family search,,,3.67,200,0.98,0.9,0.9
 e9_procedure_temporal,baseline BM25,,,1.0,342,0.4795,0.7456,0.3743
 e9_procedure_temporal,core,,,1.0,342,0.9532,0.7515,0.7515
-e9_procedure_temporal,agent v1,,,1.6725,342,0.9474,0.7485,0.7485
-e9_procedure_temporal,agent v2,,,4.1871,342,0.9181,0.8275,0.8275
-e9_procedure_temporal,v2 - verification,,,4.0994,342,0.9123,0.7105,0.7105
-e9_procedure_temporal,v2 - citation votes,,,4.193,342,0.9181,0.8275,0.8275
-e9_procedure_temporal,"v2, votes ungated",,,4.2047,342,0.9123,0.8187,0.8187
-e9_procedure_temporal,v2 - family search,,,4.2105,342,0.9532,0.8596,0.8596
+e9_procedure_temporal,agent v1,,,2.2719,342,0.9474,0.7485,0.7485
+e9_procedure_temporal,agent v2,,,3.9211,342,0.9094,0.8246,0.8246
+e9_procedure_temporal,v2 - verification,,,3.8567,342,0.9035,0.7047,0.7047
+e9_procedure_temporal,v2 - citation votes,,,3.8743,342,0.9094,0.8187,0.8187
+e9_procedure_temporal,"v2, votes ungated",,,3.8713,342,0.9035,0.7778,0.7778
+e9_procedure_temporal,v2 - family search,,,3.9211,342,0.9561,0.8655,0.8655

@@ -87,16 +87,16 @@ computes the punishment from the statute text, checks every sentence against its
 listing each correction. Runs without IL-PCSR and without an API key:
 
 ```bash
-make open           # all six codes from India Code + the BNS, synthetic precedents
+make open           # all six codes from India Code + the BNS; eCourts judgments once fetched (scripts/11)
 make layers-eval    # E14-E16
 ```
 
 | | v1 | v2 |
 | --- | --- | --- |
-| E14 right punishment, 273 BNS questions | 0.05 | **0.82** |
-| E15 injected wrong term of years caught | 0.05 | **0.89** |
-| E15 false alarms on clean answers | 0.98 | **0.00** |
-| E16 right section of the right code @1, CrPC/BNSS questions (E9) | 0.75 | **0.83** |
+| E14 right punishment, 273 BNS questions | 0.05 | **0.86** |
+| E15 injected wrong term of years caught | 0.23 | **0.89** |
+| E15 false alarms on clean answers | 0.80 | **0.01** |
+| E16 right section of the right code @1, CrPC/BNSS questions (E9) | 0.75 | **0.82** |
 
 E15 injects the error types the verifier was built for (an upper bound), and E7/E9/E14 use
 heading-style questions. Details, ablations and caveats: [docs/PROJECT.md §6](docs/PROJECT.md).
