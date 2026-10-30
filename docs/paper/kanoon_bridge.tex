@@ -195,8 +195,8 @@ and penal (+0.035; 28 wins, 8 losses). Removing the verifier undoes the gains (E
 On whole judgments as queries (E1) it keeps the core ranking (1.1 searches per query), where a
 rule-planner agent lost 0.11 MAP. On E6 both agents trade MAP for the top of the list (P@1 0.80
 $\rightarrow$ 0.90, all top-5 results binding). On real case facts (E19) it doubles the core's MAP
-(0.047 $\rightarrow$ 0.100) and nearly triples hit@1 (0.06 $\rightarrow$ 0.17) \todo{paired test
-from results/tables/facts\_ilpcsr\_significance.csv}. On E10, the shared offence ids let IPC-numbered
+(0.047 $\rightarrow$ 0.100; +0.053, 95\% CI [0.043, 0.063], 195 wins / 49 losses,
+$p_{\text{Holm}}<0.001$) and nearly triples hit@1 (0.06 $\rightarrow$ 0.17, $p_{\text{Holm}}<0.001$). On E10, the shared offence ids let IPC-numbered
 questions find BNS-era judgments (MAP 0.004 for BM25 $\rightarrow$ 0.151; 32 wins, 2 losses,
 $p<0.001$).
 
@@ -212,7 +212,7 @@ E4 Hindi / Hinglish & .461 & .460 & \textbf{.536}$^\dagger$ \\
 E6 jurisdiction & \textbf{.630} & .554 & .554 \\
 E7 penal, by date & .880 & .877 & \textbf{.915} \\
 E9 procedure, by date & .859 & .859 & \textbf{.903}$^\dagger$ \\
-E19 bail facts$\rightarrow$charges & .047 & .057 & \textbf{.100} \\
+E19 bail facts$\rightarrow$charges & .047 & .057 & \textbf{.100}$^\dagger$ \\
 \bottomrule
 \end{tabular}
 \caption{Retrieval on the IL-PCSR corpus. $^\dagger$ $p_{\text{Holm}}<0.05$ vs core.}

@@ -542,7 +542,9 @@ IPC section or its BNS counterpart).
 | **agent v2** | **0.120** | **0.138** | **0.100** | **0.170** |
 | v2 + ToC navigation | 0.118 | 0.138 | 0.099 | 0.170 |
 
-Agent v2 doubles core's MAP and nearly triples hit@1 on questions nobody wrote for this system.
+Agent v2 doubles core's MAP and nearly triples hit@1 on questions nobody wrote for this system
+(paired randomization, Holm over 6 comparisons: MAP +0.053 [0.043, 0.063], 195 wins / 49 losses,
+p_holm < 0.001; hit@1 +0.108, p_holm < 0.001; ToC vs v2: no difference, p_holm 0.82).
 The absolute numbers are low: bail facts talk about arrest, custody and bail, so core search
 drifts to procedure and evidence sections; v2's family routing is what pulls it back to penal law.
 
