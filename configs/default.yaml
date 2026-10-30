@@ -148,6 +148,8 @@ agent:
   issue_weight: 0.6               # fusion weight of an issue sub-query
   issue_rounds: 1                 # extra rounds for open issues
   min_coverage: 0.8               # stop when this share of the issues has evidence
+  toc_weight: 0.0                # STAIR-style chapter navigation (agent/toc.py); 0 = off, evaluated as a variant
+  toc_chapters: 2
 
 # Layer 3: grounded answers (rag/)
 rag:

@@ -125,8 +125,8 @@ def _answer_v2(query, analyzed, chunks, docs, rcfg, idf, normalizer, drift, gene
     ans.chunks = chunks
     verifier = ClaimVerifier(idf, rcfg.support_threshold, normalizer, docs)
     claims = verifier.check(ans, chunks, cif)
-    if any(c.verdict != "supported" for c in claims) and gen in ("claude", "openai") and rcfg.get("regenerate", True):
-        call = generate.call_claude if gen == "claude" else generate.call_openai
+    if any(c.verdict != "supported" for c in claims) and gen in generate.LLM_GENERATORS and rcfg.get("regenerate", True):
+        call = lambda prompt, model: generate.call_llm(gen, prompt, model)  # noqa: E731
         prompt = generate.PROMPT.format(question=query.text, incident_date=str(query.incident_date or "unknown"),
                                         state=query.state or "unknown", sources=generate.format_sources(chunks))
         retry = generate.parse_answer(call(prompt + "\n\n" + feedback_prompt(ans), rcfg.model or None), gen)

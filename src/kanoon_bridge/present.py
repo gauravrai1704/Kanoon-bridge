@@ -216,6 +216,12 @@ def explain(hit, aq, engine, target: str = "precedent") -> list[str]:
                 reasons.append(t.reason())
         elif meta.decision_date and aq.code_in_force == Code.BNS and meta.decision_date.year < 2024 and shared:
             reasons.append(f"decided {meta.decision_date.year} under the IPC; still relevant through the crosswalk")
+        tr = getattr(engine, "treatment", None)
+        t = tr.table.get(hit.doc_id) if tr is not None else None
+        if t is not None and t.status != "good":
+            metas = engine.facets.metas
+            titles = {e[0]: getattr(metas.get(e[0]), "title", "") or e[0] for e in t.strong + t.weak}
+            reasons.append(f"{t.explain(titles)}: check that it is still good law")
     return reasons
 
 

@@ -169,6 +169,37 @@ def call_openai(
     return response.output_text
 
 
+def call_local(prompt: str, model: str | None = None, max_tokens: int = 400, system: str = SYSTEM) -> str:
+    """Any OpenAI-compatible chat endpoint: vLLM (`vllm serve <model>`, http://localhost:8000/v1),
+    Ollama (http://localhost:11434/v1), llama.cpp's llama-server (http://localhost:8080/v1).
+    env KB_LLM_BASE_URL (default http://localhost:8000/v1), KB_LLM_MODEL, KB_LLM_API_KEY."""
+    import requests
+
+    load_env()
+    base = os.environ.get("KB_LLM_BASE_URL", "http://localhost:8000/v1").rstrip("/")
+    r = requests.post(f"{base}/chat/completions", timeout=int(os.environ.get("KB_LLM_TIMEOUT", "600")),
+                      headers={"Authorization": f"Bearer {os.environ.get('KB_LLM_API_KEY', 'none')}"},
+                      json={"model": model or os.environ.get("KB_LLM_MODEL", "local"), "temperature": 0,
+                            "max_tokens": max_tokens,
+                            "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]})
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+
+
+def call_llm(gen: str, prompt: str, model: str | None = None, system: str = SYSTEM) -> str:
+    """Dispatch to the generator's API: claude | openai | local."""
+    if gen == "claude":
+        return call_claude(prompt, model, system=system)
+    if gen == "openai":
+        return call_openai(prompt, model, system=system)
+    if gen == "local":
+        return call_local(prompt, model, system=system)
+    raise ValueError(f"{gen!r} is not an LLM generator (claude | openai | local)")
+
+
+LLM_GENERATORS = ("claude", "openai", "local")
+
+
 def extractive(question: str, chunks: list[Chunk], max_sentences: int = 4) -> Answer:
     """No-LLM answer: the top-ranked statute's best sentence, then the sentences with most
     query-term overlap across the other chunks (at most one per chunk, ties broken by chunk
@@ -217,15 +248,10 @@ def generate(
     gen = pick_generator(generator)
 
     if closed_book:
-        text = call_claude(
-            CLOSED_BOOK_PROMPT.format(
-                question=question,
-                incident_date=incident_date,
-                state=state,
-            ),
-            model,
-        )
-        ans = parse_answer(text, "claude-closed-book")
+        llm = gen if gen in LLM_GENERATORS else "claude"
+        text = call_llm(llm, CLOSED_BOOK_PROMPT.format(question=question, incident_date=incident_date, state=state),
+                        model)
+        ans = parse_answer(text, f"{llm}-closed-book")
 
     elif gen == "extractive":
         ans = extractive(question, chunks)
@@ -249,6 +275,13 @@ def generate(
             "claude",
         )
 
+    elif gen == "local":
+        if not chunks:
+            return Answer(text="No sources were retrieved for this question.", generator="local")
+        prompt = PROMPT.format(question=question, incident_date=incident_date, state=state,
+                               sources=format_sources(chunks))
+        ans = parse_answer(call_local(prompt, model), "local")
+
     elif gen == "openai":
         if not chunks:
             return Answer(
@@ -271,7 +304,7 @@ def generate(
     else:
         raise ValueError(
             f"unknown generator {gen!r} "
-            "(auto | openai | claude | extractive)"
+            "(auto | openai | claude | local | extractive)"
         )
 
     ans.chunks = chunks

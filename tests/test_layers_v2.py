@@ -190,3 +190,56 @@ def test_ilpcsr_layers_summary():
     assert s["claims_verified"] == 1.0 and s["corrections"] == 1.0          # over answered questions only
     assert _code_in_force(Query("x", incident_date=date(2025, 1, 1))) == "bns"
     assert _code_in_force(Query("x", incident_date=date(2023, 1, 1))) == "ipc"
+
+
+def test_verifier_sees_spelling_corrections():
+    from types import SimpleNamespace
+
+    from kanoon_bridge.agent.verify import corrected, specificity
+
+    aq = SimpleNamespace(corrections=[SimpleNamespace(source="murdr", term="murder", applied=True),
+                                      SimpleNamespace(source="punishmnet", term="punish", applied=True)])
+    text = corrected("punishmnet for murdr", aq)
+    assert text == "punish for murder"
+    assert specificity(text, "Punishment for murder") > specificity("punishmnet for murdr", "Punishment for murder")
+
+
+def test_misgrounding_scoring():
+    from kanoon_bridge.eval.misgrounding import score_answer
+
+    class Norm:
+        def offences_for(self, ref):
+            return {"bns:103": ["off:murder"], "ipc:302": ["off:murder"]}.get(ref, [])
+
+    row = {"set": "e7_temporal", "incident_date": "2025-01-01", "expected_code": "bns", "offence": "off:murder"}
+    s = score_answer("Section 103 of the BNS applies; it replaced Section 302 IPC.", row, Norm())
+    assert s["right@1"] == 1 and s["misgrounded@1"] == 0 and s["any_wrong_code"] == 1
+    s = score_answer("Section 302 of the Indian Penal Code applies.", row, Norm())
+    assert s["misgrounded@1"] == 1 and s["right@1"] == 0
+    s = score_answer('The court said "under Section 302 IPC the accused" was guilty.', row, Norm())
+    assert s["no_section"] == 1                          # quotations are not the answer's own claim
+    e2 = {"set": "e2_collision", "incident_date": "2024-03-01", "expected": "ipc:84", "wrong_refs": ["bns:84"]}
+    assert score_answer("BNS Section 84 applies.", e2, Norm())["misgrounded@1"] == 1
+
+
+def test_toc_navigation_picks_chapters():
+    from kanoon_bridge.agent.toc import Chapter, TableOfContents
+
+    toc = TableOfContents([Chapter("bnss", "CHAPTER XXXV", "Provisions As To Bail And Bonds", [], ["bnss:482"],
+                                   ["Direction for grant of bail to person apprehending arrest"]),
+                           Chapter("bns", "CHAPTER VI", "Of Offences Affecting The Human Body",
+                                   ["Of offences affecting life"], ["bns:103"], ["Punishment for murder"])])
+    assert toc.navigate("bail for a person apprehending arrest", {"bnss", "bns"})[0][0] == 0
+    assert toc.navigate("punishment for murder", {"bns"})[0][0] == 1
+    assert toc.navigate("punishment for murder", {"bnss"}) == []          # other codes are not searched
+
+
+def test_kv_reuse_simulation():
+    from kanoon_bridge.eval.kv_reuse import reuse, simulate
+
+    s, p = ("s1", "statute", 100), ("p1", "precedent", 100)
+    trace = [[s, p], [s, ("p2", "precedent", 100)], [s, p]]
+    r = reuse(trace)
+    assert r["statute_reuse"] == round(200 / 300, 4) and r["precedent_reuse"] == round(100 / 300, 4)
+    assert simulate(trace, 10**6, "lru") == 300 / 600                   # infinite cache = reuse
+    assert simulate(trace, 100, "lru") < simulate(trace, 100, "pinned")  # a pinned statute survives

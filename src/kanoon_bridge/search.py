@@ -65,6 +65,7 @@ class SearchOptions:
                                        # it learns citation popularity, +31% MAP on E1q but -47% nDCG on E6)
     collapse_duplicates: bool = False  # show one judgment per near-duplicate group (index/dedup.py)
     drift: bool = False                # down-weight IPC-era precedents whose law the BNS changed (drift/transfer.py)
+    treatment: bool = False            # down-weight precedents a later judgment overruled (rank/treatment.py)
 
     @classmethod
     def from_dict(cls, d: dict) -> "SearchOptions":
@@ -78,7 +79,7 @@ class SearchOptions:
     @classmethod
     def interactive(cls) -> "SearchOptions":
         """What the CLI and app use: full system, near-duplicates collapsed, drift-aware."""
-        return cls(ltr=True, ngram=True, collapse_duplicates=True, drift=True)
+        return cls(ltr=True, ngram=True, collapse_duplicates=True, drift=True, treatment=True)
 
     @classmethod
     def full_drift(cls) -> "SearchOptions":
@@ -117,6 +118,7 @@ class SearchEngine:
     ngram_statutes: object | None = None   # rank.ngram.NgramIndex over statutes
     ngram_precedents: object | None = None # rank.ngram.NgramIndex over precedents
     drift: object | None = None            # drift.transfer.TransferScorer (data/crosswalk/drift_*.csv)
+    treatment: object | None = None        # rank.treatment.TreatmentScorer (index/treatment.json)
     _scorers: dict = field(default_factory=dict)
 
     # ------------------------------------------------------------------ loading
@@ -204,6 +206,13 @@ class SearchEngine:
                 engine.drift = TransferScorer.load(analyzer.text_res.normalizer, cfg)
             except FileNotFoundError:
                 engine.drift = None
+        if (cfg.get("treatment") or {}).get("enabled", True):
+            from kanoon_bridge.rank.treatment import TreatmentScorer
+
+            try:
+                engine.treatment = TreatmentScorer.load(cfg)
+            except FileNotFoundError:
+                engine.treatment = None
         if cfg.dense.enabled:
             from kanoon_bridge.rank.dense import DenseRetriever
 
@@ -435,6 +444,13 @@ class SearchEngine:
             if hit:
                 aq.trace.append(("drift", f"{len(hit)} precedent(s) under the old codes down-weighted: the BNS / BNSS / BSA "
                                           "changed the law they apply"))
+
+        # --- judicial treatment (rank/treatment.py) ------------------------------------
+        if opt.treatment and self.treatment is not None and final:
+            final, hit = self.treatment.rerank(final, components, depth=max(100, opt.top_k * 3))
+            if hit:
+                aq.trace.append(("treatment", f"{len(hit)} precedent(s) overruled or doubted by a later judgment "
+                                              "down-weighted"))
 
         # --- near-duplicate collapse (index/dedup.py) ----------------------------------
         ranked = top_k(final, opt.top_k)

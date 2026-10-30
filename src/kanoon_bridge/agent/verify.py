@@ -60,6 +60,21 @@ def specificity(query: str, heading: str) -> float:
     return len(q & h) / len(q | h) if (q and h) else 0.0
 
 
+def corrected(text: str, aq) -> str:
+    """The question with the analyzer's applied spelling corrections ("murdr" -> "murder"), so
+    heading matching sees what retrieval saw."""
+    fixes = {c.source: c.term for c in getattr(aq, "corrections", None) or [] if c.applied}
+    if not fixes:
+        return text
+    from kanoon_bridge.text.stem import stem_english
+
+    out = []
+    for w in text.split():
+        bare = w.lower().strip(".,;:?!\"'()")
+        out.append(fixes.get(bare) or fixes.get(stem_english(bare)) or w)
+    return " ".join(out)
+
+
 @dataclass
 class StatuteVerifier:
     k: int = 5
@@ -79,6 +94,7 @@ class StatuteVerifier:
         """Re-score the top k statutes; returns (new list, trace notes)."""
         if len(statutes) < 2:
             return statutes, []
+        qtext = corrected(query.text, aq)
         head, tail = statutes[: self.k], statutes[self.k:]
         # no candidate of the routed family in the head: bring in the best one from further down
         if not any(FAMILY_OF_CODE.get(_ref(engine, h.doc_id).split(":")[0]) == family for h in head):
@@ -94,7 +110,7 @@ class StatuteVerifier:
             code = ref.split(":")[0]
             fam_ok = FAMILY_OF_CODE.get(code) == family
             force_ok = in_force is None or (code in new_codes) == (in_force == "bns")
-            spec = specificity(query.text, title_of(h.doc_id))
+            spec = specificity(qtext, title_of(h.doc_id))
             general = fact_question and bool(GENERAL.match(title_of(h.doc_id) or ""))
             v = (1.0 / i + self.w_family * fam_ok + self.w_force * force_ok + self.w_heading * spec
                  - self.w_general * general)
@@ -109,7 +125,7 @@ class StatuteVerifier:
             old_code = old.split(":")[0]
             if FAMILY_OF_CODE.get(old_code) != family and fam_ok:
                 why.append(f"{old.upper()} is {FAMILY_OF_CODE.get(old_code, 'other')} law, the question is {family} law")
-            if spec > specificity(query.text, title_of(head[0].doc_id)):
+            if spec > specificity(qtext, title_of(head[0].doc_id)):
                 why.append(f"\"{title_of(h.doc_id)}\" matches the question's words more exactly")
             notes.append(f"verified statutes: {ref.upper()} moved to the top over {old.upper()}"
                          + (f" ({'; '.join(why)})" if why else ""))

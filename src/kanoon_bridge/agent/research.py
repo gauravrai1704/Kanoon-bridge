@@ -226,10 +226,10 @@ class ResearchAgentV2(ResearchAgent):
         fused_stat = fuse(out.subresults, "statute", self.fusion, acfg.rrf_k)
         votes = self._citation_votes(fused_prec, aq, rt)
         if votes and acfg.get("vote_gate", 0.3) > 0:
-            from kanoon_bridge.agent.verify import specificity
+            from kanoon_bridge.agent.verify import corrected, specificity
 
             head = sorted(fused_stat, key=fused_stat.get, reverse=True)[:5]
-            best = max((specificity(query.text, self._title(d)) for d in head), default=0.0)
+            best = max((specificity(corrected(query.text, aq), self._title(d)) for d in head), default=0.0)
             if best >= acfg.get("vote_gate", 0.3):
                 out.trace.append(("citation votes", f"not used: the question matches a statute heading "
                                                     f"(word overlap {best:.2f})"))
@@ -241,6 +241,8 @@ class ResearchAgentV2(ResearchAgent):
                 fused_stat[d] = fused_stat.get(d, 0.0) + w / (acfg.rrf_k + r)
             out.trace.append(("citation votes", "statutes the top precedents apply, in the code in force: "
                               + ", ".join(self._ref(d).upper() for d in ranked[:5])))
+        if acfg.get("toc_weight", 0) > 0 and rt.kind != "case_text":
+            fused_stat = self._toc_navigate(query, aq, rt, fused_stat, out)
         statutes = to_scored(top_k(fused_stat, max(k, 20)), DocType.STATUTE)
         statutes, notes = self._verifier().rerank(statutes, query, aq, self._family(rt), self.engine, self._title,
                                                   fact_question=rt.kind == "fact_question")
@@ -295,6 +297,55 @@ class ResearchAgentV2(ResearchAgent):
             return None
         new = aq.code_in_force.value == "bns"
         return {"penal": ("ipc", "bns"), "procedure": ("crpc", "bnss"), "evidence": ("iea", "bsa")}[rt.family][new]
+
+    _toc = None                               # agent/toc.TableOfContents, built once per process
+
+    def _toc_navigate(self, query: Query, aq, rt, fused_stat: dict[str, float], out: AgentResult) -> dict[str, float]:
+        """STAIR-style navigation (agent/toc.py): choose chapters by their table-of-contents
+        entries, then favour the chosen chapters' sections."""
+        from kanoon_bridge.agent.toc import TableOfContents
+        from kanoon_bridge.agent.verify import corrected, specificity
+
+        acfg = self.cfg.agent
+        if ResearchAgentV2._toc is None:
+            try:
+                ResearchAgentV2._toc = TableOfContents.build(self.cfg)
+            except FileNotFoundError as err:
+                out.trace.append(("toc", f"not used: {err}"))
+                ResearchAgentV2._toc = False
+        toc = ResearchAgentV2._toc
+        if not toc:
+            return fused_stat
+        pair = {"penal": ("ipc", "bns"), "procedure": ("crpc", "bnss"), "evidence": ("iea", "bsa")}[self._family(rt)]
+        code = self._family_code(rt, aq)
+        text = corrected(query.text, aq)
+        chosen = toc.navigate(text, {code} if code else set(pair), self.engine.statute_index.whole.idf,
+                              acfg.get("toc_chapters", 2))
+        if not chosen:
+            return fused_stat
+        doc_of = getattr(self, "_doc_of_ref", None)
+        if doc_of is None:
+            doc_of = {}
+            for d, ts in (getattr(self.engine.bridge, "statute_terms", {}) or {}).items():
+                for t in ts:
+                    if t.startswith("sec:"):
+                        doc_of.setdefault(t[4:], d)
+            self._doc_of_ref = doc_of
+        out_stat = dict(fused_stat)
+        w, rk = acfg.get("toc_weight", 1.0), acfg.rrf_k
+        for rank, (ci, _) in enumerate(chosen, start=1):
+            ch = toc.chapters[ci]
+            ids = [doc_of[r] for r in ch.refs if r in doc_of]
+            for d in ids:
+                if d in out_stat:
+                    out_stat[d] += w / (rk + rank)
+            if rank == 1 and ids and not any(d in fused_stat for d in ids):
+                best = max(ids, key=lambda d: specificity(text, self._title(d)))
+                out_stat[best] = max(out_stat.values(), default=0.0) * 0.5 + w / (rk + rank)
+        out.trace.append(("toc", "chapters: " + "; ".join(
+            f"{toc.chapters[ci].code.upper()} {toc.chapters[ci].chapter.title()} ({toc.chapters[ci].name})"
+            for ci, _ in chosen)))
+        return out_stat
 
     def _ref(self, doc_id: str) -> str:
         from kanoon_bridge import present

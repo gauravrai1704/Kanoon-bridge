@@ -306,3 +306,20 @@ def test_explorer_parses_all_codes():
     assert p("Cr.P.C. 154") == "crpc:154" and p("bnss:482") == "bnss:482" and p("124A IPC") == "ipc:124a"
     with pytest.raises(ValueError):
         p("article 21")
+
+
+def test_precedent_treatment_extraction():
+    from kanoon_bridge.rank.treatment import extract, title_key
+
+    head = "Sita Ram Goel v. The Municipal Board, Kanpur & Ors., [1959] SCR 1148, overruled."
+    (kind, key, _, cue), = [f for f in extract(head) if f[0] == "strong"]
+    assert key == title_key("Sita Ram Goel v. Municipal Board, Kanpur, 2019") and cue == "overruled"
+    after = "The majority decision in Kesavananda Bharati's case overruled the decision in I.C. Golak Nath v. State of Punjab."
+    assert [f[1] for f in extract(after) if f[0] == "strong"] == [title_key("I.C. Golak Nath & Ors v. State Of Punjab & Anr, 2019")]
+    # the overruling court is not the overruled case; "in view of" points the other way; negation
+    assert not [f for f in extract("In State of Gujarat v. Shantilal Mangaldas this Court overruled the Metal Corporation.")
+                if f[0] == "strong"]
+    assert not [f for f in extract("Devadasan is no longer good law in view of State of Kerala v. N. M. Thomas.")
+                if f[0] == "strong"]
+    assert not [f for f in extract("Ram Lal v. State of Bihar has not been overruled by any later decision.")
+                if f[0] == "strong"]
