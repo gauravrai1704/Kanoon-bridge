@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: layers-eval open drift drift-eval drift-retrieval build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: layers-eval ilpcsr-layers open drift drift-eval drift-retrieval build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -111,3 +111,7 @@ open:
 # E14-E16: agent v2 and RAG v2 on the open corpus (run make open first)
 layers-eval:
 	$(PY) scripts/17_eval_layers.py
+
+# E17-E18: agent v2 and RAG v2 on the IL-PCSR corpus (run make build first)
+ilpcsr-layers:
+	$(PY) scripts/18_eval_ilpcsr_layers.py

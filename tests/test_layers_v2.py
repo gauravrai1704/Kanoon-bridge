@@ -176,3 +176,17 @@ def test_open_eval_scores_by_reference():
     rows = load_rows("e7_temporal", limit=4)
     assert rows and all("expected_code" in r and "offence" in r for r in rows)
     assert date.fromisoformat(rows[0]["incident_date"])
+
+
+def test_ilpcsr_layers_summary():
+    from kanoon_bridge.eval.ilpcsr_layers import _code_in_force, summarise
+
+    rows = [{"system": "s", "answerable": True, "abstained": False, "sentences": 3, "v1_support_rate": "",
+             "claims_verified": 1.0, "wrong_code_flags": 0, "corrections": 1},
+            {"system": "s", "answerable": False, "abstained": True, "sentences": 0, "v1_support_rate": "",
+             "claims_verified": "", "wrong_code_flags": 0, "corrections": 0}]
+    (s,) = summarise(rows)
+    assert s["abstained"] == 1 and s["abstain_precision"] == 1.0 and s["abstain_recall"] == 1.0
+    assert s["claims_verified"] == 1.0 and s["corrections"] == 1.0          # over answered questions only
+    assert _code_in_force(Query("x", incident_date=date(2025, 1, 1))) == "bns"
+    assert _code_in_force(Query("x", incident_date=date(2023, 1, 1))) == "ipc"

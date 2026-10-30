@@ -96,6 +96,21 @@ class ClaimCheck:
         self.reasons.append(reason)
 
 
+def _punishment_agrees(claim: str, source: str) -> bool:
+    """The claim states a punishment and every kind it names (death, life, a term, fine,
+    community service) is one the source prescribes. Terms and amounts are compared number by
+    number by the quantities check; this only replaces wording overlap, which is low between a
+    one-line computed punishment and a long statute."""
+    from kanoon_bridge.drift.punishment import extract
+
+    pun = extract(claim)
+    if pun.empty:
+        return False
+    src = extract(source)
+    return all(not getattr(pun, f) or getattr(src, f) for f in ("death", "life", "fine", "community_service")) \
+        and (not (pun.max_years or pun.min_years) or bool(src.max_years or src.min_years or src.life))
+
+
 @dataclass
 class ClaimVerifier:
     idf: object = None                      # dict / callable term -> idf (precedent index)
@@ -142,6 +157,8 @@ class ClaimVerifier:
         no_content = not any(w > 0 for w in own_vec.values())   # only stop words / zero-idf terms
         cc.support = 1.0 if (quotes and cc.verdict == "supported") or no_content else \
             cosine(tfidf(terms(body), look), tfidf(terms(src), look))
+        if cc.support < self.threshold and _punishment_agrees(own_words, src):
+            cc.support = 1.0                 # a stated punishment is checked structurally, not by wording
         if cc.support < self.threshold:
             cc.fail("unsupported", f"little overlap with [{cited}] (cosine {cc.support:.2f})")
         body = own_words                     # the remaining checks look at the answer's own words

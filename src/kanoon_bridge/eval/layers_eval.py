@@ -79,7 +79,8 @@ def answer_law_ref(ans: Answer, docs) -> str:
 def answer_punishment(ans: Answer):
     """The punishment the answer states, read from its own words about the statute."""
     by_n = {c.n: c for c in ans.chunks}
-    text = " ".join(s for s, n in ans.sentences if by_n.get(n) is not None and by_n[n].zone == "statute")
+    # "; " keeps one sentence's "offence punishable with death" (a heading) from reaching the next
+    text = " ; ".join(s for s, n in ans.sentences if by_n.get(n) is not None and by_n[n].zone == "statute")
     return extract(text)
 
 
