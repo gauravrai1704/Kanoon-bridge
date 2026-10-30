@@ -58,6 +58,15 @@ IPC-era precedent counts for a BNS-era question?
    sections, code in force, negation, verbatim quotes), then repairs what fails. Right punishment
    in 82% of 273 BNS questions vs 5% for v1; injected errors caught 82–100% vs 5–100%, with no
    false alarms on clean answers.
+8. **Evidence on the real corpus and on real questions** (Section 7). Agent v2 on every judged
+   IL-PCSR set with Holm-corrected tests (E17); written facts of 995 bail orders → charged
+   sections, where agent v2 doubles core's MAP (E19); and 1,701 BNS-era High Court judgments
+   (eCourts), which show that courts still cite the IPC 18 months on (E10).
+9. **Judicial treatment** (E21): overruled precedents detected from the judgments' own sentences
+   and demoted with an explanation, the court-made counterpart of statutory drift.
+10. **Two honest add-ons:** STAIR-style table-of-contents navigation (a negative result without a
+    trained retriever) and a KV-reuse study of legal RAG traffic for tiered KV caches (PACT-KV):
+    63% of prompt tokens repeat, and frequency-aware caching beats recency 2x.
 
 ## 3. Method
 
@@ -443,16 +452,206 @@ false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`
 ### Caveats
 
 - E7, E9 and E14 questions are written from section headings, which favours heading matching
-  (the verifier's specificity term). Typed, fact-style questions (E4) need the IL-PCSR indexes
-  and the judged pool, and were not re-run.
+  (the verifier's specificity term). §7 adds the typed and fact-style tests: E4 (Hindi /
+  Hinglish / English needs) and E19 (written facts of real bail orders).
 - E15 injects the error types the verifier was designed to catch: it is an upper bound, not an
   estimate of how often real LLM errors are caught.
 - The vote gate (`vote_gate`) was set after looking at E16; there is no held-out set for it.
 - No LLM was called (no API key in the build environment): the regeneration step is tested only
   by unit tests, and RAG v2's numbers are for the structured generator.
+- The open corpus now includes the eCourts High Court judgments when they have been fetched
+  (`scripts/11_hc_judgments.py fetch` + `ingest`); the tables below are that run. Earlier runs
+  with only the eight synthetic precedents gave E2 0.925 / E7 0.865 / E9 0.81 for agent v2.
 
-## 7. Limitations
+## 7. On the full IL-PCSR corpus, and the research extensions
 
+Everything in this section runs on the full corpus (`make build`): IL-PCSR's 3,183 precedents and
+936 statutes, plus the BNS, BNSS and BSA. Core E1 reproduces the committed MAP 0.4137 exactly, so
+the build matches the earlier runs.
+
+### E17 — agent v2 on every judged set (`make ilpcsr-layers`)
+
+Paired randomization test on per-query AP, Holm-corrected over all 32 comparisons
+(`results/tables/ilpcsr_layers_significance.csv`).
+
+| Set (metric MAP) | core | agent v1 | **agent v2** | v2 vs core: Δ [95% CI], p_holm |
+| --- | --- | --- | --- | --- |
+| E1 whole judgments → precedents | **0.414** | 0.306 | 0.412 | −0.002 [−0.002, −0.002], 0.003 |
+| E1q 40-word facts → precedents | 0.059 | 0.056 | 0.057 | −0.002 [−0.007, +0.004], 1.0 |
+| E1s whole judgments → statutes | **0.220** | 0.218 | 0.212 | −0.009 [−0.015, −0.002], 0.11 |
+| E2 colliding section numbers | 0.885 | **0.936** | 0.921 | +0.036 [+0.001, +0.072], 0.62 |
+| E4 Hindi / Hinglish / English needs | 0.461 | 0.460 | **0.536** | **+0.075 [+0.030, +0.122], 0.04** |
+| E6 jurisdiction (graded) | **0.630** | 0.554 | 0.554 | −0.075 [−0.094, −0.058], 0.003 |
+| E7 penal, before / after 1 July 2024 | 0.880 | 0.877 | **0.915** | +0.035 [+0.007, +0.061], 0.18 |
+| E9 procedure and evidence | 0.859 | 0.859 | **0.903** | **+0.044 [+0.016, +0.072], 0.04** |
+
+- **Where v2 helps:** questions about the law (E4, E7, E9): routing, the family search and above
+  all the verifier. Without the verifier E7 falls to 0.873 and E9 to 0.845.
+- **Where it does not:** whole judgments as queries (E1) are routed to `case_text`, which keeps
+  core's ranking: v2 recovers agent v1's 0.11 MAP loss but adds nothing (1.1 searches per query).
+  On E6, both agents trade MAP for the top of the list (P@1 0.80 → 0.90, binding share@5 0.93 →
+  1.00): their fused sub-queries put binding judgments first.
+- **Family search is mixed again:** without it E7 rises to 0.932 and E9 to 0.938, but E2 falls to
+  0.886 and E4 to 0.526. It stays on; a per-kind switch is future work.
+- **A bug this run found.** IL-PCSR titles its IPC sections "Section 463 of The Indian Penal Code,
+  1860", with no heading, so the verifier's heading match scored zero, the citation-vote gate
+  never closed, and the most cited sections (302, 307, 376, 34) were promoted: E7 0.810, E9 0.826
+  in the first run. The agent now reads the heading from the statute text ("Forgery. Whoever
+  ..."). The table is the run after that fix, which was made after seeing these sets.
+
+### E18 — answers on the real corpus
+
+| | statute@1 | right punishment | given the statute | corrections / answer |
+| --- | --- | --- | --- | --- |
+| core + RAG v1 | 0.912 | 0.062 | 0.064 | — |
+| core + RAG v2 | 0.912 | **0.854** | 0.936 | 0.011 |
+| agent v2 + RAG v2 | **0.927** | **0.861** | 0.929 | 0.011 |
+
+273 BNS punishment questions (E14's design). Error injection (E15's design) with real
+precedents in the answers: v2 catches a changed term in 89% of answers, a changed fine in 100%, a
+flipped negation in 83%, an old-code section in 100%, a wrong section number in 100%, another
+statute's punishment in 89%; v1's checks catch 30%, 46%, 30%, 100%, 34% and 36%. False alarms on
+clean answers: v2 0.0, v1 0.84.
+
+Two fixes came from this run: (1) on IL-PCSR's larger vocabulary, wording overlap between a
+one-line computed punishment and a long statute fell below the support threshold and the
+corrector deleted correct sentences (right punishment 0.31 before the fix): a stated punishment
+is now checked structurally against the statute's parsed punishment, numbers still one by one;
+(2) case titles with "Mohd.", "Pd." etc. were split into two sentences.
+
+On the 20 hand-written questions (`data/queries/rag_questions.jsonl`): RAG v2 answers carry no
+old-code section for the incident date (v1: 0.05 per answer); both abstain on only 1 of the 4
+unanswerable questions, and v2 also on one answerable one. The answers are in
+`results/tables/ilpcsr_layers_rag_answers.jsonl`.
+
+### E19 — written facts → charged sections (real case data)
+
+E7, E9 and E14 are phrased like section headings. E19 uses a court's own statement of the facts:
+995 bail orders of IndianBailJudgments-1200 (Deshmukh et al. 2025, CC-BY-4.0) with their
+charged IPC sections, the first 60 words of the facts as the question, scored code-blind (the
+IPC section or its BNS counterpart).
+
+| System | R@5 | R@10 | MAP | hit@1 |
+| --- | --- | --- | --- | --- |
+| core | 0.067 | 0.092 | 0.047 | 0.062 |
+| agent v1 | 0.081 | 0.109 | 0.057 | 0.071 |
+| **agent v2** | **0.120** | **0.138** | **0.100** | **0.170** |
+| v2 + ToC navigation | 0.118 | 0.138 | 0.099 | 0.170 |
+
+Agent v2 doubles core's MAP and nearly triples hit@1 on questions nobody wrote for this system.
+The absolute numbers are low: bail facts talk about arrest, custody and bail, so core search
+drifts to procedure and evidence sections; v2's family routing is what pulls it back to penal law.
+
+### E20 — LLM temporal misgrounding (harness ready, not yet run)
+
+`scripts/19_eval_misgrounding.py` asks one LLM the E7 / E9 / E2 questions under five conditions
+(closed-book; naive RAG with a generic prompt; RAG v1 with our date-aware prompt; RAG v2;
+the structured answer without an LLM) and scores the first section each answer names:
+right provision of the code in force, **misgrounded** (the code not in force, or a colliding
+number), no section. It works with any OpenAI-compatible server (`--generator local`: vLLM,
+Ollama, llama.cpp), OpenAI or Claude. It has not been run: this environment has no GPU, no API
+key, and its network policy blocks the Hugging Face file host the model weights come from.
+This is the experiment the paper needs most (see §9).
+
+### E21 — judicial treatment: overruled precedents (`rank/treatment.py`)
+
+The drift layer catches precedent made stale by a statute; a court can do it too. The extractor
+reads treatment from the judgments' own sentences ("Sita Ram Goel v. The Municipal Board, [1959]
+SCR 1148, overruled."), attaches it to the case it governs (rules against "in view of", "this
+Court overruled", negation) and links the case name to a corpus judgment by party names.
+
+- From the precedent pool and training queries only: 116 judgments with a treatment, 133 positive
+  mentions, **5 judgments flagged overruled**: Golak Nath, State of Bombay v. United Motors,
+  Northern India Caterers, Air India Statutory Corporation, and F.N. Balsara (in part). All five
+  were overruled; precision 5/5 by our check against the legal record, to be confirmed by the
+  annotation round (`annotation/treatment.tsv`). Recall is low: most overrulings are not named in
+  a sentence our patterns parse, or the overruled case is not in the pool.
+- In ranking (E1): flagged judgments appear in the top 10 of 0.6% of test queries; demoting them
+  leaves MAP unchanged (0.4137) and empties that 0.6%. A safety signal, not a ranking gain.
+- An earlier version without the attachment rules flagged 10, half of them wrongly ("Devadasan is
+  no longer good law in view of N. M. Thomas" was attached to Thomas).
+
+### STAIR-style navigation (`agent/toc.py`): a negative result
+
+Inspired by STAIR (Kumar et al., IBM, arXiv 2609.03874), which retrieves through a corpus's table
+of contents, the agent can read the codes as a ToC (code → chapter → BNS Gazette sub-heading →
+section heading, from India Code and bns-study-platform) and favour the sections of the chapters
+whose ToC entry best matches the question. Without STAIR's trained generative retriever it does
+not help:
+
+| | E2 expected@1 | E7 both@1 | E9 both@1 | E19 MAP |
+| --- | --- | --- | --- | --- |
+| agent v2 | **0.857** | 0.890 | **0.877** | **0.100** |
+| v2 + ToC (all questions) | 0.762 | **0.895** | 0.854 | 0.099 |
+
+Chapter names are too coarse to choose between neighbouring sections, and on section-number
+questions they mislead. Navigation is now limited to questions that name no section (decided
+after E2), and stays off by default (`agent.toc_weight: 0`).
+
+### E22 — KV-cache reuse in legal RAG (`eval/kv_reuse.py`)
+
+Every RAG v2 answer pre-fills an LLM with retrieved chunks. If the KV cache computed for a chunk
+is kept, the next question that retrieves it skips that work. A trace of 2,082 questions (E7, E9,
+E2, E14, E19, the hand-written set; shuffled) on the full corpus, 10,036 chunk retrievals:
+
+- **63% of prompt tokens repeat an earlier question's chunk** (an unbounded cache's hit rate):
+  78% of statute-chunk tokens and 49% of precedent-chunk tokens. The 10% most frequent chunks
+  take 37% of all retrievals.
+- The working set is large: 3,755 distinct chunks, about 0.65M distinct tokens (1.76M retrieved),
+  or ~80 GiB of Mistral-7B KV (128 KiB per token). Token hit rate of a cache of a given KV size:
+
+| KV memory | tokens | LRU | LFU | statute-pinned (LFU statutes + LRU precedents) |
+| --- | --- | --- | --- | --- |
+| 0.5 GiB | 4,096 | 1.1% | 4.4% | 2.4% |
+| 1 GiB | 8,192 | 2.5% | 7.9% | 4.7% |
+| 2 GiB | 16,384 | 4.8% | 12.6% | 8.6% |
+| 4 GiB | 32,768 | 9.7% | **19.4%** | 14.6% |
+
+**Frequency beats recency by about 2x on legal RAG traffic**, the pattern PACT-KV (Rai,
+`gauravrai1704/tier-aware-kv-cache`) reports for RAG workloads, where recency-based baselines
+collapse; our naive statute pinning sits in between. The reuse is real but spread over a large
+working set, which is the case for tiering (GPU VRAM for the hot chunks, CPU DRAM for the long
+tail) rather than for a bigger single cache. Assumptions: chunk KV reusable at any position
+(CacheBlend-style); real serving on a GPU is future work.
+
+### BNS-era High Court judgments and E10
+
+`scripts/11_hc_judgments.py` reads the eCourts Indian High Court Judgments open dataset
+(CC-BY-4.0, public S3 bucket; reachable from this environment). 1,701 criminal judgments of five
+High Courts, 2023–2025 (12–30 per court and month).
+
+**The transition is slow (`results/tables/citation_shift.csv`).** No judgment in the sample cites
+the BNS before October 2024; from 2025 on, only 10–29% per month cite the BNS while 25–35% still
+cite the IPC. Courts will keep citing both codes for years (most pending cases concern pre-July
+2024 incidents), which is why a retrieval system has to bridge them.
+
+**E10** (39 questions such as "cases under section 503 IPC"; gold: 348 BNS-era judgments citing
+the BNS counterpart, BNS 351), on the corpus with these judgments added:
+
+| System | MAP | MRR | P@10 |
+| --- | --- | --- | --- |
+| baseline BM25 | 0.004 | 0.014 | 0.005 |
+| core (version-aware) | 0.151 | 0.255 | 0.121 |
+| agent v2 | 0.155 | 0.259 | 0.128 |
+
+Plain BM25 cannot connect "section 503 IPC" to a judgment that cites BNS 351; the shared offence
+ids do (+0.146 MAP, 32 wins / 2 losses, p < 0.001). Agent v2 adds nothing significant here.
+
+**E13 again, with BNS-era judgments in the pool** (`drift_retrieval_hc.csv`): the same pattern as
+on IL-PCSR alone. Identical sections are untouched; stale precedents are rare in the top 10
+(at most 1.5%); the drift penalty costs citation-MAP on substantively changed sections (IPC:
+0.321 → 0.224). The penalty is a safety signal for the few stale cases, not a ranking gain.
+
+## 8. Limitations
+
+- **No LLM has been evaluated yet** (E20 is a harness): no GPU, no API key, and the model weights'
+  host blocked in this environment. The misgrounding rates of real models are the main missing
+  result.
+- **Fixes after seeing results.** The statute-heading fix and the structural punishment support
+  were found by looking at E17/E18, and the ToC gate at E2; all are declared where they appear.
+  A fresh held-out set (e.g. IL-TUR's ILSI, or new BNS-era questions) would remove the doubt.
+- **Treatment recall is low** (5 overruled judgments found), and its precision is our check, not a
+  lawyer's.
 - **Source text.** India Code's consolidated text is current but machine-extracted: one BNSS
   and one BSA section are filed under the wrong number (flagged), and footnote and State-amendment
   cleanup is rule-based.
@@ -466,8 +665,15 @@ false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`
 - **Citation relevance ≠ legal applicability.** IL-PCSR's gold cannot reward drift-aware ranking;
   E13 therefore reports stale@10 next to MAP.
 
-## 8. Future work
+## 9. Future work
 
+- E20 on a GPU: Qwen2.5-7B / Llama-3.1-8B served with vLLM on an RTX 4500 Ada
+  (`scripts/19_eval_misgrounding.py --generator local`), then the same through PACT-KV with the
+  E22 trace, to measure real prefill savings.
+- The gated datasets (`scripts/00_fetch_data.py --only open-india-law | il-tur | nyayaanumana |
+  legalseg`, with HF_TOKEN): IL-TUR's ILSI as a held-out E19, open-india-law for BNS-era
+  judgments at scale, and more treatment sentences.
+- The annotation round (`annotation/`, `scripts/22_annotation_kit.py`).
 - Learn the carry-over weights from graded pairs; give the mental-state reading a learned weight;
   let inserted qualifiers (time limits, new conditions) lower the carry-over.
 - Procedure and evidence (Section 5): check the procedure crosswalk against open-laws' curated
@@ -478,7 +684,7 @@ false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`
   LLM errors instead of injected ones, and a held-out set for the vote gate.
 - A user study with law students: does the "What changed" view reduce wrong-code citations?
 
-## 9. Files
+## 10. Files
 
 | File | Role |
 | --- | --- |
@@ -501,8 +707,16 @@ false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`
 | `src/kanoon_bridge/rag/structured.py`, `claim_check.py`, `correct.py` | RAG v2: structured answer, claim verification, correction |
 | `src/kanoon_bridge/eval/open_eval.py`, `layers_eval.py`, `scripts/17_eval_layers.py` | E14–E16 on the open corpus |
 | `tests/test_layers_v2.py` | unit tests; `tests/test_layers_integration.py::test_agent_v2_and_rag_v2` |
+| `src/kanoon_bridge/eval/ilpcsr_layers.py`, `scripts/18_eval_ilpcsr_layers.py` | E17–E18 on IL-PCSR |
+| `src/kanoon_bridge/eval/facts_eval.py`, `scripts/21_eval_extensions.py` | E19 facts → sections; ToC variant; E22; E10 |
+| `src/kanoon_bridge/eval/misgrounding.py`, `scripts/19_eval_misgrounding.py` | E20 LLM misgrounding harness |
+| `src/kanoon_bridge/rank/treatment.py`, `scripts/20_build_treatment.py` | E21 judicial treatment |
+| `src/kanoon_bridge/agent/toc.py` | STAIR-style ToC navigation |
+| `src/kanoon_bridge/eval/kv_reuse.py` | E22 KV reuse and cache simulation |
+| `src/kanoon_bridge/ingest/hf_datasets.py` | Hugging Face datasets (bail, open-india-law, IL-TUR, NyayaAnumana, LegalSeg) |
+| `annotation/`, `scripts/22_annotation_kit.py` | annotation sheets, guidelines, scoring |
 
-## 10. Sources
+## 11. Sources
 
 - Bare-act text:
   - BNS via bns-study-platform (PSKprem); only `number`, `title` and `bareActText` are used to
@@ -517,5 +731,9 @@ false-alarm rate (v1: 50%). Figure: `results/figures/layers_error_injection.png`
   - containment as a near-duplicate measure (Broder, SEQUENCES 1997);
   - McNemar's test for paired classifiers (Dietterich, *Neural Computation* 1998);
   - Cohen's κ (1960);
+  - STAIR (Kumar et al., IBM, arXiv 2609.03874); RAGCache (Jin et al. 2024); CacheBlend (Yao et al.,
+    EuroSys 2025); PACT-KV (Rai, github.com/gauravrai1704/tier-aware-kv-cache);
+  - IndianBailJudgments-1200 (Deshmukh et al. 2025, CC-BY-4.0); eCourts Indian High Court Judgments
+    (CC-BY-4.0); IL-TUR (Paul et al., ACL 2024); temporal misgrounding (FiscalQA Pro, arXiv 2608.09393);
   - query routing by question type (Adaptive-RAG, Jeong et al., NAACL 2024); corrective
     retrieval-augmented generation (CRAG, Yan et al. 2024); citation evaluation (ALCE, Gao et al., EMNLP 2023).

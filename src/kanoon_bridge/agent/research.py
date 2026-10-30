@@ -264,7 +264,9 @@ class ResearchAgentV2(ResearchAgent):
                 fused_stat[d] = fused_stat.get(d, 0.0) + w / (acfg.rrf_k + r)
             out.trace.append(("citation votes", "statutes the top precedents apply, in the code in force: "
                               + ", ".join(self._ref(d).upper() for d in ranked[:5])))
-        if acfg.get("toc_weight", 0) > 0 and rt.kind != "case_text":
+        # ToC navigation only for questions that name no section: on E2's section lookups, word
+        # matching of chapters misled it (expected@1 0.857 -> 0.762 ungated; set after E2)
+        if acfg.get("toc_weight", 0) > 0 and rt.kind == "fact_question":
             fused_stat = self._toc_navigate(query, aq, rt, fused_stat, out)
         statutes = to_scored(top_k(fused_stat, max(k, 20)), DocType.STATUTE)
         statutes, notes = self._verifier().rerank(statutes, query, aq, self._family(rt), self.engine, self._title,

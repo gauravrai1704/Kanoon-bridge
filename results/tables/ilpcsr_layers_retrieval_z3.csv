@@ -1,0 +1,9 @@
+set,system,P@1,nDCG@10,MAP,MRR,n_queries,searches_per_q
+e7_temporal,agent v2,0.89,0.9332,0.9145,0.9278,200.0,3.41
+e7_temporal,v2 - verification,0.82,0.9006,0.8728,0.8801,200.0,3.42
+e7_temporal,v2 - family search,0.91,0.9483,0.9318,0.9468,200.0,3.42
+e7_temporal,v2 - issue rounds,0.89,0.9332,0.9145,0.9278,200.0,3.17
+e9_procedure_temporal,agent v2,0.8772,0.9102,0.9029,0.9032,342.0,3.49
+e9_procedure_temporal,v2 - verification,0.7778,0.8668,0.845,0.845,342.0,3.51
+e9_procedure_temporal,v2 - family search,0.9152,0.9456,0.9375,0.9375,342.0,3.54
+e9_procedure_temporal,v2 - issue rounds,0.8772,0.9102,0.9029,0.9032,342.0,3.32

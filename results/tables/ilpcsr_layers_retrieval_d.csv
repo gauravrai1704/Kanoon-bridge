@@ -1,0 +1,31 @@
+set,system,P@1,nDCG@10,MAP,MRR,n_queries,wrong_hit@10,searches_per_q,binding_share@5
+e2_collision,core,0.8214,0.9119,0.8848,0.8848,252.0,0.0,1.0,
+e2_collision,agent v1,0.8889,0.9524,0.9363,0.9363,252.0,0.0,4.01,
+e2_collision,agent v2,0.8095,0.9204,0.893,0.893,252.0,0.0,4.43,
+e2_collision,v2 - verification,0.8135,0.9219,0.895,0.895,252.0,0.0,4.43,
+e2_collision,v2 - family search,0.746,0.8907,0.8535,0.8535,252.0,0.0,4.43,
+e2_collision,v2 - issue rounds,0.8095,0.9204,0.893,0.893,252.0,0.0,4.3,
+e4_multilingual,core,0.38,0.508,0.461,0.4864,150.0,,1.0,
+e4_multilingual,agent v1,0.38,0.5095,0.4599,0.4843,150.0,,3.75,
+e4_multilingual,agent v2,0.4533,0.5884,0.536,0.567,150.0,,5.31,
+e4_multilingual,v2 - verification,0.4533,0.5849,0.532,0.5626,150.0,,5.3,
+e4_multilingual,v2 - family search,0.46,0.5771,0.5257,0.5592,150.0,,5.31,
+e4_multilingual,v2 - issue rounds,0.4533,0.5884,0.536,0.567,150.0,,4.75,
+e6_jurisdiction,core,0.8,0.6568,0.6295,0.9,40.0,,1.0,0.925
+e6_jurisdiction,agent v1,0.9,0.7023,0.5537,0.95,40.0,,3.27,1.0
+e6_jurisdiction,agent v2,0.9,0.7027,0.5601,0.95,40.0,,3.48,1.0
+e6_jurisdiction,v2 - verification,0.9,0.7023,0.5537,0.95,40.0,,3.27,1.0
+e6_jurisdiction,v2 - family search,0.9,0.7027,0.5601,0.95,40.0,,3.48,1.0
+e6_jurisdiction,v2 - issue rounds,0.9,0.7023,0.5537,0.95,40.0,,3.27,1.0
+e7_temporal,core,0.825,0.9079,0.8799,0.8887,200.0,,1.0,
+e7_temporal,agent v1,0.82,0.9061,0.8773,0.8862,200.0,,2.17,
+e7_temporal,agent v2,0.725,0.8545,0.8101,0.8201,200.0,,3.44,
+e7_temporal,v2 - verification,0.685,0.8368,0.7868,0.7955,200.0,,3.46,
+e7_temporal,v2 - family search,0.73,0.855,0.81,0.8185,200.0,,3.44,
+e7_temporal,v2 - issue rounds,0.725,0.8545,0.8101,0.8201,200.0,,3.17,
+e9_procedure_temporal,core,0.7865,0.8866,0.8587,0.8589,342.0,,1.0,
+e9_procedure_temporal,agent v1,0.7865,0.8867,0.8587,0.8589,342.0,,2.33,
+e9_procedure_temporal,agent v2,0.7427,0.8525,0.8256,0.8256,342.0,,3.5,
+e9_procedure_temporal,v2 - verification,0.6871,0.8272,0.7918,0.7918,342.0,,3.51,
+e9_procedure_temporal,v2 - family search,0.7398,0.8662,0.8314,0.8314,342.0,,3.54,
+e9_procedure_temporal,v2 - issue rounds,0.7427,0.8525,0.8256,0.8256,342.0,,3.32,

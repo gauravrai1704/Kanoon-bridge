@@ -25,7 +25,7 @@ pip install -e ".[dev]"
 mkdir -p data/raw/ilpcsr && cp /path/to/raw/ilpcsr/*.parquet data/raw/ilpcsr/
 make build          # corpus + indexes + citation graph + LTR model, about 6 minutes
 make web            # http://localhost:8000
-make test           # 192 tests
+make test           # 198 tests
 ```
 
 The BNS sections (`data/raw/bns-study-platform`) and the government crosswalk PDF are
@@ -100,6 +100,34 @@ make layers-eval    # E14-E16
 
 E15 injects the error types the verifier was built for (an upper bound), and E7/E9/E14 use
 heading-style questions. Details, ablations and caveats: [docs/PROJECT.md §6](docs/PROJECT.md).
+
+## New: results on the full corpus, real questions and the research extensions
+
+```bash
+make build && make ilpcsr-layers                 # E17-E18 on IL-PCSR (parallel recipe in scripts/18)
+python scripts/00_fetch_data.py --only bail      # IndianBailJudgments-1200 (CC-BY-4.0)
+python scripts/21_eval_extensions.py all         # E19 facts -> sections, ToC variant, E22 KV reuse
+python scripts/11_hc_judgments.py fetch --years 2024 2025 && python scripts/11_hc_judgments.py ingest
+python scripts/21_eval_extensions.py e10 --tag hc   # after make data index graph
+python scripts/20_build_treatment.py --eval      # E21 overruled precedents
+python scripts/19_eval_misgrounding.py --generator local   # E20, with an LLM server on your GPU
+python scripts/22_annotation_kit.py make         # sheets for a law student (annotation/)
+```
+
+| Result | Number |
+| --- | --- |
+| E9 procedure questions, MAP: core → agent v2 (IL-PCSR, Holm p 0.04) | 0.859 → **0.903** |
+| E4 Hindi / Hinglish needs, MAP: core → agent v2 (Holm p 0.04) | 0.461 → **0.536** |
+| E19 written facts of 995 bail orders → charged sections, MAP: core → agent v2 | 0.047 → **0.100** |
+| E18 right punishment on IL-PCSR: RAG v1 → RAG v2 | 0.06 → **0.86** |
+| E10 IPC-numbered questions → BNS-era High Court judgments, MAP: BM25 → core | 0.004 → **0.151** |
+| High Court criminal judgments citing the BNS, 2025 (eCourts, 1,701 judgments) | only 10–29% a month |
+| E21 judgments flagged overruled (all five correct on our check) | 5 |
+| E22 prompt tokens that repeat across 2,082 legal RAG questions | 63% |
+| STAIR-style ToC navigation (no training) | no gain: a negative result |
+
+Not yet measured: LLM misgrounding (E20 needs a GPU or an API key), and human labels (the
+annotation kit is ready). Details and caveats: [docs/PROJECT.md §7](docs/PROJECT.md).
 
 ## Results (IL-PCSR test split and our test sets)
 

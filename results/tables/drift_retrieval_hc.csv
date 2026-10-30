@@ -1,0 +1,14 @@
+family,drift_class,questions,map_off,stale10_off,map_on,stale10_on,moved10
+crpc,cosmetic,2,0.6633,0.0,0.6633,0.0,0.0
+crpc,identical,69,0.7285,0.0,0.7285,0.0,0.0
+crpc,substantive,92,0.7037,0.0152,0.6767,0.0087,0.0196
+crpc,unverified,1,0.2667,0.0,0.2667,0.0,0.0
+iea,cosmetic,9,0.5652,0.0,0.5652,0.0,0.0
+iea,identical,27,0.6254,0.0,0.6254,0.0,0.0
+iea,restructured,2,0.4125,0.0,0.4125,0.0,0.0
+iea,substantive,11,0.643,0.0,0.6268,0.0,0.0
+ipc,cosmetic,22,0.4257,0.0,0.4109,0.0,0.0
+ipc,identical,58,0.4634,0.0,0.4634,0.0,0.0
+ipc,punishment,39,0.4718,0.0051,0.4419,0.0026,0.0179
+ipc,restructured,24,0.3891,0.0042,0.372,0.0,0.0167
+ipc,substantive,22,0.3206,0.0,0.2237,0.0,0.0864

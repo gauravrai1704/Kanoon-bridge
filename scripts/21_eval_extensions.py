@@ -6,6 +6,7 @@ Needs a built corpus (make build for IL-PCSR, or make open) and data/raw/bail (s
     python scripts/21_eval_extensions.py toc     # agent v2 with and without ToC navigation on E2/E7/E9/E14
     python scripts/21_eval_extensions.py kv      # E22: chunk reuse and cache hit rates
     python scripts/21_eval_extensions.py all --tag ilpcsr
+    python scripts/21_eval_extensions.py e10 --tag hc   # after scripts/11 fetch + ingest and a rebuild
 
     results/tables/facts_<tag>.csv, toc_<tag>.csv, kv_reuse_<tag>.csv, kv_cache_<tag>.csv
 """
@@ -110,9 +111,35 @@ def kv(engine, tag, limit):
     write(rows, f"kv_cache_{tag}")
 
 
+def e10(engine, tag, limit):
+    """E10 on a corpus with the BNS-era High Court judgments (scripts/11 ingest, then make data
+    index graph): IPC-numbered questions, gold = post-2024 judgments citing the BNS counterpart."""
+    from kanoon_bridge.config import load_config
+    from kanoon_bridge.eval import significance as sig
+    from kanoon_bridge.eval.run_eval import evaluate_set, load_test_set, read_run
+
+    ev = load_config("eval.yaml")
+    ts = load_test_set("e10_bns_era", ev=ev, limit=limit)
+    out_dir = project_path(ev.outputs.runs) / "layers"
+    systems = {"baseline BM25": (SearchOptions.baseline(), None), "core": (SearchOptions.full(), None),
+               "agent v2": (SearchOptions.full(), v2(engine))}
+    rows, per = [], {}
+    for name, (opt, agent) in systems.items():
+        tagname = name.replace(" ", "_")
+        scores = evaluate_set(engine, ts, opt, tagname, ev, out_dir, agent=agent)
+        rows.append({"set": "e10_bns_era", "system": name, **{k: round(v, 4) for k, v in scores.items()}})
+        per[name] = sig.per_query(read_run(out_dir / f"e10_bns_era.{tagname}.run"), ts.qrels)
+        print("E10", rows[-1])
+    for a, b in (("baseline BM25", "core"), ("core", "agent v2")):
+        c = sig.compare(per[a]["AP"], per[b]["AP"])
+        rows.append({"set": "e10_bns_era", "system": f"{a} -> {b} (AP)", **c})
+        print("E10", rows[-1])
+    write(rows, f"e10_{tag}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["facts", "toc", "kv", "all"])
+    ap.add_argument("what", choices=["facts", "toc", "kv", "e10", "all"])
     ap.add_argument("--tag", default="ilpcsr")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--words", type=int, default=60, help="E19 query length in words (0 = whole facts)")
@@ -125,6 +152,8 @@ def main() -> None:
         toc(engine, args.tag, args.limit)
     if args.what in ("kv", "all"):
         kv(engine, args.tag, args.limit)
+    if args.what == "e10":
+        e10(engine, args.tag, args.limit)
     print(f"done in {time.perf_counter() - t0:.0f}s")
 
 

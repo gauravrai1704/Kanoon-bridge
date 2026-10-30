@@ -10,7 +10,7 @@ trains a generative retriever to walk the ToC; we use the statutes' own ToC with
 2. The question (spelling-corrected) is matched to the entries of the codes it may concern
    (the routed family's code in force on the incident date, else both of that family's codes) by
    idf-weighted cosine; the top `top_c` chapters are chosen.
-3. Statutes of the chosen chapters get w / (rrf_k + chapter rank) on top of their fused score;
+3. Only for questions that name no section (router kind fact_question). Statutes of the chosen chapters get w / (rrf_k + chapter rank) on top of their fused score;
    the best-matching section of the top chapter is added if retrieval missed it.
 
 Chapters come from India Code (kanoonhq/open-laws: chapter_id, chapter_name per section) for all

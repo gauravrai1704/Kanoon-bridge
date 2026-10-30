@@ -44,6 +44,12 @@ def _show(ref: str) -> str:
 from kanoon_bridge.ingest.segment import _SUBSECTION_RE as _SUBSEC  # noqa: E402  (not at "sub-section (2)")
 
 
+def case_name(title: str) -> str:
+    """A case title safe inside one sentence: abbreviation periods dropped ("STATE OF U.P. THRU.
+    SECY. HOME DEPTT." -> "STATE OF U.P THRU SECY HOME DEPTT"), so the sentence splitter cannot cut it."""
+    return re.sub(r"\.(?=\s|$)", "", title or "").strip()
+
+
 def punishment_by_subsection(text: str, max_parts: int = 8) -> list[str]:
     """'It is punishable with ...' per sub-section that prescribes a punishment: one sentence when
     the section has one punishment, '(2) ...; (3) ...' otherwise (never a merge of different
@@ -116,7 +122,7 @@ def structured(question: str, chunks: list[Chunk], docs, code_in_force: str | No
         c = precedents[0]
         sents = [s for s in split_sentences(c.text) if len(s.split()) >= 6] or [c.text]
         best = max(sents, key=lambda s: len(qterms & set(terms(s))))
-        sentences.append(f"In {c.title or c.doc_id}, the court said: \"{best.strip().rstrip('.')}\". [{c.n}]")
+        sentences.append(f"In {case_name(c.title or c.doc_id)}, the court said: \"{best.strip().rstrip('.')}\". [{c.n}]")
     ans = parse_answer(" ".join(sentences), "structured")
     ans.notes = notes
     ans.chunks = chunks

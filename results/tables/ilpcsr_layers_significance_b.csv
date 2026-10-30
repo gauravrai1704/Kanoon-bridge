@@ -1,0 +1,5 @@
+set,a,b,metric,queries,mean_a,mean_b,diff,ci_low,ci_high,wins,losses,p,p_holm
+e1q_ilpcsr_short,core,agent v2,AP,625,0.0585,0.0567,-0.0018,-0.0074,0.0037,98,159,0.52255,1.0
+e1q_ilpcsr_short,core,agent v2,RR,625,0.0919,0.0931,0.0012,-0.0089,0.0117,86,131,0.81242,1.0
+e1q_ilpcsr_short,agent v1,agent v2,AP,625,0.0562,0.0567,0.0005,-0.0004,0.0015,57,42,0.27247,1.0
+e1q_ilpcsr_short,agent v1,agent v2,RR,625,0.0925,0.0931,0.0006,-0.0006,0.0019,48,31,0.38486,1.0

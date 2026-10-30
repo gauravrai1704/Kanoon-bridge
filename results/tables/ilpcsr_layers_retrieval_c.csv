@@ -1,0 +1,4 @@
+set,system,P@1,nDCG@10,MAP,MRR,n_queries,k_val,F1@k_val,searches_per_q
+e1s_ilpcsr_statutes,core,0.3923,0.2786,0.2202,0.449,627.0,2.0,0.1889,1.0
+e1s_ilpcsr_statutes,agent v1,0.3923,0.2786,0.2175,0.4478,627.0,2.0,0.1889,2.78
+e1s_ilpcsr_statutes,agent v2,0.3764,0.2774,0.2111,0.4412,627.0,5.0,0.1715,1.11

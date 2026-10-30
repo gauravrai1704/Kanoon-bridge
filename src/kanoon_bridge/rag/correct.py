@@ -79,7 +79,9 @@ def correct(answer, chunks: list[Chunk], code_in_force: str | None = None, norma
         if cc.verdict == "contradicted" and c is not None:
             bt = set(terms(body))
             best = max(split_sentences(c.text) or [c.text], key=lambda s: len(bt & set(terms(s))))
-            out.append(f"{(c.title or c.doc_id)} states: \"{best.strip().rstrip('.')}\". [{c.n}]")
+            from kanoon_bridge.rag.structured import case_name
+
+            out.append(f"{case_name(c.title or c.doc_id)} states: \"{best.strip().rstrip('.')}\". [{c.n}]")
             actions.append(f"replaced a contradicted sentence ({'; '.join(cc.reasons)}) by the source's own words")
         else:
             actions.append(f"removed an unsupported sentence ({'; '.join(cc.reasons)}): {body}")
