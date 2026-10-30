@@ -939,22 +939,42 @@ so procedural vocabulary pulls retrieval towards the BNSS and BSA; the agent's f
 what pulls it back. \todo{a systematic error analysis of E19 and E2 misses by category.}
 
 %% ===================================================================================== 10
-\section{Limitations}\label{sec:limits}
+\subsection{Limitations}\label{sec:limits}
+Our study has several limitations. No LLM has been evaluated yet, so the central measurement of how
+often today's models misground (E20) is still missing. Some fixes were made after seeing test
+results (statute headings read from the text for IL-PCSR's bare titles and the structural
+punishment check, after E17/E18; the table-of-contents gate, after E2; the citation-vote gate,
+after the open-corpus E16), although E10 and E19 were run after all of them and were not used to
+make them. The gold labels are coarse: drift is labelled per section, one source (S2) is our
+rule-based reading of free-text notes, carry-over is validated only indirectly, and the check of
+the overruled judgments is ours rather than a lawyer's. E7, E9 and E14 are phrased like section
+headings, which favours heading matching (E4 and E19 are not); the procedure and evidence
+crosswalks are aligned automatically and contain wrong merges; and the eCourts sample covers five
+High Courts, so the Supreme Court and other High Courts may move to the new codes at a different
+pace.
 
+\subsection{Future Work}\label{sec:future}
 \begin{itemize}
-\item \textbf{No LLM has been evaluated yet} (E20): the central LLM result is missing.
-\item \textbf{Fixes after seeing results.} The statute-heading fix and the structural punishment
-support were found by looking at E17/E18; the table-of-contents gate at E2; the citation-vote gate
-after the open-corpus E16. E19 and E10 were run after all of them.
-\item \textbf{Gold labels.} The drift gold is section-level; S2 is our rule-based reading of
-free-text notes; carry-over is validated only indirectly. The treatment check is ours, not a
-lawyer's. Human labels are being collected with the released kit.
-\item \textbf{Question style.} E7, E9 and E14 are phrased like section headings, which favours
-heading matching; E4 and E19 are not.
-\item \textbf{Crosswalks.} The procedure and evidence crosswalks are aligned automatically and contain
-wrong merges.
-\item \textbf{Coverage.} The eCourts sample covers five High Courts; the Supreme Court and other
-High Courts may transition at a different pace.
+\item \textbf{LLM misgrounding at scale.} Run E20 with open 7--8B models served by vLLM on a local
+GPU and with API models, under closed-book, naive, date-aware and verified RAG.
+\item \textbf{Tiered KV serving.} Serve the verified RAG pipeline through PACT-KV \cite{pactkv} with
+the E22 trace, pinning hot statute chunks in GPU memory, to measure real prefill savings.
+\item \textbf{Human gold.} Complete the released annotation round (drift, treatment, answers) with
+law students and report inter-annotator agreement; fit the carry-over weights to graded
+(precedent, new section) pairs.
+\item \textbf{More and newer data.} Add open-india-law's BNS-era judgments at scale, IL-TUR's ILSI as
+a held-out facts$\to$statutes set, NyayaAnumana and LegalSeg; extend the citation-shift study to the
+Supreme Court and all High Courts.
+\item \textbf{Trained structure-aware retrieval.} Train a STAIR-style generative retriever over the
+codes' table of contents, since the training-free version did not help.
+\item \textbf{Better treatment and drift.} Raise the recall of overruled-precedent detection; let
+inserted qualifiers lower carry-over; zone-aware transfer that down-weights only a precedent's
+sentencing paragraphs when only the punishment changed.
+\item \textbf{Retrieval components.} A neural re-ranker (ColBERT or SPLADE) as a baseline and
+channel; per-question-kind switching of the family search; disabling citation votes.
+\item \textbf{A user study} with law students: does the ``What changed'' view reduce wrong-code
+citations?
+\item \todo{items from the Overleaf slides}
 \end{itemize}
 
 \section*{Ethics, licences and reproducibility}
