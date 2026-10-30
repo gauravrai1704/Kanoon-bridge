@@ -5,6 +5,10 @@
     python scripts/00_fetch_data.py --only bns
     python scripts/00_fetch_data.py --only procedure    # BNSS + BSA (CrPC/IEA bridge)
     python scripts/00_fetch_data.py --only india-code   # current consolidated text of the six codes (drift/)
+    python scripts/00_fetch_data.py --only bail          # IndianBailJudgments-1200 (E19)
+    HF_TOKEN=... python scripts/00_fetch_data.py --only open-india-law --hf-only "supreme-court|delhi"
+    HF_TOKEN=... python scripts/00_fetch_data.py --only il-tur        # ILSI + IL-PCR (gated)
+    HF_TOKEN=... python scripts/00_fetch_data.py --only nyayaanumana  # / legalseg (gated)
 
 Sources
 -------
@@ -92,7 +96,10 @@ def fetch_ilpcsr(cfg) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", choices=["ilpcsr", "bns", "procedure", "india-code"])
+    ap.add_argument("--only", choices=["ilpcsr", "bns", "procedure", "india-code", "bail", "open-india-law", "il-tur",
+                                       "nyayaanumana", "legalseg"])
+    ap.add_argument("--hf-only", default=None, help="regex on the file paths of a Hugging Face dataset")
+    ap.add_argument("--max-gb", type=float, default=20.0)
     args = ap.parse_args()
     cfg = load_config()
     if args.only in (None, "bns"):
@@ -103,6 +110,20 @@ def main() -> None:
         fetch_open_laws(cfg)
     if args.only in (None, "ilpcsr"):
         fetch_ilpcsr(cfg)
+    if args.only in (None, "bail", "open-india-law", "il-tur", "nyayaanumana", "legalseg"):
+        from kanoon_bridge.config import project_path
+        from kanoon_bridge.ingest import hf_datasets
+
+        for name in ([args.only] if args.only else ["bail"]):     # gated sets only when asked for by name
+            try:
+                hf_datasets.download(name, project_path("."), args.max_gb, args.hf_only)
+            except (PermissionError, RuntimeError) as err:
+                print(f"{name}: {err}")
+                continue
+            if name == "open-india-law":
+                n = hf_datasets.open_india_law_to_jsonl(project_path("."), project_path("data/raw/hc/judgments.jsonl"))
+                print(f"open-india-law: {n} BNS-era judgments appended to data/raw/hc/judgments.jsonl "
+                      "(then: python scripts/11_hc_judgments.py shift / ingest / testset)")
 
 
 if __name__ == "__main__":
