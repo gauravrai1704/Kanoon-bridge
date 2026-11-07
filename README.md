@@ -9,8 +9,19 @@ different offence in the BNS, and which code applies depends on the date of the 
 will use both codes for years. In a sample of 1,701 High Court criminal judgments, only 10–29% a
 month cited the BNS through 2025.
 
-Kanoon-Bridge finds the right law for the date, in either code, in English, Hindi or Hinglish, and
-answers questions about it with every claim checked against its source.
+Ordinary legal search and AI assistants therefore often return the wrong law. Kanoon-Bridge is a
+three-layer system that fixes this:
+
+1. **Version-aware retrieval** links old and new sections, picks the code in force by the incident
+   date, and handles English, Hindi and Hinglish queries.
+2. **A research agent** checks the statutes it returns: code family, code in force, heading.
+3. **A verified answer layer** computes punishments directly from the statute text and checks
+   every claim against its source.
+
+It runs with local LLMs through Ollama, or with no LLM at all. On the IL-PCSR benchmark (EMNLP
+2025) and real High Court and bail-order data, it doubles retrieval accuracy on real case facts
+(MAP 0.047 → 0.100) and gives the correct punishment 86% of the time, against 6% for a simple
+extractive baseline.
 
 > Research prototype, not legal advice.
 
