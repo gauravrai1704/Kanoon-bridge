@@ -328,6 +328,13 @@ body.has-results .options { margin-top: 2px; }
 .badge.binding { color: var(--bind); border: 1px solid var(--bind); }
 .badge.persuasive { color: var(--persuade); border: 1px solid var(--persuade); }
 .badge .ic { width: 14px; height: 14px; }
+.badge.era-new { color: var(--bind); background: color-mix(in srgb, var(--bind) 10%, transparent); }
+.badge.era-old { color: var(--ink-3); border: 1px dashed var(--ink-3); }
+.badge.overruled { color: #fff; background: var(--tape); cursor: help; }
+.note.info .tape { background: var(--ink-3); }
+.memo { margin-top: 10px; font-size: .88rem; }
+.memo summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
+.memo pre { white-space: pre-wrap; background: var(--paper-2, rgba(0,0,0,.04)); padding: 10px 12px; border-radius: 6px; margin: 8px 0 0; font-size: .82rem; }
 .case-snippet { margin: 0 0 6px; color: var(--ink-2); max-width: 78ch; }
 .why { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .86rem; color: var(--ink-3); }
 .why li::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--brass); margin-right: 6px; vertical-align: middle; opacity: .75; }

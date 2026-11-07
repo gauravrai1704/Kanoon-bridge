@@ -29,7 +29,7 @@
     get(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
     set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode: keep going */ } },
   };
-  const settings = Object.assign({ advocate: "meera", theme: null, state: "", answer: true, agent: false }, store.get("kb-settings", {}));
+  const settings = Object.assign({ advocate: "meera", theme: null, state: "", answer: true, agent: false, era: "", generator: "" }, store.get("kb-settings", {}));
   let history = store.get("kb-history", []);
   let current = null;           // last response
   let currentReq = null;        // last request body
@@ -59,6 +59,7 @@
     $("#state").value = settings.state || "";
     $("#opt-answer").checked = !!settings.answer;
     $("#opt-agent").checked = !!settings.agent;
+    $("#era").value = settings.era || "";
     $("#date").value = new Date().toISOString().slice(0, 10);
 
     $("#examples").innerHTML = EXAMPLES.map((e, i) => `<button type="button" class="example" data-i="${i}">${esc(e.q)}</button>`).join("");
@@ -77,6 +78,8 @@
     $("#state").addEventListener("change", () => { settings.state = $("#state").value; saveSettings(); });
     $("#opt-answer").addEventListener("change", () => { settings.answer = $("#opt-answer").checked; saveSettings(); });
     $("#opt-agent").addEventListener("change", () => { settings.agent = $("#opt-agent").checked; saveSettings(); });
+    $("#era").addEventListener("change", () => { settings.era = $("#era").value; saveSettings(); });
+    $("#generator").addEventListener("change", () => { settings.generator = $("#generator").value; saveSettings(); });
     $("#theme-toggle").addEventListener("click", () => {
       settings.theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark"; saveSettings(); applyTheme();
     });
@@ -111,8 +114,12 @@
     try {
       const h = await (await fetch("api/health")).json();
       const f = h.features;
+      const gens = h.generators || [{ id: "extractive", label: "Computed from the statute (no LLM)" }];
+      $("#generator").innerHTML = `<option value="">Default</option>` + gens.map((g) => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join("");
+      if (gens.some((g) => g.id === settings.generator)) $("#generator").value = settings.generator;
+      const llm = gens.find((g) => g.id !== "extractive");
       $("#status-line").textContent = `${h.statutes.toLocaleString()} statutes and ${h.precedents.toLocaleString()} judgments indexed. `
-        + `${f.claude ? "Answers by Claude." : "Answers quoted from sources (add an API key for Claude)."}`;
+        + (llm ? `Answers can be written by: ${gens.map((g) => g.label).join(", ")}.` : "Answers are computed from the statutes (start Ollama for a local LLM).");
     } catch {
       $("#status-line").textContent = "The search server is not running. Start it with: make web";
     }
@@ -135,7 +142,8 @@
     if (!q) { $("#q").focus(); return; }
     const body = {
       q, state: $("#state").value, date: $("#date").value,
-      answer: $("#opt-answer").checked, agent: $("#opt-agent").checked, k: 10, ...extra,
+      answer: $("#opt-answer").checked, agent: $("#opt-agent").checked, k: 10,
+      era: $("#era").value, generator: $("#generator").value, ...extra,
     };
     if (!extra.feedback) marked = new Set();
     run(body);
@@ -195,13 +203,14 @@
       <p class="history-group">${name}</p>
       ${items.map(([h, i]) => `<button type="button" class="history-item" data-i="${i}" ${h.active ? 'aria-current="true"' : ""}>
           <span class="h-q">${esc(h.q)}</span>
-          <span class="h-meta">${esc([h.state ? pretty(h.state) : null, h.date || null, h.agent ? "agent" : null].filter(Boolean).join(", ") || "no state or date")}</span>
+          <span class="h-meta">${esc([h.state ? pretty(h.state) : null, h.date || null, h.era ? (h.era === "new" ? "BNS-era cases" : "IPC-era cases") : null, h.agent ? "agent" : null].filter(Boolean).join(", ") || "no state or date")}</span>
         </button>`).join("")}`).join("");
     list.onclick = (ev) => {
       const b = ev.target.closest(".history-item"); if (!b) return;
       const h = history[+b.dataset.i];
       $("#q").value = h.q; $("#state").value = h.state || ""; $("#date").value = h.date || "";
       $("#opt-answer").checked = !!h.answer; $("#opt-agent").checked = !!h.agent;
+      $("#era").value = h.era || "";
       submit();
     };
   }
@@ -235,6 +244,7 @@
     if (u.boolean) parts.push(`<span class="chip">Boolean <strong>${esc(u.boolean)}</strong></span>`);
     Object.entries(u.wildcards || {}).forEach(([p, t]) => parts.push(`<span class="chip">${esc(p)} matched <strong>${t.length} terms</strong></span>`));
     if (d.state) parts.push(`<span class="chip">Binding courts for <strong>${esc(pretty(d.state))}</strong></span>`);
+    if (u.era) parts.push(`<span class="chip">Judgments decided under the <strong>${u.era === "new" ? "new codes (BNS)" : "old codes (IPC)"}</strong>${u.era_detected ? " (from your wording)" : ""}</span>`);
     if (d.feedback) parts.push(`<span class="chip">Refined with your feedback <strong>+${d.feedback.added.length} terms</strong></span>`);
     $("#understood").innerHTML = parts.join("");
     const dym = $("#dym");
@@ -272,8 +282,16 @@
       mood = "talking";
       body = `<p>${a.sentences.map((s) => `<span class="sent">${esc(s.text)}</span>${s.cite ? `<button type="button" class="cite" data-n="${s.cite}" aria-label="Source ${s.cite}">${s.cite}</button>` : ""}`).join(" ")}</p>`;
       body += `<div class="sources">${a.sources.map((s) => `<span><b>${s.n}</b>${esc(s.title)}</span>`).join("")}</div>`;
-      if (a.flags.length) body += `<div class="notes">${a.flags.map((f) => note(f)).join("")}</div>`;
-      foot = `<span>Written by ${a.generator === "claude" ? "Claude" : "quoting the sources directly"}; ${Math.round((a.supported || 0) * 100)}% of sentences are backed by the source they cite.</span>`;
+      const extra = [...(a.notes || []).map((n) => infoNote(n)), ...a.flags.map((f) => note(f)),
+                     ...(a.corrections || []).map((c) => `<div class="note"><span class="tape">Corrected</span><span>${esc(c)}</span></div>`)];
+      if (extra.length) body += `<div class="notes">${extra.join("")}</div>`;
+      const by = { structured: "Computed from the statute text (no LLM)", extractive: "Quoted from the sources",
+                   ollama: "Written by a local model (Ollama)", local: "Written by a local model", openai: "Written by OpenAI",
+                   claude: "Written by Claude" }[a.generator] || `Written by ${a.generator}`;
+      const check = a.claims && a.claims.length
+        ? `${a.verified} of ${a.claims.length} sentences checked against their source (numbers, sections, code in force, quotations)`
+        : `${Math.round((a.supported || 0) * 100)}% of sentences are backed by the source they cite`;
+      foot = `<span>${by}; ${check}.</span>`;
     } else {
       const lines = brief(d);
       mood = a && a.abstained ? "unsure" : "happy";
@@ -281,6 +299,9 @@
       if (a && a.error) body += `<p>${esc(a.error)}</p>`;
       body += lines.length ? `<p>${lines.map(esc).join(" ")}</p>` : `<p>Nothing in the indexed law matched. Try a section number, fewer words, or a different date.</p>`;
       if (!a) foot = `<span>Turn on “Advocate's answer” for a written, cited answer.</span>`;
+    }
+    if (d.agent && d.agent.memo_text) {
+      body += `<details class="memo"><summary>Research memo from the agent</summary><pre>${esc(d.agent.memo_text)}</pre></details>`;
     }
     foot += `<button type="button" class="ghost" id="adv-hood"><span class="ic" data-icon="gears"></span>How this was found</button>`;
     $("#advocate-panel").innerHTML = `
@@ -304,6 +325,11 @@
     if (mood === "talking") setTimeout(() => { const svg = $(".advocate", $("#advocate-panel")); if (svg) svg.classList.replace("mood-talking", "mood-happy"); }, 2400);
   }
 
+  function infoNote(text) {
+    const label = /old codes/.test(text) ? "Old-code judgment" : /corresponds to/.test(text) ? "Counterpart" : /what changed/.test(text) ? "What changed" : "Note";
+    return `<div class="note info"><span class="tape">${label}</span><span>${esc(text.replace(/^what changed:\s*/, ""))}</span></div>`;
+  }
+
   function note(flag) {
     const bare = flag.match(/^bare number:\s*(\S+)\s*->\s*(\w+):(\S+)\s+([\d.]+)/);
     if (bare) {
@@ -323,7 +349,8 @@
           <span>${esc(p.court || "Court not recorded")}${p.year ? `, ${p.year}` : ""}</span>
           ${p.status === "binding" ? `<span class="badge binding"><span class="ic" data-icon="scales"></span>${d.state ? "Binds " + esc(pretty(d.state)) : "Binding"}</span>` : ""}
           ${p.status === "persuasive" ? `<span class="badge persuasive">Persuasive only</span>` : ""}
-          ${p.code && p.code !== "?" ? `<span>decided under ${esc(p.code.toUpperCase())}</span>` : ""}
+          ${p.era === "new" ? `<span class="badge era-new">New-code judgment</span>` : p.era === "old" ? `<span class="badge era-old">Old-code judgment</span>` : ""}
+          ${p.treatment ? `<span class="badge overruled" title="${esc(p.treatment.detail)}">${p.treatment.status === "overruled" ? "Overruled" : "Doubted"}</span>` : ""}
         </div>
         ${p.snippet ? `<p class="case-snippet">${p.snippet}</p>` : ""}
         ${p.why.length ? `<ul class="why">${p.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}

@@ -67,6 +67,18 @@
           <label class="opt-field">Incident date
             <input type="date" id="date">
           </label>
+          <label class="opt-field">Judgments
+            <select id="era" title="Decided under the new codes (BNS/BNSS/BSA) or the old ones (IPC/CrPC/Evidence Act)">
+              <option value="">Any era</option>
+              <option value="new">Under the new codes (BNS)</option>
+              <option value="old">Under the old codes (IPC)</option>
+            </select>
+          </label>
+          <label class="opt-field">Answer by
+            <select id="generator" title="Who writes the answer; every answer is checked against its sources">
+              <option value="">Default</option>
+            </select>
+          </label>
           <label class="switch"><input type="checkbox" id="opt-answer" checked><span class="track"></span>Advocate's answer</label>
           <label class="switch"><input type="checkbox" id="opt-agent"><span class="track"></span>Research agent (deeper, slower)</label>
         </div>

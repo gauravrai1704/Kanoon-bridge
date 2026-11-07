@@ -74,6 +74,10 @@ python app/cli.py "punishment for cheating" --date 2025-01-03 --agent --answer -
   The model's answer is verified and corrected like any other.
 - **Agent (layer 2):** `agent.planner: hybrid` (rules plus LLM sub-queries) with
   `agent.llm_generator: ollama`.
+- **Web app (`make web`):** "Answer by" lists the computed answer and, when they answer, Ollama and
+  any API model; "Judgments" restricts results to the new or old codes. Answers show their notes,
+  the claims checked and every correction; overruled judgments are badged; with the research agent
+  on, its memo is under the answer.
 - **Settings:** `OLLAMA_BASE_URL` (default `http://localhost:11434/v1`) and `KB_LLM_MODEL` (default
   `llama3.2:3b`) in `.env`. For vLLM or llama.cpp use `--generator local` with `KB_LLM_BASE_URL`.
 - **LLM misgrounding benchmark (E20):** `bash scripts/run_e20_ollama.sh 100 llama3.2:3b llama3.1:8b`

@@ -9,7 +9,9 @@ evaluator (team rule 4), so the UI shows exactly what the report measures.
 
 Endpoints (JSON):
     GET  /api/health                         index sizes, which layers and models are available
-    POST /api/search   {q, state, date, agent, answer, generator, baseline, feedback: [ids]}
+    POST /api/search   {q, state, date, era, agent, answer, generator, baseline, feedback: [ids]}
+                       era: "new" | "old" | "" (judgments decided under the new / old codes, query/era.py)
+                       generator: extractive (computed answer, no LLM) | ollama | local | openai | claude
                        -> query understanding, statutes, precedents (snippets, reasons),
                           answer (layer 3), agent plan (layer 2), and a step-by-step pipeline
     GET  /api/similar?id=P01&k=6             similar cases
@@ -38,6 +40,44 @@ from urllib.parse import parse_qs, urlparse
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 _MARK_OPEN, _MARK_CLOSE = "\x01", "\x02"
+
+
+# --------------------------------------------------------------------------- helpers
+
+
+def _era_of(meta) -> str | None:
+    from kanoon_bridge.query.era import of_judgment
+
+    return of_judgment(meta.statutes_cited) if meta is not None else None
+
+
+def available_generators() -> list[dict]:
+    """Answer generators this server can use now: the computed answer always; Ollama / a local
+    OpenAI-compatible server when one answers; API models when a key is set."""
+    import os
+
+    from kanoon_bridge.rag.generate import load_env
+
+    load_env()
+    out = [{"id": "extractive", "label": "Computed from the statute (no LLM)"}]
+
+    def reachable(base: str) -> bool:
+        try:
+            import requests
+
+            return requests.get(base.rstrip("/") + "/models", timeout=0.6).ok
+        except Exception:                                      # noqa: BLE001 - absent server or package
+            return False
+
+    if reachable(os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")):
+        out.append({"id": "ollama", "label": f"Local model via Ollama ({os.environ.get('KB_LLM_MODEL', 'llama3.2:3b')})"})
+    if os.environ.get("KB_LLM_BASE_URL") and reachable(os.environ["KB_LLM_BASE_URL"]):
+        out.append({"id": "local", "label": "Local OpenAI-compatible server"})
+    if os.environ.get("OPENAI_API_KEY"):
+        out.append({"id": "openai", "label": "OpenAI"})
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        out.append({"id": "claude", "label": "Claude"})
+    return out
 
 
 # --------------------------------------------------------------------------- the backend
@@ -69,9 +109,9 @@ class Backend:
     @property
     def agent(self):
         if self._agent is None:
-            from kanoon_bridge.agent.research import ResearchAgent
+            from kanoon_bridge.agent.research import make_agent
 
-            self._agent = ResearchAgent.load(self.engine, docs=self.docs)
+            self._agent = make_agent(self.engine, docs=self.docs)      # agent.version (v2: routed, verified)
         return self._agent
 
     @property
@@ -100,7 +140,9 @@ class Backend:
             "layers": {"core": True, "agent": True, "answer": True},
             "features": {"dense": e.dense is not None, "ltr": e.ltr is not None, "authority": e.authority is not None,
                          "spelling": getattr(e.analyzer, "speller", None) is not None,
-                         "claude": has_api_key(), "near_duplicates": bool(e.near_dups)},
+                         "claude": has_api_key(), "near_duplicates": bool(e.near_dups),
+                         "treatment": getattr(e, "treatment", None) is not None, "drift": getattr(e, "drift", None) is not None},
+            "generators": available_generators(),
             "load_ms": round(self.load_ms),
         }
 
@@ -113,6 +155,8 @@ class Backend:
             return {"error": "Type a question or a section to search."}
         state = (body.get("state") or "").strip().lower() or None
         date = (body.get("date") or "").strip() or None
+        era = (body.get("era") or "").strip().lower()
+        filters = {"era": era} if era in ("new", "old") else {}
         opt = SearchOptions.baseline() if body.get("baseline") else SearchOptions.interactive()
         opt.top_k = int(body.get("k") or 10)
         timings: dict[str, float] = {}
@@ -124,7 +168,8 @@ class Backend:
             if marked and self.docs is not None:
                 from kanoon_bridge.rank.feedback import rocchio_options
 
-                first = self.engine.search(Query(q, state=state, incident_date=date), copy.deepcopy(opt))
+                first = self.engine.search(Query(q, state=state, incident_date=date, filters=dict(filters)),
+                                           copy.deepcopy(opt))
                 shown = [h.doc_id for h in first.precedents]
                 fb = rocchio_options(self.engine, first.query, self.docs, marked,
                                      [d for d in shown[:5] if d not in marked])
@@ -132,7 +177,7 @@ class Backend:
                     setattr(opt, key, value)
                 fb_terms = fb
 
-            query = Query(q, state=state, incident_date=date)
+            query = Query(q, state=state, incident_date=date, filters=dict(filters))
             if body.get("agent"):
                 res = self.agent.run(query, opt)
                 aq = res.analyzed
@@ -187,6 +232,8 @@ class Backend:
             "boolean": show(aq.boolean) if aq.boolean is not None else None,
             "filters": {k: v for k, v in aq.query.filters.items() if k not in ("date_from", "date_to")},
             "lexicon": trace.get("lexicon"),
+            "era": aq.query.filters.get("era"),
+            "era_detected": bool(trace.get("era")),
             "collision": [v for k, v in aq.trace if k == "collision"],
         }
 
@@ -224,17 +271,39 @@ class Backend:
             "why": present.explain(h, aq, self.engine),
             "components": {k: round(v, 4) for k, v in (h.components or {}).items()},
             "found_by": agent_res.found_by(h.doc_id) if agent_res is not None else [],
+            "era": _era_of(meta),
+            "treatment": self._treatment(h.doc_id),
         }
+
+    def _treatment(self, doc_id: str) -> dict | None:
+        tr = getattr(self.engine, "treatment", None)
+        t = tr.table.get(doc_id) if tr is not None else None
+        if t is None or t.status == "good":
+            return None
+        metas = self.engine.facets.metas
+        titles = {e[0]: getattr(metas.get(e[0]), "title", "") or self._title(e[0]) for e in t.strong + t.weak}
+        return {"status": t.status, "detail": t.explain(titles)}
+
+    def _title(self, doc_id: str) -> str:
+        from kanoon_bridge import present
+
+        return present.title_of(self.docs, doc_id) if self.docs is not None else doc_id
 
     def _answer_json(self, ans) -> dict:
         from kanoon_bridge import present
         from kanoon_bridge.rag._util import strip_citations
 
         sources = [{"n": c.n, "id": c.doc_id, "title": present.title_of(self.docs, c.doc_id) if self.docs is not None else (c.title or c.doc_id), "zone": c.zone} for c in ans.chunks]
+        claims = getattr(ans, "claims", None) or []
         return {"text": ans.text, "abstained": ans.abstained, "generator": ans.generator,
                 "sentences": [{"text": strip_citations(s), "cite": n} for s, n in ans.sentences],
                 "sources": sources, "flags": ans.flags,
-                "supported": round(ans.supported_rate, 3) if ans.sentences else None}
+                "supported": round(ans.supported_rate, 3) if ans.sentences else None,
+                "notes": list(getattr(ans, "notes", None) or []),
+                "corrections": list(getattr(ans, "corrections", None) or []),
+                "claims": [{"sentence": c.sentence, "verdict": c.verdict, "reasons": list(c.reasons)} for c in claims],
+                "verified": sum(c.verdict == "supported" for c in claims) if claims else None,
+                "version": getattr(self.rag, "version", None) or self.rag.cfg.rag.get("version", 1)}
 
     def _agent_json(self, res) -> dict:
         plans = []
@@ -243,7 +312,13 @@ class Backend:
                            "target": sq.target,
                            "hits": next((len(sr.ranking(sr.subquery.target)) for sr in res.subresults
                                          if sr.subquery is sq), 0)} for sq in p.subqueries])
+        steps = [{"step": k, "detail": v} for k, v in res.trace
+                 if k in ("route", "family", "verify", "toc", "citation votes", "issues", "coverage")]
+        memo = getattr(res, "memo", None)
         return {"rounds": plans, "searches": res.n_searches, "fusion": self.agent.fusion,
+                "version": 2 if memo is not None else 1, "steps": steps,
+                "memo": memo.to_dict() if memo is not None else None,
+                "memo_text": memo.render(self._title) if memo is not None else None,
                 "notes": [v for k, v in res.trace if k.endswith("reflect") or k.endswith("note")]}
 
     def _pipeline(self, aq, res, out, timings, body) -> list[dict]:
@@ -306,6 +381,13 @@ class Backend:
                                                  else "no model trained (run make ltr)" if e.ltr is None else "not used")
         add("Find cases", "Learned re-ranking", ltr_note, on=e.ltr is not None and not body.get("baseline"))
         add("Find cases", "Collapse near-duplicates", (get("duplicates") or ["no duplicates in these results"])[0])
+        if u.get("era"):
+            add("Find cases", "Keep one era of judgments",
+                f"only judgments decided under the {'new (BNS/BNSS/BSA)' if u['era'] == 'new' else 'old (IPC/CrPC/Evidence Act)'} codes"
+                + (", read from the question's wording" if u.get("era_detected") else ""))
+        treat = (get("treatment") or [None])[0]
+        if treat:
+            add("Find cases", "Check judicial treatment", treat)
         if out["agent"]:
             for r_i, rnd in enumerate(out["agent"]["rounds"], start=1):
                 for sq in rnd:
@@ -313,6 +395,11 @@ class Backend:
                         f"“{sq['text'][:120]}”, {sq['hits']} hits. {sq['why']}")
             add("Research agent", f"Fuse {out['agent']['searches']} result lists ({out['agent']['fusion'].upper()})",
                 " | ".join(out["agent"]["notes"]))
+            names = {"route": "Route the question", "family": "Choose the code family", "toc": "Navigate the table of contents",
+                     "citation votes": "Statutes the top judgments apply", "verify": "Verify the statutes",
+                     "issues": "Split the law into issues", "coverage": "Check evidence for each issue"}
+            for st in out["agent"]["steps"]:
+                add("Research agent", names.get(st["step"], st["step"].capitalize()), st["detail"])
         if out["answer"] is not None:
             a = out["answer"]
             if a.get("error"):
@@ -322,9 +409,18 @@ class Backend:
             else:
                 add("Answer", "Decide whether to answer", "retrieval is strong enough to ground an answer")
                 add("Answer", "Pick sources", f"{len(a['sources'])} numbered extracts: top statutes, then the reasoning of top cases")
-                add("Answer", "Write the answer", f"{len(a['sentences'])} sentences by {a['generator']}", timings.get("answer"))
-                add("Answer", "Check every sentence", f"{round((a['supported'] or 0) * 100)}% supported by the source it cites; "
-                    + (f"{len(a['flags'])} flag(s)" if a["flags"] else "no flags"))
+                how = {"structured": "computed from the statute text (no LLM)", "extractive": "quoted from the sources"}
+                add("Answer", "Write the answer", f"{len(a['sentences'])} sentences, {how.get(a['generator'], 'by ' + a['generator'])}",
+                    timings.get("answer"))
+                if a.get("claims"):
+                    add("Answer", "Verify every claim",
+                        f"{a['verified']} of {len(a['claims'])} sentences match their source: numbers, sections, "
+                        "code in force, negation, quotations")
+                else:
+                    add("Answer", "Check every sentence", f"{round((a['supported'] or 0) * 100)}% supported by the source it cites; "
+                        + (f"{len(a['flags'])} flag(s)" if a["flags"] else "no flags"))
+                if a.get("corrections"):
+                    add("Answer", "Correct what failed", "; ".join(a["corrections"])[:300])
         return stages
 
 
