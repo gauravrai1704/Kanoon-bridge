@@ -118,7 +118,8 @@ def _answer_v2(query, analyzed, chunks, docs, rcfg, idf, normalizer, drift, gene
         return " ".join(p.text for p in d.paragraphs if p.para_id >= 0) if d is not None else ""
 
     if gen in ("extractive", "structured"):
-        ans = structured(query.text, chunks, docs, cif, drift, normalizer, statute_text)
+        ans = structured(query.text, chunks, docs, cif, drift, normalizer, statute_text,
+                         prefer_new_era=rcfg.get("prefer_new_era", True))
     else:
         ans = generate.generate(query.text, chunks, incident_date=str(query.incident_date or "unknown"),
                                 state=query.state or "unknown", generator=gen, model=rcfg.model or None)

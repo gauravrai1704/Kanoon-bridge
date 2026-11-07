@@ -243,3 +243,38 @@ def test_kv_reuse_simulation():
     assert r["statute_reuse"] == round(200 / 300, 4) and r["precedent_reuse"] == round(100 / 300, 4)
     assert simulate(trace, 10**6, "lru") == 300 / 600                   # infinite cache = reuse
     assert simulate(trace, 100, "lru") < simulate(trace, 100, "pinned")  # a pinned statute survives
+
+
+def test_era_detection_and_judgment_era():
+    from kanoon_bridge.query.era import detect, of_judgment
+    from kanoon_bridge.query.parser import parse
+
+    assert detect("cases under section 503 IPC decided under the BNS") == "new"
+    assert detect("post-BNS cases on cheating") == "new" and detect("IPC-era cases on sedition") == "old"
+    # naming a section, or describing a charge, is not an era request
+    assert detect("cases under section 103 BNS") is None and detect("cases decided under BNS section 103") is None
+    assert detect("The CBI registered the case under IPC and Prevention of Corruption Act") is None
+    assert of_judgment(["ipc:302", "bns:103"]) == "new" and of_judgment(["crpc:438"]) == "old"
+    assert of_judgment(["constitution:21"]) is None
+    assert parse("bail cases era:new").filters == {"era": "new"}
+
+
+def test_structured_answer_era_awareness():
+    from datetime import date as _d
+
+    from kanoon_bridge.rag.structured import structured
+
+    old = Document("P-old", DocType.PRECEDENT, title="State v. Old", statutes_cited=["ipc:302"],
+                   decision_date=_d(2019, 1, 1), paragraphs=[Paragraph("x", "ratio", 0)])
+    new = Document("P-new", DocType.PRECEDENT, title="State v. New", statutes_cited=["bns:103"],
+                   decision_date=_d(2025, 2, 1), paragraphs=[Paragraph("x", "ratio", 0)])
+    docs = {**DOCS, "P-old": old, "P-new": new}
+    sent = "We hold that the offence of murder is made out on these facts beyond reasonable doubt."
+    chunks = [CHUNKS[0], Chunk(2, "P-old", "ratio", sent, 1, 1.0, "State v. Old"),
+              Chunk(3, "P-new", "ratio", sent, 2, 0.9, "State v. New")]
+    ans = structured("What is the punishment for murder?", chunks, docs, "bns")
+    assert "State v New" in ans.text and "[3]" in ans.text             # the new-code judgment is quoted
+    ans = structured("What is the punishment for murder?", chunks, docs, "bns", prefer_new_era=False)
+    assert "State v Old" in ans.text
+    assert any("decided under the old codes" in n for n in ans.notes)   # and the user is told
+    assert not any("old codes" in n for n in structured("q", chunks, docs, "ipc", prefer_new_era=False).notes)

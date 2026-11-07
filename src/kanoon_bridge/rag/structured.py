@@ -71,8 +71,44 @@ def punishment_by_subsection(text: str, max_parts: int = 8) -> list[str]:
                                              for n, d in found[:max_parts])]
 
 
+def _era(chunk: Chunk, docs) -> tuple[str | None, object]:
+    from kanoon_bridge.query.era import of_judgment
+
+    doc = docs.get(chunk.doc_id) if docs is not None and hasattr(docs, "get") else None
+    return (of_judgment(getattr(doc, "statutes_cited", None)) if doc is not None else None), doc
+
+
+def _pick_precedent(precedents: list[Chunk], docs, code_in_force: str | None, prefer_new_era: bool, window: int = 3):
+    """The precedent to quote: for a question under the new codes, the best-ranked judgment decided
+    under them if one is in the top `window`; else the top precedent."""
+    if prefer_new_era and code_in_force == "bns":
+        for c in precedents[:window]:
+            if _era(c, docs)[0] == "new":
+                return c
+    return precedents[0]
+
+
+def era_note(chunk: Chunk, docs, code_in_force: str | None, drift, law_ref: str) -> str:
+    """For a question under the new codes, a note when the quoted judgment was decided under the
+    old ones: which old section it applied and whether the new code changed it (drift/transfer.py)."""
+    if code_in_force != "bns":
+        return ""
+    era, doc = _era(chunk, docs)
+    if era != "old":
+        return ""
+    year = f" ({doc.decision_date.year})" if getattr(doc, "decision_date", None) else ""
+    head = f"the quoted judgment{year} was decided under the old codes"
+    if drift is None or not law_ref:
+        return head
+    t = drift.transfer(doc.statutes_cited, [law_ref])
+    if not t.old_ref:
+        return head
+    warn = "; check that its reasoning still applies" if t.score < 0.85 else ""
+    return f"{head}: it {t.reason()}{warn}"
+
+
 def structured(question: str, chunks: list[Chunk], docs, code_in_force: str | None = None,
-               drift=None, normalizer=None, statute_text=None) -> Answer:
+               drift=None, normalizer=None, statute_text=None, prefer_new_era: bool = True) -> Answer:
     """Build the structured answer (see module docstring). `code_in_force`: "ipc" | "bns" | None;
     `drift`: drift.transfer.TransferScorer; `statute_text(doc_id)`: full statute text for the
     punishment parser (default: the chunk text)."""
@@ -119,10 +155,13 @@ def structured(question: str, chunks: list[Chunk], docs, code_in_force: str | No
                 notes.append("what changed: " + "; ".join(rep.reasons[:3]))
     if precedents:
         qterms = set(terms(question))
-        c = precedents[0]
+        c = _pick_precedent(precedents, docs, code_in_force, prefer_new_era)
         sents = [s for s in split_sentences(c.text) if len(s.split()) >= 6] or [c.text]
         best = max(sents, key=lambda s: len(qterms & set(terms(s))))
         sentences.append(f"In {case_name(c.title or c.doc_id)}, the court said: \"{best.strip().rstrip('.')}\". [{c.n}]")
+        note = era_note(c, docs, code_in_force, drift, _ref_of(law, docs) if law is not None else "")
+        if note:
+            notes.append(note)
     ans = parse_answer(" ".join(sentences), "structured")
     ans.notes = notes
     ans.chunks = chunks

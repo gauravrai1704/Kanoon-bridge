@@ -494,9 +494,27 @@ class SearchEngine:
         filter: it changes authority instead, so persuasive precedent still shows up."""
         f = query.filters
         if not any(k in f for k in ("court", "date_from", "date_to")):
-            return self.facets.filter(doc_type=DocType.PRECEDENT.value)
-        return self.facets.filter(doc_type=DocType.PRECEDENT.value, court=f.get("court"),
-                                  date_from=f.get("date_from"), date_to=f.get("date_to"))
+            out = self.facets.filter(doc_type=DocType.PRECEDENT.value)
+        else:
+            out = self.facets.filter(doc_type=DocType.PRECEDENT.value, court=f.get("court"),
+                                     date_from=f.get("date_from"), date_to=f.get("date_to"))
+        if f.get("era") in ("new", "old"):                 # era:new / era:old (query/era.py)
+            out = out & self._era_set(f["era"])
+        return out
+
+    def _era_set(self, era: str) -> set[str]:
+        """Precedents decided under the new codes (they cite a BNS/BNSS/BSA section) or the old ones."""
+        cache = getattr(self, "_era_cache", None)
+        if cache is None:
+            from kanoon_bridge.query.era import of_judgment
+
+            cache = {"new": set(), "old": set()}
+            for d, m in self.facets.metas.items():
+                e = of_judgment(m.statutes_cited) if m.doc_type != DocType.STATUTE.value else None
+                if e:
+                    cache[e].add(d)
+            self._era_cache = cache
+        return cache[era]
 
 
 _engine: SearchEngine | None = None

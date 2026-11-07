@@ -1,0 +1,7 @@
+a,b,metric,queries,mean_a,mean_b,diff,ci_low,ci_high,wins,losses,p,p_holm
+as is / core,era filter / core,AP,39,0.1506,0.5946,0.444,0.379,0.5117,39,0,0.0001,0.0006
+as is / BM25 + crosswalk,era filter / core,AP,39,0.3554,0.5946,0.2392,0.1386,0.3397,28,7,0.0002,0.0006
+era filter / BM25 + crosswalk,era filter / core,AP,39,0.4404,0.5946,0.1543,0.0562,0.2564,23,11,0.0059,0.0118
+as is / core,era in words / core,AP,39,0.1506,0.4544,0.3038,0.2473,0.365,39,0,0.0001,0.0006
+as is / BM25 + crosswalk,era in words / core,AP,39,0.3554,0.4544,0.099,0.0277,0.1634,27,8,0.0104,0.0118
+era in words / BM25 + crosswalk,era in words / core,AP,39,0.3213,0.4544,0.1331,0.0816,0.1838,30,7,0.0001,0.0006

@@ -108,6 +108,13 @@ class QueryAnalyzer:
                 v = query.filters[key]
                 query.filters[edge] = v + default if re.fullmatch(r"\d{4}", v) else v
         text = parsed.text_for_ranking
+        if "era" not in query.filters:
+            from kanoon_bridge.query.era import detect
+
+            era = detect(query.text)
+            if era:
+                query.filters["era"] = era
+                aq.trace.append(("era", f"the question asks for judgments decided under the {era} codes"))
         aq.trace.append(("filters", str(query.filters)))
 
         # 1b. wildcard terms ("extort*", "*bail"): expanded through the k-gram index, removed

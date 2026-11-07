@@ -32,6 +32,19 @@ from kanoon_bridge.rag.answer import RagPipeline
 from kanoon_bridge.search import SearchEngine
 
 
+def preflight(generator: str, model: str | None) -> None:
+    """One tiny call before a long run: fail in seconds if the server is down or the model missing."""
+    from kanoon_bridge.rag.generate import call_llm
+
+    try:
+        reply = call_llm(generator, "Reply with the single word OK.", model, max_tokens=5)
+    except Exception as err:                                   # noqa: BLE001 - any failure stops the run
+        hint = ("start it with `OLLAMA_CONTEXT_LENGTH=8192 ollama serve` and `ollama pull <model>`"
+                if generator == "ollama" else "check the server URL / API key in .env")
+        raise SystemExit(f"{generator} is not answering ({err}); {hint}") from None
+    print(f"{generator} answers: {reply.strip()[:40]!r}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--generator", default="ollama", help="ollama | local | openai | claude")
@@ -41,6 +54,7 @@ def main() -> None:
     ap.add_argument("--tag", default="local")
     args = ap.parse_args()
     t0 = time.perf_counter()
+    preflight(args.generator, args.model)
     engine = SearchEngine.load()
     rag = RagPipeline.load(engine)
     agent = ResearchAgentV2.load(engine, docs=rag.docs)

@@ -38,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fusion", choices=["rrf", "combsum"], help="layer 2 fusion (default: config agent.fusion)")
     ap.add_argument("--planner", choices=["rules", "llm", "hybrid"], help="layer 2 planner (default: config agent.planner)")
     ap.add_argument("--answer", action="store_true", help="layer 3: cited answer on top of the results")
+    ap.add_argument("--era", choices=["new", "old"], help="only judgments decided under the new (BNS/BNSS/BSA) or old codes")
     ap.add_argument("--generator", default=None, help="auto | ollama | local | openai | claude | extractive (default: configs rag.generator)")
     ap.add_argument("--debug", action="store_true")
     ap.add_argument("--snippets", type=int, default=5, help="show snippets + reasons for the top N precedents")
@@ -69,7 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.no_ltr:
         opt.ltr = False
     opt.top_k = args.k
-    query = Query(args.query, state=args.state, incident_date=args.date)
+    query = Query(args.query, state=args.state, incident_date=args.date,
+                  filters={"era": args.era} if args.era else {})
 
     agent = None
     if args.agent:
@@ -94,7 +96,8 @@ def main(argv: list[str] | None = None) -> int:
                                  [d for d in shown[:5] if d not in marked])
             for key, value in fb.items():
                 setattr(opt, key, value)
-            res = engine.search(Query(args.query, state=args.state, incident_date=args.date), opt)
+            res = engine.search(Query(args.query, state=args.state, incident_date=args.date,
+                                      filters={"era": args.era} if args.era else {}), opt)
             print(f"feedback: +{' +'.join(fb['extra_terms'])}" + (f"  -{' -'.join(fb['drop_terms'])}" if fb["drop_terms"] else ""))
         trace = res.query.trace
 

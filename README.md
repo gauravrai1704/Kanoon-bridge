@@ -65,7 +65,9 @@ python app/cli.py "punishment for cheating" --date 2025-01-03 --agent --answer -
   `agent.llm_generator: ollama`.
 - **Settings:** `OLLAMA_BASE_URL` (default `http://localhost:11434/v1`) and `KB_LLM_MODEL` (default
   `llama3.2:3b`) in `.env`. For vLLM or llama.cpp use `--generator local` with `KB_LLM_BASE_URL`.
-- **LLM misgrounding benchmark:** `python scripts/19_eval_misgrounding.py --generator ollama --tag llama3b`.
+- **LLM misgrounding benchmark (E20):** `bash scripts/run_e20_ollama.sh 100 llama3.2:3b llama3.1:8b`
+  (checks that Ollama answers first), then `python scripts/25_report_e20.py` prints the tables for
+  the README and the paper.
 
 ## Results
 
@@ -94,8 +96,24 @@ index beats naive crosswalk expansion by +0.23 to +0.35 MAP, and expansion alone
 IPC-worded and bare-number queries. On E7/E9 the whole gain is the date rule, which a crosswalk
 baseline with a date filter also gets. \* On E10 literal expansion wins: the core treats IPC 503 and BNS 351 as one
 offence and also returns judgments citing the old section, while E10 counts only judgments citing
-the new one. Right for "all cases on this offence", wrong for "cases under the new code"; an era
-filter is the planned fix.
+the new one. That is right for "all cases on this offence" and wrong for "cases under the new code".
+
+**Era-aware retrieval (E24).** "Cases decided under the new code" is now a separate intent
+(`query/era.py`): an `era:new` / `era:old` filter, a `--era` CLI flag, or explicit wording that is
+detected automatically ("…decided under the BNS", "post-BNS cases"; never a bare section number, so
+none of the 1,265 existing test questions triggers it). On E10 (MAP):
+
+| E10 asked … | BM25 + crosswalk | **Kanoon-Bridge** |
+| --- | --- | --- |
+| as before (no era intent) | **0.355** | 0.151 |
+| with the era filter (same filter for both) | 0.440 | **0.595** (p_holm 0.012) |
+| "…decided under the BNS" (detected) | 0.321 | **0.454** (p_holm < 0.001) |
+
+E10's gold is judgments citing the BNS section and the filter keeps judgments citing any new-code
+section, so the filter partly mirrors the gold; the fair comparison is the middle row, where both
+systems get the filter. In answers, 62% of answers to 2025 questions quote a judgment decided
+under the old codes; each is now labelled, with a warning when the drift layer finds the
+provision changed, and a new-code judgment is quoted when one is in the top three.
 
 **Standard benchmark (IL-PCSR test split, 627 judgments).** Precedents: MAP 0.414 vs 0.220 for
 BM25 and 0.409 for IL-PCSR's own BM25-trigram baseline (difference not significant); statutes:
@@ -170,7 +188,8 @@ NyayaAnumana, LegalSeg (`scripts/00_fetch_data.py --only <name>` with `HF_TOKEN`
 | `python scripts/21_eval_extensions.py all` | E19 bail facts, table-of-contents variant, E22 KV reuse |
 | `python scripts/20_build_treatment.py --eval` | E21 overruled precedents |
 | `python scripts/23_eval_fair_baselines.py` | E23 crosswalk-aware baselines |
-| `python scripts/19_eval_misgrounding.py --generator ollama` | E20 LLM misgrounding (needs a local or API LLM) |
+| `python scripts/24_eval_era.py` (`--answers`) | E24 era-aware retrieval and answers |
+| `bash scripts/run_e20_ollama.sh` + `python scripts/25_report_e20.py` | E20 LLM misgrounding (needs Ollama or an API LLM) |
 | `python scripts/22_annotation_kit.py make` / `score` | human annotation sheets and agreement |
 
 ## Repository layout
@@ -189,7 +208,7 @@ docs/                PROJECT.md (full write-up), RESEARCH.md (methods and source
 
 ## Open items
 
-- **LLM evaluation (E20)** has not been run yet; the harness is ready for Ollama.
+- **LLM evaluation (E20)** has not been run yet: `bash scripts/run_e20_ollama.sh` on a machine with Ollama.
 - **Human labels:** the annotation kit (`annotation/`) is ready for a law student.
 - **A trained dense or cross-encoder baseline** (needs a GPU and model weights).
 - **Gated datasets** (open-india-law, IL-TUR, NyayaAnumana, LegalSeg) need `HF_TOKEN`.

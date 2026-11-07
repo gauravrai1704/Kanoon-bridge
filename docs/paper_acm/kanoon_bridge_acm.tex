@@ -54,7 +54,9 @@ doubles MAP over the core (0.047$\to$0.100, $\ph<0.001$). The answer layer state
 punishment for 86\% of 273 BNS questions, where an extractive answer does for 6\%, and flags
 82--100\% of injected errors with no false alarm on clean answers. Against a fair baseline (BM25 with the same crosswalk as query expansion),
 matching offence identifiers inside the index adds 0.23--0.35 MAP on cross-version precedent search,
-while date-dependent statute questions reduce to a simple date rule. We also report negative
+while date-dependent statute questions reduce to a simple date rule. When a user asks for judgments decided
+under the new code, an era filter detected from the question's wording lifts MAP from 0.151 to
+0.454, above a crosswalk-aware baseline (0.321, $\ph<0.001$). We also report negative
 results: drift-aware down-ranking of old precedent, citation voting, and training-free
 table-of-contents navigation in the style of STAIR do not improve retrieval. We release the
 system, eight benchmarks, an LLM misgrounding harness, and an annotation kit.
@@ -371,6 +373,11 @@ model \cite{liu2009ltr} trained on IL-PCSR's dev split re-ranks the top 100.
 through a 165-row legal lexicon, unknown words are corrected against the index vocabulary
 (Damerau--Levenshtein with k-gram candidates), and wildcards expand through a k-gram index
 \cite{iir}. Tiered indexes and champion lists bound latency.
+\paragraph{Era.} Offence identifiers deliberately merge old and new sections, which is right for
+``all cases on this offence'' and wrong for ``cases decided under the new code''. The era is a
+separate intent: \texttt{era:new} keeps judgments citing a BNS/BNSS/BSA section, \texttt{era:old}
+those citing only old-code sections. It is set explicitly or detected from wording about decisions
+(``decided under the BNS'', ``post-BNS'', ``IPC-era''), never from a bare section reference.
 \paragraph{Explanations.} Each result says why it matched: the offence across codes (``IPC 302 =
 BNS 103''), binding or persuasive status for the user's State, what changed in the law, and whether
 a later judgment overruled it.
@@ -619,7 +626,7 @@ result reverses (0.355 vs 0.151, $\ph=0.001$): the core treats IPC 503 and BNS 3
 and also returns judgments citing the old section, which E10's gold, restricted to judgments
 citing the new section, counts as misses (47 vs 109 relevant results in 390 top-10 slots). The
 equivalence is right for ``all cases on this offence'' and wrong for ``cases under the new code'';
-an era filter is the fix. Several of these sets take their labels from the crosswalk itself
+the era intent below addresses it. Several of these sets take their labels from the crosswalk itself
 (Table~\ref{tab:provenance}); they measure consistency, and we rest claims of retrieval quality on
 the independently labelled sets (E1, E4, E14, E19).
 
@@ -662,6 +669,35 @@ E6 & citation-derived, graded by court ($\kappa$ $-$.16) & unreliable; no claims
 E11 & retained/changed mapping and study notes ($\kappa$ .75) & yes \\
 E14 & independent punishment summaries & yes \\
 E19 & charged sections of real bail orders & yes \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\paragraph{Era-aware retrieval (E24).} With the era as a separate intent, E10 reverses again
+(Table~\ref{tab:era}): with the explicit filter the core reaches 0.595 MAP against 0.440 for the
+crosswalk baseline given the same filter ($\ph=0.012$), and with the intent only in the wording
+(``\ldots\ decided under the BNS''), detected automatically, 0.454 against 0.321 ($\ph<0.001$).
+None of the 1,265 questions of our other sets, and none of the 995 bail facts, triggers the
+detector. E10's gold (judgments citing the BNS counterpart) partly mirrors the filter (judgments
+citing any new-code section); the comparison that holds is the one where both systems get it.
+In answers, 62\% of the answers to 2025 questions quote a judgment decided under the old codes;
+each is now labelled, with a warning when the drift layer finds the provision changed (2.5\%), and
+a new-code judgment is quoted when one ranks in the top three (0.8\%$\to$3.8\% of quotes, limited by
+how few exist yet).
+
+\begin{table}[t]
+\centering\small
+\caption{E24: era-aware retrieval on E10 (MAP).}
+\label{tab:era}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccc}
+\toprule
+E10 asked \ldots & BM25 & BM25 + xw & core \\
+\midrule
+as before (no era intent) & .004 & \textbf{.355} & .151 \\
+with \texttt{era:new} (all systems) & .069 & .440 & \textbf{.595} \\
+``\ldots\ decided under the BNS'' (detected) & .022 & .321 & \textbf{.454} \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -966,8 +1002,8 @@ under five conditions: closed-book; naive RAG (core retrieval, generic prompt); 
 prompt); RAG v2 (agent, verification, regeneration, correction); and the structured answer without
 an LLM. It scores the first section each answer names: the right provision of the code in force,
 \emph{misgrounded} (the code not in force, or a colliding number), or no section.
-\todo{Run scripts/19\_eval\_misgrounding.py with an open 7--8B model served by vLLM and one API
-model; report right@1, misgrounded@1 and any-wrong-code per set and condition in a table here.}
+\todo{Run \texttt{bash scripts/run\_e20\_ollama.sh 100 llama3.2:3b llama3.1:8b} on a machine with
+Ollama, then paste the LaTeX table printed by \texttt{scripts/25\_report\_e20.py} here.}
 
 %% ===================================================================================== 9
 \section{Discussion}\label{sec:discussion}
@@ -1017,8 +1053,8 @@ pace.
 
 \subsection{Future Work}\label{sec:future}
 \begin{itemize}
-\item \textbf{LLM misgrounding at scale.} Run E20 with open 7--8B models served by vLLM on a local
-GPU and with API models, under closed-book, naive, date-aware and verified RAG.
+\item \textbf{LLM misgrounding at scale.} Run E20 with local models through Ollama (Llama~3.2 3B,
+Llama~3.1 8B) and API models, under closed-book, naive, date-aware and verified RAG.
 \item \textbf{Tiered KV serving.} Serve the verified RAG pipeline through PACT-KV \cite{pactkv} with
 the E22 trace, pinning hot statute chunks in GPU memory, to measure real prefill savings.
 \item \textbf{Human gold.} Complete the released annotation round (drift, treatment, answers) with

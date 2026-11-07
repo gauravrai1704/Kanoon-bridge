@@ -1,0 +1,10 @@
+query form,system,P@10,nDCG@10,MAP,MRR,n_queries
+as is,BM25,0.0051,0.0048,0.0044,0.0136,39.0
+as is,BM25 + crosswalk,0.2795,0.4085,0.3554,0.4776,39.0
+as is,core,0.1205,0.1575,0.1506,0.2549,39.0
+era filter,BM25,0.0436,0.0514,0.0688,0.1391,39.0
+era filter,BM25 + crosswalk,0.3256,0.4922,0.4404,0.6425,39.0
+era filter,core,0.4462,0.6322,0.5946,0.6668,39.0
+era in words,BM25,0.0359,0.0362,0.022,0.0913,39.0
+era in words,BM25 + crosswalk,0.2615,0.375,0.3213,0.4836,39.0
+era in words,core,0.3436,0.4663,0.4544,0.543,39.0

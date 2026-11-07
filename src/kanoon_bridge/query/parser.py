@@ -20,7 +20,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
-FILTER_KEYS = ("state", "date", "code", "court", "type", "after", "before")   # after:/before: = decision-year range
+FILTER_KEYS = ("state", "date", "code", "court", "type", "after", "before", "era")   # after:/before: = decision-year range; era:new|old (query/era.py)
 _FILTER_RE = re.compile(rf"\b({'|'.join(FILTER_KEYS)}):(\S+)", re.IGNORECASE)
 
 

@@ -561,6 +561,33 @@ MAP; Holm over 21 comparisons on the IL-PCSR corpus (E10 on the corpus with the 
   offence" and wrong for "cases decided under the new code"; an era filter (decided after 1 July
   2024, or citing the new code) is the fix (future work).
 
+### E24 — era-aware retrieval and answers (`query/era.py`)
+
+E23 showed that offence equivalence is wrong for "cases decided under the new code". The era is
+now a separate intent: `era:new` (judgments citing a BNS/BNSS/BSA section) or `era:old` (citing
+only old-code sections), set by a filter, the CLI's `--era`, or explicit wording ("…decided under
+the BNS", "post-BNS", "IPC-era", "since 1 July 2024"). Naming a section is never an era request
+("cases under section 103 BNS" wants the offence, and its IPC-era precedents are the point of E3);
+none of the 1,265 questions in data/queries and none of the 995 bail facts triggers it.
+
+E10 on the corpus with the eCourts judgments, MAP (Holm over 6 comparisons):
+
+| E10 asked … | BM25 | BM25 + crosswalk | core |
+| --- | --- | --- | --- |
+| as before | 0.004 | **0.355** | 0.151 |
+| with `era:new` (all systems) | 0.069 | 0.440 | **0.595** (+0.15, p_holm 0.012) |
+| "… decided under the BNS" | 0.022 | 0.321 | **0.454** (+0.13, p_holm < 0.001) |
+
+E10's gold is judgments citing the BNS counterpart, and the filter keeps judgments citing any
+new-code section, so the filter partly mirrors how the gold was built; the comparison that holds
+is against the baseline given the same filter.
+
+**Answers.** For the 273 E14 questions (incident date 2025), 266 answers quote a judgment; 62%
+quote one decided under the old codes. Every such answer now says so in its notes, and 2.5% also
+warn that the provision changed (carry-over below 0.85). Preferring a new-code judgment in the top
+three raises their share of quotes from 0.8% to 3.8%, limited by how few BNS-era judgments exist
+yet (the transition in §7 above); the punishment answers are unchanged (0.86).
+
 ### E19 — written facts → charged sections (real case data)
 
 E7, E9 and E14 are phrased like section headings. E19 uses a court's own statement of the facts:

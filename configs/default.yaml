@@ -160,6 +160,7 @@ rag:
   version: 2                      # 1 = generate + cosine / version checks; 2 = structured answer, claim
                                   # verification and correction (rag/structured.py, claim_check.py, correct.py)
   regenerate: true                # v2 with an LLM: one regeneration with the verifier's problems listed
+  prefer_new_era: true            # new-code question: quote a judgment decided under the new codes if one is in the top 3
   max_chunks: 8
   max_chunk_chars: 1200
   support_threshold: 0.2          # tf-idf cosine below this = unsupported sentence
