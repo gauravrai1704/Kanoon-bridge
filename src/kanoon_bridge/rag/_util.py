@@ -52,7 +52,7 @@ def cosine(a: dict[str, float], b: dict[str, float]) -> float:
     return dot / (na * nb) if na and nb else 0.0
 
 
-_ABBREV_RE = re.compile(r"(?:\b(?:v|vs|no|nos|sec|secs|s|ss|art|ltd|co|dr|mr|mrs|ms|smt|sh|j|jj|cj|hon'?ble|ors|anr|etc|viz|i\.e|e\.g|cr\.?p\.?c|i\.p\.c)|\b[A-Z])\.$", re.I)
+_ABBREV_RE = re.compile(r"(?:\b(?:v|vs|no|nos|sec|secs|s|ss|art|ltd|co|dr|mr|mrs|ms|smt|sh|shri|km|kum|mohd|md|pd|pt|st|govt|corpn|pvt|bros|m/s|j|jj|cj|hon'?ble|ors|anr|etc|viz|i\.e|e\.g|cr\.?p\.?c|i\.p\.c)|\b[A-Z])\.$", re.I)
 
 
 def split_sentences(text: str) -> list[str]:

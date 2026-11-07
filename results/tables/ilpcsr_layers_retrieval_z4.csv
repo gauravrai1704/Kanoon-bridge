@@ -1,0 +1,13 @@
+set,system,P@1,nDCG@10,MAP,MRR,n_queries,wrong_hit@10,searches_per_q,binding_share@5
+e2_collision,agent v2,0.8571,0.9413,0.921,0.921,252.0,0.0,4.42,
+e2_collision,v2 - verification,0.869,0.9457,0.9269,0.9269,252.0,0.0,4.42,
+e2_collision,v2 - family search,0.8016,0.9146,0.8855,0.8855,252.0,0.0,4.42,
+e2_collision,v2 - issue rounds,0.8571,0.9413,0.921,0.921,252.0,0.0,4.3,
+e4_multilingual,agent v2,0.4533,0.5884,0.536,0.567,150.0,,5.31,
+e4_multilingual,v2 - verification,0.4533,0.5849,0.532,0.5626,150.0,,5.3,
+e4_multilingual,v2 - family search,0.46,0.5771,0.5257,0.5592,150.0,,5.31,
+e4_multilingual,v2 - issue rounds,0.4533,0.5884,0.536,0.567,150.0,,4.75,
+e6_jurisdiction,agent v2,0.9,0.7021,0.5542,0.95,40.0,,3.38,1.0
+e6_jurisdiction,v2 - verification,0.9,0.7023,0.5537,0.95,40.0,,3.27,1.0
+e6_jurisdiction,v2 - family search,0.9,0.7021,0.5542,0.95,40.0,,3.38,1.0
+e6_jurisdiction,v2 - issue rounds,0.9,0.7023,0.5537,0.95,40.0,,3.27,1.0

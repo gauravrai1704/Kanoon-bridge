@@ -1,0 +1,13 @@
+set,a,b,metric,queries,mean_a,mean_b,diff,ci_low,ci_high,wins,losses,p,p_holm
+e2_collision,core,agent v2,AP,252,0.8848,0.921,0.0362,0.0011,0.0719,41,24,0.0442,0.3094
+e2_collision,core,agent v2,RR,252,0.8848,0.921,0.0362,0.0011,0.0719,41,24,0.0442,0.3094
+e2_collision,agent v1,agent v2,AP,252,0.9363,0.921,-0.0153,-0.0437,0.0123,19,27,0.28247,0.98992
+e2_collision,agent v1,agent v2,RR,252,0.9363,0.921,-0.0153,-0.0437,0.0123,19,27,0.28247,0.98992
+e4_multilingual,core,agent v2,AP,150,0.461,0.536,0.0751,0.0295,0.122,60,26,0.0015,0.0135
+e4_multilingual,core,agent v2,RR,150,0.4864,0.567,0.0806,0.0328,0.1294,52,22,0.0012,0.0121
+e4_multilingual,agent v1,agent v2,AP,150,0.4599,0.536,0.0762,0.0305,0.1232,60,26,0.0015,0.0135
+e4_multilingual,agent v1,agent v2,RR,150,0.4843,0.567,0.0827,0.0353,0.1309,50,23,0.0011,0.0121
+e6_jurisdiction,core,agent v2,AP,40,0.6295,0.5542,-0.0753,-0.0935,-0.0581,1,39,0.0001,0.0012
+e6_jurisdiction,core,agent v2,RR,40,0.9,0.95,0.05,0.0125,0.1,4,0,0.12639,0.63195
+e6_jurisdiction,agent v1,agent v2,AP,40,0.5537,0.5542,0.0004,-0.0,0.001,3,1,0.24748,0.98992
+e6_jurisdiction,agent v1,agent v2,RR,40,0.95,0.95,0.0,0.0,0.0,0,0,1.0,1.0

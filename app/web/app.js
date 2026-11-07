@@ -379,6 +379,7 @@
         <div class="statute-title">${esc(s.title)}</div>
         ${s.text ? `<p class="statute-text">${esc(s.text)}</p>` : ""}
         ${s.version ? `<div class="statute-version">${esc(s.version.replace("<-", "replaces").replace("->", "became"))}</div>` : ""}
+        ${s.drift ? `<div class="statute-drift">${esc(s.drift)} <a href="changes.html?ref=${encodeURIComponent(s.drift_ref)}">What changed?</a></div>` : ""}
       </article>`).join("");
   }
 

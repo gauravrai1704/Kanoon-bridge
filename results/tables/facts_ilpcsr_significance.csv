@@ -1,0 +1,7 @@
+source,a,b,metric,queries,mean_a,mean_b,diff,ci_low,ci_high,wins,losses,p,p_holm
+bail,core,agent v2,MAP,995,0.0468,0.0996,0.0528,0.043,0.0628,195,49,0.0001,0.0006
+bail,core,agent v2,hit@1,995,0.0623,0.1698,0.1075,0.0854,0.1296,123,16,0.0001,0.0006
+bail,agent v1,agent v2,MAP,995,0.0571,0.0996,0.0425,0.0326,0.0525,185,76,0.0001,0.0006
+bail,agent v1,agent v2,hit@1,995,0.0714,0.1698,0.0985,0.0754,0.1216,122,24,0.0001,0.0006
+bail,agent v2,v2 + ToC navigation,MAP,995,0.0996,0.0989,-0.0007,-0.0023,0.0009,11,23,0.41026,0.82052
+bail,agent v2,v2 + ToC navigation,hit@1,995,0.1698,0.1698,0.0,-0.005,0.006,4,4,1.0,1.0

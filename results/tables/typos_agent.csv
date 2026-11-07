@@ -1,0 +1,4 @@
+condition,queries,MRR@10,Success@1,Success@10
+"agent v2, clean",300,0.914,0.8467,0.9967
+"agent v2, typos, no spelling",300,0.7513,0.6467,0.9167
+"agent v2, typos + spelling",300,0.8444,0.7633,0.96

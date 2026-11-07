@@ -127,3 +127,41 @@ def run(engine=None, docs=None, ev: Config | None = None, n_items: int | None = 
         for r in log:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     return rows
+
+
+def run_agent(engine=None, ev: Config | None = None) -> list[dict]:
+    """The same corrupted queries (typo_queries.jsonl, written by run()) through agent v2, with
+    the analyzer's spelling step on and off: does correction reach the agent's routing and
+    statute verifier? Output: results/tables/typos_agent.csv."""
+    from kanoon_bridge.agent.research import ResearchAgentV2
+    from kanoon_bridge.eval.ablation import write_table
+    from kanoon_bridge.schema import Query
+    from kanoon_bridge.search import SearchEngine, SearchOptions
+
+    ev = ev or load_config("eval.yaml")
+    engine = engine or SearchEngine.load()
+    tables = project_path(ev.outputs.tables)
+    with open(tables / "typo_queries.jsonl", encoding="utf-8") as f:
+        items = [json.loads(line) for line in f if line.strip()]
+    agent = ResearchAgentV2.load(engine)
+    an = engine.analyzer
+    saved = dict(an.steps)
+    rows = []
+    try:
+        for name, key, spelling in (("agent v2, clean", "title", True), ("agent v2, typos, no spelling", "query", False),
+                                    ("agent v2, typos + spelling", "query", True)):
+            an.steps = {**saved, "spelling": spelling}
+            rr, s1, s10 = [], [], []
+            for it in items:
+                ids = [h.doc_id for h in agent.run(Query(it[key]), SearchOptions(top_k=10)).statutes]
+                r = ids.index(it["doc"]) + 1 if it["doc"] in ids else 0
+                rr.append(1 / r if r else 0.0)
+                s1.append(float(r == 1))
+                s10.append(float(r > 0))
+            rows.append({"condition": name, "queries": len(items), "MRR@10": round(statistics.fmean(rr), 4),
+                         "Success@1": round(statistics.fmean(s1), 4), "Success@10": round(statistics.fmean(s10), 4)})
+            print("  typos", rows[-1])
+    finally:
+        an.steps = saved
+    write_table(rows, tables / "typos_agent.csv")
+    return rows

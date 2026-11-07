@@ -67,6 +67,10 @@ systems.
 | Fusion | Reciprocal rank fusion (Cormack, Clarke & Büttcher, SIGIR 2009, Waterloo); CombSUM (Fox & Shaw, TREC-2 1994) | `agent/fuse.py` |
 | Reflection + pseudo-relevance feedback round | QPP-triggered PRF (relevance models: Lavrenko & Croft, SIGIR 2001, UMass) | `agent/reflect.py` |
 | Optional LLM planner | The LLM only *proposes* sub-query text; ranking stays IR | `agent/plan.py` |
+| **v2: query routing** (case text / section lookup / fact question) and code family refined from retrieved statutes and precedent citations | Adaptive retrieval by question type (Adaptive-RAG, Jeong et al., NAACL 2024). Family refinement from evidence: **ours** | `agent/router.py` |
+| **v2: statute verifier** (family, code in force, stemmed heading specificity, general-section penalty) and gated citation votes | Re-ranking by verified constraints. **Ours** | `agent/verify.py`, `agent/research.py` |
+| v2: issue decomposition, evidence coverage, research memo | Sub-sections of the chosen statute as issues; targeted search for uncovered ones | `agent/issues.py`, `agent/memo.py` |
+| v2: structure-aware statute navigation over the codes' table of contents (chapter → Gazette sub-heading → section), for questions naming no section | Inspired by STAIR (Kumar et al., IBM, arXiv 2609.03874), without its trained generative retriever. **A negative result** (docs/PROJECT.md §7) | `agent/toc.py` |
 
 ## 5. Layer 3: grounded answers
 
@@ -75,6 +79,9 @@ systems.
 | Abstention before generation | QPP signals + idf-weighted question coverage by the retrieved sources | `rag/abstain.py`, `rag/answer.py` |
 | Citation-support check | tf-idf cosine of each sentence vs its cited chunk. Citation evaluation for LLM answers: ALCE (Gao et al., EMNLP 2023, Princeton) | `rag/citation_check.py` |
 | **Version-validity check** (wrong code for the incident date; bare colliding numbers) | Reuses the crosswalk and the collision resolver. **Ours** | `rag/version_check.py` |
+| **v2: structured answer** (punishment computed per sub-section from the statute text) | Compute, don't generate: the drift punishment parser. **Ours** | `rag/structured.py` |
+| **v2: claim verification** (quantities, sections, code in force, modal negation, verbatim quotes, against the full statute) | Fine-grained attribution checks beyond ALCE's sentence support. **Ours** | `rag/claim_check.py` |
+| v2: corrective step (regenerate once with feedback; swap to code in force, replace with source words, remove) | Corrective RAG (CRAG, Yan et al. 2024); self-refinement with feedback | `rag/correct.py`, `rag/answer.py` |
 
 ## 6. Evaluation
 
@@ -91,6 +98,26 @@ systems.
 | Typed-question proxies (E1q) | First 40 words of the facts zone of each IL-PCSR test judgment; same qrels as E1 (simulated queries, Azzopardi et al. SIGIR 2007) | `eval/run_eval.py` |
 | E8 / E9 procedure and evidence | E3 / E7 designs on CrPC↔BNSS and Evidence Act↔BSA | `scripts/07_make_test_sets.py` |
 | Citation-language shift, E10 | Monthly share of IPC vs BNS citations in post-2024 High Court criminal judgments (eCourts open data, CC-BY-4.0); BNS-era judgments asked for in IPC numbers | `scripts/11_hc_judgments.py` |
+| **E17** agent v2 on every judged IL-PCSR set | Paired randomization test, Holm over 32 comparisons | `eval/ilpcsr_layers.py` |
+| **E19** written facts → charged sections | Real case data: IndianBailJudgments-1200 (Deshmukh et al. 2025); IL-TUR ILSI (Paul et al., ACL 2024) when available; code-blind scoring through the crosswalk | `eval/facts_eval.py` |
+| **E20** LLM temporal misgrounding at a code replacement | "Temporal misgrounding" (FiscalQA Pro, arXiv 2608.09393); temporal statutory QA (arXiv 2605.23497, 2605.25920). Ours: a one-day replacement of three codes with colliding numbers | `eval/misgrounding.py` |
+| **E21** judicial treatment (overruled / doubted / followed) | Citator signals (Shepard's, KeyCite) do not exist for Indian judgments; mined from the judgments' own sentences. **Ours** | `rank/treatment.py` |
+| **E22** KV-cache reuse in legal RAG | Workload study for tiered KV caches: PACT-KV (Rai), RAGCache (Jin et al. 2024), CacheBlend (Yao et al., EuroSys 2025) | `eval/kv_reuse.py` |
+| E14–E16 agent v2 / RAG v2 | Punishment QA against an independent gold; error injection for the verifier (upper bound); ablations of each agent part | `eval/layers_eval.py`, `eval/open_eval.py` |
+
+## 7. Statutory drift (the course project extension, see docs/PROJECT.md)
+
+| Feature | Technique and source | File | Measured by |
+| --- | --- | --- | --- |
+| **Clause-level drift between a repealed code and its replacement** | Word-bigram containment (Broder, SEQUENCES 1997) per clause, asymmetric retention / novelty, cross-references renumbered through the crosswalk. **Ours** | `drift/diff.py`, `drift/provisions.py` | E11a, E11b |
+| **Punishment structure from legal English** | Rule-based parser (terms, number words, fine caps, community service) | `drift/punishment.py` | E11c, E11d |
+| Mental-state and threshold reading | Closed list of mens rea markers; quantified thresholds | `drift/elements.py` | E11b (a negative result) |
+| **Pairwise carry-over of IPC-era precedent** | Hand-set, legally motivated; per-predecessor attribution inside merged sections. **Ours** | `drift/model.py` | E11f, E12 |
+| Learned change detector | L2 logistic regression by Newton/IRLS, stratified CV | `drift/classify.py` | E11a |
+| **Drift-aware precedent transfer in ranking** | Score penalty by (1 − transfer) for BNS-era questions. **Ours** | `drift/transfer.py`, `search.py` | E13 |
+| Drift checks on generated answers | Stale-law flags beside ALCE-style citation checks | `drift/transfer.py`, `rag/answer.py` | demo |
+| Evaluation | Two independent gold sources, Cohen's κ, McNemar's exact test (Dietterich 1998), bootstrap CIs, dev/test split | `eval/drift_eval.py` | — |
+| **Drift for CrPC → BNSS and Evidence Act → BSA** | Same pipeline per code family; renumbering of references *across* codes (CrPC text citing IPC sections); absolute inserted-word counts for short qualifiers; detection of mis-filed source sections | `drift/provisions.py`, `drift/diff.py`, `drift/model.py` | E11a/e, E12 per family (docs/PROJECT.md §5) |
 
 ## What is new here
 
@@ -102,3 +129,6 @@ These are the claims to make in the report. Each is backed by an experiment abov
 4. **Typo-robust, Hinglish-robust legal search**, measured with known-item simulation and the E4 language ablation.
 5. **Legal explanations** for every result: which offence matched across codes, and whether the case binds the user.
 6. **QPP-gated legal RAG** that abstains, checks that each sentence is supported by its cited source, and flags out-of-date sections.
+7. **Statutory drift**: a measured, explained notion of *how far* each provision moved from the IPC to the BNS, used to temper precedent transfer in ranking and to check answers (docs/PROJECT.md).
+8. **Verified answers for statute questions**: the punishment is computed from the statute, every claim is checked against its source and repaired, and the agent verifies the code and family of the statutes it returns (docs/PROJECT.md §6).
+9. **Judicial treatment in Indian legal search**: overruled precedents detected from the judgments' own words and demoted with an explanation, the court-made counterpart of statutory drift (docs/PROJECT.md §7).

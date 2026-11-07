@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
+.PHONY: layers-eval ilpcsr-layers open drift drift-eval drift-retrieval build tune postings testsets significance web ltr fetch check data index graph dense eval app test all sample crosswalk compare inspect eval-quick eval-sample plots
 
 fetch:
 	$(PY) scripts/00_fetch_data.py
@@ -87,3 +87,31 @@ sample:
 	$(PY) scripts/02_build_index.py
 	$(PY) scripts/03_build_graph.py --sample
 	$(PY) scripts/06_train_ltr.py --sample --folds 2
+
+# statutory drift (drift/): how far each BNS section moved from the IPC; committed CSVs in data/crosswalk/
+drift:
+	$(PY) scripts/13_build_drift.py --mit-only
+
+# E11-E12: change detection vs two gold sources, ablations, punishment, repeal, hazard audit (needs make fetch)
+drift-eval:
+	$(PY) scripts/14_eval_drift.py
+
+# E13: drift-aware transfer inside retrieval (needs the built indexes)
+drift-retrieval:
+	$(PY) scripts/15_drift_retrieval.py
+
+# open corpus: all six codes' statutes (India Code + BNS) and the synthetic precedents, no IL-PCSR needed
+open:
+	$(PY) tests/data/make_ilpcsr_sample.py
+	$(PY) scripts/01_build_corpus.py --sample --open-statutes
+	$(PY) scripts/02_build_index.py
+	$(PY) scripts/03_build_graph.py --sample
+	$(PY) scripts/06_train_ltr.py --sample --folds 2
+
+# E14-E16: agent v2 and RAG v2 on the open corpus (run make open first)
+layers-eval:
+	$(PY) scripts/17_eval_layers.py
+
+# E17-E18: agent v2 and RAG v2 on the IL-PCSR corpus (run make build first)
+ilpcsr-layers:
+	$(PY) scripts/18_eval_ilpcsr_layers.py

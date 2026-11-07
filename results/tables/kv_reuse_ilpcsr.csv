@@ -1,0 +1,2 @@
+requests,distinct_chunks,chunk_retrievals,top10pct_share,statute_tokens,statute_reuse,precedent_tokens,precedent_reuse,all_reuse
+2082,3755,10036,0.3728,846648,0.7803,912345,0.4878,0.6286

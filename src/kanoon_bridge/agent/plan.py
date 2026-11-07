@@ -182,26 +182,28 @@ def parse_llm_queries(text: str, limit: int = 4) -> list[str]:
 
 @dataclass
 class LLMPlanner:
-    """Original query + 2-4 sub-queries proposed by Claude (validated like any user query).
-    Needs ANTHROPIC_API_KEY (see rag/generate.py). Falls back to the original only, noting why."""
+    """Original query + 2-4 sub-queries proposed by an LLM (validated like any user query). The LLM
+    is agent.llm_generator: claude | openai | local | ollama (rag/generate.py); a local Ollama model
+    needs no key. Falls back to the original only, noting why."""
 
     model: str = ""
     weight: float = 0.7
+    generator: str = "claude"
 
     def propose(self, query: Query, aq: AnalyzedQuery) -> list[str]:
-        from kanoon_bridge.rag.generate import call_claude
+        from kanoon_bridge.rag.generate import call_llm
 
         analysis = "; ".join(f"{k}: {v}" for k, v in aq.trace if k in ("language", "normalised", "offences", "code_in_force"))
         prompt = LLM_PROMPT.format(question=query.text, date=query.incident_date or "unknown",
                                    state=query.state or "unknown", analysis=analysis)
-        return parse_llm_queries(call_claude(prompt, self.model or None, max_tokens=300,
-                                             system="You write search queries. Reply with JSON only."))
+        return parse_llm_queries(call_llm(self.generator, prompt, self.model or None, max_tokens=300,
+                                          system="You write search queries. Reply with JSON only."))
 
     def add_to(self, p: Plan, query: Query, aq: AnalyzedQuery) -> None:
         try:
             for text in self.propose(query, aq):
                 p.add("llm", _variant(query, text), "proposed by the LLM planner", weight=self.weight)
-        except (RuntimeError, ImportError) as err:
+        except (RuntimeError, ImportError, OSError, ValueError) as err:
             p.notes.append(f"llm planner skipped: {err}")
 
     def plan(self, query: Query, aq: AnalyzedQuery, idf: dict[str, float] | None = None) -> Plan:
@@ -232,7 +234,7 @@ def make_planner(cfg, normalizer=None, df: Callable[[str], int] | None = None):
     kind = acfg.get("planner", "rules")
     if kind == "rules":
         return rules
-    llm = LLMPlanner(model=acfg.get("llm_model", "") or "")
+    llm = LLMPlanner(model=acfg.get("llm_model", "") or "", generator=acfg.get("llm_generator", "claude"))
     if kind == "llm":
         return llm
     if kind == "hybrid":

@@ -311,3 +311,47 @@ def test_web_backend_payload(engine, docs):
     groups = [s["group"] for s in out["pipeline"]]
     assert groups[0] == "Understand" and "Research agent" in groups and groups[-1] == "Answer"
     assert b.search({"q": ""})["error"]
+
+
+def test_drift_layer_on_the_engine(engine):
+    """The drift table (committed CSVs) loads into the engine; a BNS-era search with drift on marks
+    each IPC-era precedent with its transfer score and says so in the trace and the explanations."""
+    from kanoon_bridge import present
+    from kanoon_bridge.search import SearchOptions
+
+    if engine.drift is None:
+        pytest.skip("drift table not built")
+    opt = SearchOptions(drift=True)
+    res = engine.search(Query("BNS 103 knife stabbing", **Q), opt)
+    ipc_era = [h for h in res.precedents if h.doc_id in {"P1", "P2", "P3"}]
+    assert ipc_era and all("transfer" in h.components for h in ipc_era)
+    assert all(0 < h.components["transfer"] <= 1 for h in ipc_era)
+    plain = engine.search(Query("BNS 103 knife stabbing", **Q), SearchOptions())
+    assert {h.doc_id for h in plain.precedents} == {h.doc_id for h in res.precedents}   # same recall
+    old = engine.search(Query("IPC 302 knife stabbing", state="delhi", incident_date="2019-01-03"), opt)
+    assert not any("transfer" in h.components for h in old.precedents)                 # IPC-era question: untouched
+    reasons = present.explain(res.statutes[0], res.query, engine, target="statute")
+    assert any(r.startswith("change from the IPC") for r in reasons)
+
+
+def test_agent_v2_and_rag_v2(engine, docs):
+    """Agent v2 routes, verifies and writes a memo; RAG v2 answers from it with computed facts,
+    and every claim passes its own verification."""
+    from kanoon_bridge.agent.research import ResearchAgentV2, make_agent
+    from kanoon_bridge.rag.answer import RagPipeline
+    from kanoon_bridge.search import SearchOptions
+
+    agent = ResearchAgentV2.load(engine, docs=docs)
+    assert isinstance(make_agent(engine, docs=docs), ResearchAgentV2)
+    out = agent.run(Query("BNS 103 knife stabbing", **Q), SearchOptions(top_k=5))
+    steps = [k for k, _ in out.trace]
+    assert "route" in steps and "family" in steps and "verify" in steps
+    assert out.statutes[0].doc_id == "bns:103" and out.memo is not None
+    assert out.memo.law and out.memo.law[0].ref == "bns:103" and "death" in out.memo.law[0].punishment
+    assert "BNS 103" in out.memo.render()
+    rag = RagPipeline.load(engine, docs=docs)
+    ans = rag.answer(out, generator="extractive")
+    assert ans.generator == "structured" and "[1]" in ans.text
+    assert ans.claims and all(c.verdict == "supported" for c in ans.claims)
+    v1 = rag.answer(engine.search(Query("BNS 103 knife stabbing", **Q)), generator="extractive", version=1)
+    assert v1.generator == "extractive" and not v1.claims

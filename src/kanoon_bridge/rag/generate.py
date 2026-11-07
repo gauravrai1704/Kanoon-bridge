@@ -5,6 +5,11 @@ Two generators, same output (an Answer whose sentences each carry one [n] citati
     claude      Claude via the Anthropic API, temperature 0. Needs  pip install -e ".[rag]"  and
                 ANTHROPIC_API_KEY in .env (never in git). Model: configs/default.yaml rag.model,
                 or env KB_RAG_MODEL, default claude-haiku-4-5-20251001.
+    ollama      a local model served by Ollama (`ollama serve`, `ollama pull llama3.2:3b`), through its
+                OpenAI-compatible API: env OLLAMA_BASE_URL (default http://localhost:11434/v1) and
+                KB_LLM_MODEL (default llama3.2:3b). No key, nothing leaves the machine.
+    local       any other OpenAI-compatible server (vLLM, llama.cpp): env KB_LLM_BASE_URL, KB_LLM_MODEL.
+    openai      the OpenAI API (OPENAI_API_KEY).
     extractive  offline, no LLM: for each top chunk, the sentence with the most query-term
                 overlap, quoted with its citation. Used in tests, in the sample run, and when no
                 key is set. (Its sentences come from the chunks, so its support rate is ~1 by
@@ -58,6 +63,9 @@ class Answer:
     generator: str = ""
     chunks: list[Chunk] = field(default_factory=list)
     support: list[float] = field(default_factory=list)                     # cosine per sentence
+    notes: list[str] = field(default_factory=list)                         # system facts (crosswalk, drift), not claims
+    claims: list = field(default_factory=list)                             # rag/claim_check.ClaimCheck per sentence (v2)
+    corrections: list[str] = field(default_factory=list)                   # what rag/correct.py changed (v2)
 
     @property
     def supported_rate(self) -> float:
@@ -69,6 +77,11 @@ class Answer:
     @property
     def version_flags(self) -> list[str]:
         return [f for f in self.flags if f.startswith(("wrong code", "bare number"))]
+
+    @property
+    def drift_flags(self) -> list[str]:
+        """From drift/transfer.py: the law under a cited section or precedent changed in the BNS."""
+        return [f for f in self.flags if f.startswith(("law changed", "stale precedent"))]
 
 
 def load_env(path: str | Path | None = None) -> None:
@@ -161,6 +174,48 @@ def call_openai(
     return response.output_text
 
 
+def call_local(prompt: str, model: str | None = None, max_tokens: int = 400, system: str = SYSTEM,
+               base_url: str | None = None, default_model: str = "local") -> str:
+    """Any OpenAI-compatible chat endpoint: vLLM (`vllm serve <model>`, http://localhost:8000/v1),
+    Ollama (http://localhost:11434/v1), llama.cpp's llama-server (http://localhost:8080/v1).
+    env KB_LLM_BASE_URL (default http://localhost:8000/v1), KB_LLM_MODEL, KB_LLM_API_KEY."""
+    import requests
+
+    load_env()
+    base = (base_url or os.environ.get("KB_LLM_BASE_URL", "http://localhost:8000/v1")).rstrip("/")
+    r = requests.post(f"{base}/chat/completions", timeout=int(os.environ.get("KB_LLM_TIMEOUT", "600")),
+                      headers={"Authorization": f"Bearer {os.environ.get('KB_LLM_API_KEY', 'none')}"},
+                      json={"model": model or os.environ.get("KB_LLM_MODEL", default_model), "temperature": 0,
+                            "max_tokens": max_tokens,
+                            "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]})
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+
+
+def call_ollama(prompt: str, model: str | None = None, max_tokens: int = 400, system: str = SYSTEM) -> str:
+    """A model served by Ollama on this machine (OpenAI-compatible endpoint, no key)."""
+    load_env()
+    return call_local(prompt, model, max_tokens, system,
+                      base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+                      default_model="llama3.2:3b")
+
+
+def call_llm(gen: str, prompt: str, model: str | None = None, system: str = SYSTEM, max_tokens: int = 400) -> str:
+    """Dispatch to the generator's API: claude | openai | local | ollama."""
+    if gen == "claude":
+        return call_claude(prompt, model, max_tokens=max_tokens, system=system)
+    if gen == "openai":
+        return call_openai(prompt, model, max_tokens=max_tokens, system=system)
+    if gen == "local":
+        return call_local(prompt, model, max_tokens=max_tokens, system=system)
+    if gen == "ollama":
+        return call_ollama(prompt, model, max_tokens=max_tokens, system=system)
+    raise ValueError(f"{gen!r} is not an LLM generator (claude | openai | local | ollama)")
+
+
+LLM_GENERATORS = ("claude", "openai", "local", "ollama")
+
+
 def extractive(question: str, chunks: list[Chunk], max_sentences: int = 4) -> Answer:
     """No-LLM answer: the top-ranked statute's best sentence, then the sentences with most
     query-term overlap across the other chunks (at most one per chunk, ties broken by chunk
@@ -209,15 +264,10 @@ def generate(
     gen = pick_generator(generator)
 
     if closed_book:
-        text = call_claude(
-            CLOSED_BOOK_PROMPT.format(
-                question=question,
-                incident_date=incident_date,
-                state=state,
-            ),
-            model,
-        )
-        ans = parse_answer(text, "claude-closed-book")
+        llm = gen if gen in LLM_GENERATORS else "claude"
+        text = call_llm(llm, CLOSED_BOOK_PROMPT.format(question=question, incident_date=incident_date, state=state),
+                        model)
+        ans = parse_answer(text, f"{llm}-closed-book")
 
     elif gen == "extractive":
         ans = extractive(question, chunks)
@@ -241,6 +291,13 @@ def generate(
             "claude",
         )
 
+    elif gen in ("local", "ollama"):
+        if not chunks:
+            return Answer(text="No sources were retrieved for this question.", generator=gen)
+        prompt = PROMPT.format(question=question, incident_date=incident_date, state=state,
+                               sources=format_sources(chunks))
+        ans = parse_answer(call_llm(gen, prompt, model), gen)
+
     elif gen == "openai":
         if not chunks:
             return Answer(
@@ -263,7 +320,7 @@ def generate(
     else:
         raise ValueError(
             f"unknown generator {gen!r} "
-            "(auto | openai | claude | extractive)"
+            "(auto | ollama | local | openai | claude | extractive)"
         )
 
     ans.chunks = chunks

@@ -1,0 +1,4 @@
+set,a,b,metric,queries,mean_a,mean_b,diff,ci_low,ci_high,wins,losses,p,p_holm
+e10_bns_era,BM25,BM25 + crosswalk,AP,39,0.0044,0.3554,0.351,0.2279,0.4764,23,5,0.0001,0.0003
+e10_bns_era,BM25 + crosswalk,BM25 + crosswalk + date,AP,39,0.3554,0.3554,0.0,0.0,0.0,0,0,1.0,1.0
+e10_bns_era,BM25 + crosswalk + date,core,AP,39,0.3554,0.1506,-0.2049,-0.3026,-0.1135,11,22,0.0004,0.0008

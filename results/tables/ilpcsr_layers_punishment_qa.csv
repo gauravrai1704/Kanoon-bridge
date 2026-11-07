@@ -1,0 +1,4 @@
+system,n,statute@1,punishment_ok,punishment_ok|statute,flags/answer,corrections/answer,n_statute_ok
+core + RAG v1,273,0.9121,0.0623,0.0643,1.1172,0.0,249
+core + RAG v2,273,0.9121,0.8535,0.9357,0.0073,0.011,249
+agent v2 + RAG v2,273,0.9267,0.8608,0.9289,0.011,0.011,253

@@ -1,0 +1,9 @@
+set,system,expected@1,wrong_hit@10,searches,n,code@1,offence@1,both@1,statute@1,punishment_ok
+e2_collision,agent v2,0.8571,0.0,4.4246,252,,,,,
+e2_collision,v2 + ToC navigation,0.7619,0.0,4.4246,252,,,,,
+e7_temporal,agent v2,,,3.41,200,0.965,0.89,0.89,,
+e7_temporal,v2 + ToC navigation,,,3.41,200,0.965,0.895,0.895,,
+e9_procedure_temporal,agent v2,,,3.4912,342,0.924,0.8772,0.8772,,
+e9_procedure_temporal,v2 + ToC navigation,,,3.4883,342,0.9211,0.8538,0.8538,,
+e14_punishment,agent v2,,,,273,,,,0.9267,0.8608
+e14_punishment,v2 + ToC navigation,,,,273,,,,0.9267,0.8608

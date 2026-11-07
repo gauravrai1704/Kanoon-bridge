@@ -175,6 +175,9 @@ def explain(hit, aq, engine, target: str = "precedent") -> list[str]:
             reasons.append(note)
         if ref and aq.code_in_force in (Code.IPC, Code.BNS) and ref.startswith(aq.code_in_force.value + ":"):
             reasons.append(f"in force on the incident date ({aq.code_in_force.value.upper()})")
+        drift = drift_note(ref, engine)
+        if drift:
+            reasons.append(drift)
         return reasons
 
     meta = engine.facets.metas.get(hit.doc_id)
@@ -205,9 +208,40 @@ def explain(hit, aq, engine, target: str = "precedent") -> list[str]:
             reasons.append(f"binding{' in ' + aq.query.state.title() if aq.query.state else ''} ({court})")
         elif status == "persuasive":
             reasons.append(f"persuasive only ({court}; not binding in {aq.query.state.title()})")
-        if meta.decision_date and aq.code_in_force == Code.BNS and meta.decision_date.year < 2024 and shared:
+        transfer = comp.get("transfer")
+        scorer = getattr(engine, "drift", None)
+        if transfer is not None and scorer is not None and transfer < scorer_min(scorer):
+            t = scorer.transfer(meta.statutes_cited, scorer.targets(aq))
+            if t.old_ref:
+                reasons.append(t.reason())
+        elif meta.decision_date and aq.code_in_force == Code.BNS and meta.decision_date.year < 2024 and shared:
             reasons.append(f"decided {meta.decision_date.year} under the IPC; still relevant through the crosswalk")
+        tr = getattr(engine, "treatment", None)
+        t = tr.table.get(hit.doc_id) if tr is not None else None
+        if t is not None and t.status != "good":
+            metas = engine.facets.metas
+            titles = {e[0]: getattr(metas.get(e[0]), "title", "") or e[0] for e in t.strong + t.weak}
+            reasons.append(f"{t.explain(titles)}: check that it is still good law")
     return reasons
+
+
+def scorer_min(scorer) -> float:
+    return getattr(scorer, "min_penalised", 0.85) if scorer is not None else 0.0
+
+
+def drift_note(ref: str, engine) -> str:
+    """'change from the IPC: the provision itself changed (48% of the IPC text survives ...)' from the
+    drift table of the section's family (IPC/BNS, CrPC/BNSS, Evidence Act/BSA)."""
+    scorer = getattr(engine, "drift", None)
+    if scorer is None or not ref:
+        return ""
+    table = scorer.table_for(ref.split(":")[0])
+    rep = table.report(ref) if table is not None else None
+    if rep is None or rep.drift_class.value in ("identical", "new"):
+        return ""
+    head = rep.reasons[0].split(": ", 1)[-1] if rep.reasons else rep.drift_class.value
+    rest = "; ".join(r for r in rep.reasons[1:3] if not r.startswith(("merges", "part of")))
+    return f"change from the {table.family.old_label}: {head}" + (f" ({rest})" if rest else "")
 
 
 # --------------------------------------------------------------------------- facets

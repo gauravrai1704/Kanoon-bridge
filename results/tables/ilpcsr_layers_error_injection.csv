@@ -1,0 +1,15 @@
+base,error,n,v1_detected,v2_detected
+RAG v2,years,191,0.3037,0.8901
+RAG v2,fine,65,0.4615,1.0
+RAG v2,negation,248,0.2984,0.8266
+RAG v2,wrong_code,242,0.9959,1.0
+RAG v2,section,249,0.3414,1.0
+RAG v2,unsupported,249,0.3614,0.8876
+RAG v2,none (false alarm on clean answers),249,0.8353,0.0
+RAG v1,years,76,0.0263,0.75
+RAG v1,fine,5,0.0,1.0
+RAG v1,negation,100,0.02,0.85
+RAG v1,wrong_code,242,0.9793,1.0
+RAG v1,section,249,0.012,1.0
+RAG v1,unsupported,249,0.3614,0.8876
+RAG v1,none (false alarm on clean answers),249,0.5502,0.0884
