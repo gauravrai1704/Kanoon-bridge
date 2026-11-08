@@ -1,0 +1,11 @@
+system,group,n,"other section, other code","other section, right code",right
+core,all,252,0.1548,0.0238,0.8214
+core,style=bare,126,0.2778,0.0476,0.6746
+core,era=before,126,0.1032,0.0079,0.8889
+core,style=context,126,0.0317,,0.9683
+core,era=after,126,0.2063,0.0397,0.754
+agent_v2,all,252,,0.1429,0.8571
+agent_v2,style=bare,126,,0.2619,0.7381
+agent_v2,era=before,126,,0.0873,0.9127
+agent_v2,style=context,126,,0.0238,0.9762
+agent_v2,era=after,126,,0.1984,0.8016

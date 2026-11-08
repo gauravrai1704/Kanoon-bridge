@@ -643,6 +643,19 @@ questions, Holm-corrected (`misgrounding_llama3_2_3b_significance.csv`).
   re-scored (`scripts/25_report_e20.py --rescore`). Closed-book moved from 0.14 / 0.19 to 0.18 / 0.32
   (right / misgrounded); the other conditions moved by at most 0.04.
 
+### Error analysis of E2 and E19 (`scripts/26_error_analysis.py`)
+
+- **E2.** The core's errors are mostly the code not in force: 15% of questions, 28% of
+  bare-number questions, 21% of questions dated after 1 July 2024. Agent v2 makes **no wrong-code
+  error**; its remaining errors (14%) are other sections of the right code, almost all on bare
+  numbers (26%). With a few context words both are right 97–98% of the time.
+- **E19.** Even agent v2's top statute is procedure law for 45% of the bail orders (penal 37%,
+  evidence 6%, other Acts 13%): the facts describe arrest, custody and bail, which pulls retrieval
+  to the BNSS. General provisions (IPC 34, 107–120B, 149, 511 and their BNS counterparts) are 18%
+  of the charged sections and are found half as often as offence provisions (recall@10 0.05 vs
+  0.11): the facts rarely state them. A fact-question router that down-weights procedural
+  vocabulary, and adding general provisions when several accused act together, are the next steps.
+
 ### E21 — judicial treatment: overruled precedents (`rank/treatment.py`)
 
 The drift layer catches precedent made stale by a statute; a court can do it too. The extractor

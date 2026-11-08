@@ -1076,7 +1076,14 @@ were split into uncited fragments. We report the fixed numbers and declare the f
 \paragraph{Error analysis.} On E14 most remaining failures are gold summaries that describe
 one sub-section of a multi-part section. On E19 the facts are written about the bail application,
 so procedural vocabulary pulls retrieval towards the BNSS and BSA; the agent's family refinement is
-what pulls it back. \todo{a systematic error analysis of E19 and E2 misses by category.}
+what pulls it back. On E2 (\texttt{scripts/26\_error\_analysis.py}), the core's errors are mostly the code not in force
+(15\% of questions; 28\% of bare-number questions, 21\% after 1 July 2024); the agent makes no
+wrong-code error at all, and its remaining errors (14\%) are other sections of the right code,
+almost all on bare numbers (26\%), while questions with a few context words are right 98\% of the
+time. On E19, even the agent's top statute is procedure law for 45\% of the bail orders (penal law
+37\%): the facts describe arrest, custody and bail. General provisions (common intention, abetment,
+conspiracy, unlawful assembly, attempt) are 18\% of the charged sections and are found half as often
+as offence provisions (recall@10 0.05 vs 0.11), since the facts rarely state them.
 
 %% ===================================================================================== 10
 \subsection{Limitations}\label{sec:limits}
@@ -1123,7 +1130,7 @@ Kanoon-Bridge is a research tool, not legal advice; answers show their sources, 
 notes. All data are public court judgments and legislation used under their licences (IL-PCSR
 CC-BY-NC-SA; eCourts and IndianBailJudgments-1200 CC-BY-4.0; India Code via open-laws CC0); raw
 data are not redistributed. Code, generated benchmarks and result tables are
-released \todo{repository URL}; every number in this paper is produced by a script listed in the
+released at \url{https://github.com/gauravrai1704/Kanoon-bridge}; every number in this paper is produced by a script listed in the
 repository. AI assistance was used in implementing and documenting the system and is declared in
 the repository's AI-use log; the second judge for E4/E6 is an AI and is reported as such.
 
