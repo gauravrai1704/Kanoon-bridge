@@ -1,0 +1,11 @@
+a,b,metric,n,mean_a,mean_b,only_a,only_b,p,p_holm
+closed-book,naive RAG,right@1,300,0.1767,0.6367,10,148,0.0,0.0
+closed-book,naive RAG,misgrounded@1,300,0.3167,0.09,74,6,0.0,0.0
+naive RAG,RAG v1,right@1,300,0.6367,0.6767,24,36,0.155002,0.465006
+naive RAG,RAG v1,misgrounded@1,300,0.09,0.1033,13,17,0.584665,1.0
+naive RAG,RAG v2,right@1,300,0.6367,0.74,40,71,0.004196,0.02098
+naive RAG,RAG v2,misgrounded@1,300,0.09,0.0033,27,1,0.0,0.0
+RAG v1,RAG v2,right@1,300,0.6767,0.74,29,48,0.03954,0.15816
+RAG v1,RAG v2,misgrounded@1,300,0.1033,0.0033,31,1,0.0,0.0
+RAG v2,structured,right@1,300,0.74,0.8267,23,49,0.002943,0.017658
+RAG v2,structured,misgrounded@1,300,0.0033,0.0,1,0,1.0,1.0

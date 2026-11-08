@@ -278,3 +278,16 @@ def test_structured_answer_era_awareness():
     assert "State v Old" in ans.text
     assert any("decided under the old codes" in n for n in ans.notes)   # and the user is told
     assert not any("old codes" in n for n in structured("q", chunks, docs, "ipc", prefer_new_era=False).notes)
+
+
+def test_misgrounding_resolves_code_named_apart():
+    from kanoon_bridge.eval.misgrounding import score_answer
+
+    class Norm:
+        def offences_for(self, ref):
+            return {"ipc:506": ["off:intimidation"]}.get(ref, [])
+
+    row = {"set": "e7_temporal", "incident_date": "2024-03-01", "expected_code": "ipc", "offence": "off:intimidation"}
+    s = score_answer("Based on the Indian Penal Code (IPC), Section 506 applies to criminal intimidation.", row, Norm())
+    assert s["right@1"] == 1 and s["no_section"] == 0
+    assert score_answer("Under Section 506, intimidation is punished.", row, Norm())["no_section"] == 1   # no code named

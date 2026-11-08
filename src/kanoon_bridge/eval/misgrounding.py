@@ -36,6 +36,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import re
+from dataclasses import dataclass
 from collections import defaultdict
 
 from kanoon_bridge.schema import Query
@@ -69,12 +70,47 @@ def questions(per_set: int = 40) -> list[dict]:
     return out
 
 
+_CODE_NAMES = [(re.compile(p, re.I), code) for p, code in (
+    (r"\bbharatiya\s+nagarik\s+suraksha\s+sanhita\b|\bbnss\b", "bnss"),
+    (r"\bbharatiya\s+sakshya\s+adhiniyam\b|\bbsa\b", "bsa"),
+    (r"\bbharatiya\s+nyaya\s+sanhita\b|\bbns\b", "bns"),
+    (r"\b(?:code\s+of\s+criminal\s+procedure|criminal\s+procedure\s+code)\b|\bcr\.?p\.?c\b", "crpc"),
+    (r"\b(?:indian\s+)?evidence\s+act\b|\biea\b", "iea"),
+    (r"\bindian\s+penal\s+code\b|\bipc\b", "ipc"),
+)]
+
+
+@dataclass
+class _Mention:
+    code_value: str
+    section: str
+    start: int
+
+    @property
+    def code(self):                                   # same shape as tokenize.SectionMatch.code.value
+        return type("C", (), {"value": self.code_value})()
+
+
 def _sections(text: str):
+    """Section mentions in the answer's own words, in order. A bare "Section 506" takes the code
+    named nearest to it in the same sentence ("Based on the Indian Penal Code (IPC), Section 506
+    applies"); LLM answers often name the code apart from the number."""
+    from kanoon_bridge.rag._util import split_sentences
     from kanoon_bridge.text.tokenize import extract_sections
 
     clean = _QUOTED.sub(" ", text or "")
-    return [m for m in sorted(extract_sections(clean), key=lambda m: m.start) if m.code.value in
-            ("ipc", "bns", "crpc", "bnss", "iea", "bsa")]
+    out, offset = [], 0
+    for sent in split_sentences(clean) or [clean]:
+        start = clean.find(sent, offset)
+        offset = max(offset, start)
+        names = [(m.start(), code) for rx, code in _CODE_NAMES for m in rx.finditer(sent)]
+        for m in sorted(extract_sections(sent), key=lambda m: m.start):
+            code = m.code.value
+            if code == "?" and names:
+                code = min(names, key=lambda n: abs(n[0] - m.start))[1]
+            if code in ("ipc", "bns", "crpc", "bnss", "iea", "bsa"):
+                out.append(_Mention(code, m.section, start + m.start))
+    return out
 
 
 def score_answer(text: str, row: dict, normalizer) -> dict[str, float]:
@@ -168,4 +204,33 @@ def run(engine, rag, agent, rows: list[dict], gen: str, model: str | None = None
     return table, dump
 
 
-__all__ = ["questions", "score_answer", "run", "CONDITIONS", "NAIVE_PROMPT"]
+def rescore(answers_path, normalizer) -> tuple[list[dict], list[dict]]:
+    """Re-score saved answers (misgrounding_<tag>_answers.jsonl) with the current scorer, without
+    calling the LLM again. Returns (table, rows) like run()."""
+    import json
+
+    from kanoon_bridge.eval.open_eval import load_rows
+
+    by_id = {}
+    for name in ("e7_temporal", "e9_procedure_temporal", "e2_collision"):
+        for r in load_rows(name):
+            by_id[r["id"]] = {**r, "set": name}
+    acc = defaultdict(lambda: defaultdict(list))
+    rows = []
+    with open(answers_path, encoding="utf-8") as f:
+        for line in f:
+            r = json.loads(line)
+            gold = by_id[r["id"]]
+            sc = score_answer(r["answer"], gold, normalizer)
+            rows.append({**r, **sc})
+            for k, v in sc.items():
+                acc[(r["set"], r["condition"])][k].append(v)
+                acc[("all", r["condition"])][k].append(v)
+    table = [{"set": name, "condition": cond, "n": len(m["right@1"]), **{k: round(sum(v) / len(v), 4) for k, v in m.items()}}
+             for (name, cond), m in acc.items()]
+    order = {c: i for i, c in enumerate(CONDITIONS)}
+    table.sort(key=lambda r: (r["set"] != "all", r["set"], order.get(r["condition"], 9)))
+    return table, rows
+
+
+__all__ = ["questions", "score_answer", "run", "rescore", "CONDITIONS", "NAIVE_PROMPT"]

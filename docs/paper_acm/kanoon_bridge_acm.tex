@@ -56,10 +56,13 @@ punishment for 86\% of 273 BNS questions, where an extractive answer does for 6\
 matching offence identifiers inside the index adds 0.23--0.35 MAP on cross-version precedent search,
 while date-dependent statute questions reduce to a simple date rule. When a user asks for judgments decided
 under the new code, an era filter detected from the question's wording lifts MAP from 0.151 to
-0.454, above a crosswalk-aware baseline (0.321, $\ph<0.001$). We also report negative
+0.454, above a crosswalk-aware baseline (0.321, $\ph<0.001$). With a local LLM (Llama~3.2 3B), a closed-book
+answer cites the code not in force for 32\% of questions; naive RAG lowers this to 9\%, a
+date-aware prompt does not lower it further (10\%), and our verified pipeline brings it to 0.3\%
+while raising the right provision from 64\% to 74\% ($\ph<0.05$). We also report negative
 results: drift-aware down-ranking of old precedent, citation voting, and training-free
 table-of-contents navigation in the style of STAIR do not improve retrieval. We release the
-system, eight benchmarks, an LLM misgrounding harness, and an annotation kit.
+system, eight benchmarks and an LLM misgrounding benchmark.
 \end{abstract}
 
 \keywords{legal information retrieval, temporal retrieval, statute versioning, retrieval-augmented
@@ -111,7 +114,7 @@ research agent, and a computed, claim-verified answer layer (\S\ref{sec:system})
 \item \textbf{Eight benchmarks} for the transition: colliding numbers, cross-version precedent
 search, date-dependent penal and procedure questions, multilingual needs, punishment QA,
 facts$\to$charges from real bail orders, and IPC-numbered questions over BNS-era judgments
-(\S\ref{sec:data}), plus an LLM misgrounding harness.
+(\S\ref{sec:data}), plus an LLM misgrounding benchmark run with a local model (\S\ref{sec:res-llm}).
 \item \textbf{A detector of overruled precedent} from the judgments' own sentences, the court-made
 counterpart of statutory drift (\S\ref{sec:treatment}).
 \item \textbf{A thorough evaluation} on the full IL-PCSR corpus with Holm-corrected significance
@@ -286,7 +289,7 @@ E13 & BNS-era question per cited new-code section & 185 (378) & IL-PCSR citation
 E14 & ``What is the punishment for \ldots?'' & 273 & independent summaries & computed answers \\
 E15 & six injected error types in answers & up to 249 each & the injection & claim verification \\
 E19 & written facts of bail orders $\to$ charged sections & 995 & charge sheets (dataset) & fact-style questions \\
-E20 & E7/E9/E2 asked to an LLM & 120+ & code in force & LLM misgrounding (harness) \\
+E20 & E7/E9/E2 asked to an LLM & 300 & code in force & LLM misgrounding \\
 E21 & overruled / doubted / followed & 116 judgments & legal record & judicial treatment \\
 E22 & 2,082 RAG questions & -- & -- & KV-cache reuse \\
 \bottomrule
@@ -491,8 +494,8 @@ comparisons of an experiment \cite{holm1979}; McNemar's exact test for paired cl
 split; drift thresholds and the drift classifier on a dev half of the sections (split by a hash of
 the section number); nothing is tuned on a test set, and the exceptions found during the work are
 declared where they appear (\S\ref{sec:limits}).
-\paragraph{Generators.} All answer results use the structured (offline) generator; no LLM was
-called (E20 is a harness, \S\ref{sec:res-llm}).
+\paragraph{Generators.} E14--E18 use the structured (offline) generator. E20 uses Llama~3.2 3B
+(Q4, through Ollama, temperature 0, context 8,192 tokens) on a local machine (\S\ref{sec:res-llm}).
 
 %% ===================================================================================== 8
 \section{Results}\label{sec:results}
@@ -949,8 +952,7 @@ From the precedent pool and training queries, 116 judgments receive a treatment 
 mentions are found; five judgments are flagged overruled: I.~C. Golak Nath v. State of Punjab, State
 of Bombay v. United Motors, Northern India Caterers v. State of Punjab, Air India Statutory
 Corporation v. United Labour Union, and State of Bombay v. F.~N. Balsara (in part). All five were
-overruled; this check is ours against the legal record and is being confirmed by a law student
-\todo{annotation result}. An earlier version without the attachment rules flagged ten, half wrongly
+overruled; this check is ours against the legal record. An earlier version without the attachment rules flagged ten, half wrongly
 (``Devadasan is no longer good law in view of N.~M. Thomas'' was attached to Thomas). Recall is low.
 In E1 flagged judgments reach the top 10 for 0.6\% of test queries; demoting them leaves MAP
 unchanged: a safety signal for the user, not a ranking gain.
@@ -1002,8 +1004,47 @@ under five conditions: closed-book; naive RAG (core retrieval, generic prompt); 
 prompt); RAG v2 (agent, verification, regeneration, correction); and the structured answer without
 an LLM. It scores the first section each answer names: the right provision of the code in force,
 \emph{misgrounded} (the code not in force, or a colliding number), or no section.
-\todo{Run \texttt{bash scripts/run\_e20\_ollama.sh 100 llama3.2:3b llama3.1:8b} on a machine with
-Ollama, then paste the LaTeX table printed by \texttt{scripts/25\_report\_e20.py} here.}
+We ran it with Llama~3.2 3B on 300 questions (100 per set), the same model in every condition
+(Table~\ref{tab:llm}); conditions are compared on the same questions with exact McNemar tests,
+Holm-corrected. A bare ``Section 506'' is resolved to the code the answer names nearest to it in
+the same sentence; quotations are not counted. (An earlier scorer that required the code next to
+the number under-counted closed-book sections; all numbers here use the corrected scorer,
+applied to the saved answers.)
+
+\begin{table}[t]
+\centering\small
+\caption{E20: Llama~3.2 3B, 300 questions. Right: the right provision of the code in force named
+first; misgr.: a section of the code not in force (or a colliding number) named first.}
+\label{tab:llm}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccccc}
+\toprule
+Condition & right & misgr. & any wrong code & no section & E7 misgr. \\
+\midrule
+closed-book & .18 & \textbf{.32} & .32 & .09 & .49 \\
+naive RAG & .64 & .09 & .09 & .18 & .09 \\
+RAG v1 (date-aware prompt) & .68 & .10 & .21 & .05 & .01 \\
+RAG v2 (verified) & .74 & \textbf{.003} & .02 & .11 & .00 \\
+structured (no LLM) & \textbf{.83} & .00 & .00 & .01 & .00 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\paragraph{Findings.} (1) Without retrieval the model misgrounds a third of the answers, and in every
+case the same way: it cites the old code (IPC, CrPC, Evidence Act) for an incident after 1 July
+2024, never the reverse. For penal provisions dated after the replacement it cites the IPC in 49 of
+50 questions: the model has not absorbed the BNS. (2) Retrieval removes most of it (9\%), but telling the model the date rule in
+the prompt does not remove more (RAG v1: 10\%, n.s.); it also makes answers mention the other code
+more often (any wrong code 21\%), because the prompt asks for the counterpart. (3) Verification
+removes misgrounding almost entirely (0.3\%, 1 of 300; $\ph<0.001$ against both naive RAG and RAG v1)
+and raises the right provision to 74\% ($\ph=0.02$ against naive RAG). Its cost is answers with no
+section (11\%): when the model's claim cannot be verified, the claim is removed rather than kept.
+(4) The computed answer, with no LLM, is right most often (83\%, $\ph=0.02$ against RAG v2). (5) On
+procedure questions (E9) the small model is hurt by the date-aware prompt (right 54\% vs 74\% for naive
+RAG), and verification does not recover it (54\%, with 22\% of answers left without a section): the
+3B model often names a section of the wrong Act (``Section 27 of the Bharatiya Nyaya Sanhita'' for an
+evidence question), which the verifier removes. A larger model is the obvious next measurement.
 
 %% ===================================================================================== 9
 \section{Discussion}\label{sec:discussion}
@@ -1020,7 +1061,8 @@ legal applicability, so the signal belongs in the explanation. (2) Citation voti
 cited sections once precedents are real (the open corpus with 1,701 eCourts judgments: $-0.15$ on
 E2); we recommend disabling it. (3) Training-free table-of-contents navigation does not help;
 STAIR's gains plausibly come from its trained retriever. (4) Outside penal law, plain edit
-similarity detects change as well as the drift vector.
+similarity detects change as well as the drift vector. (5) Telling an LLM the date rule in its prompt does not stop it
+from citing the old code (E20: 9\% to 10\%); verifying its claims does (0.3\%).
 
 \paragraph{Errors found by evaluating on real data.} Two bugs surfaced only on the full corpora and
 would have been invisible on synthetic data: IL-PCSR titles its IPC sections ``Section 463 of The
@@ -1038,14 +1080,16 @@ what pulls it back. \todo{a systematic error analysis of E19 and E2 misses by ca
 
 %% ===================================================================================== 10
 \subsection{Limitations}\label{sec:limits}
-Our study has several limitations. No LLM has been evaluated yet, so the central measurement of how
-often today's models misground (E20) is still missing. Some fixes were made after seeing test
+Our study has several limitations. The LLM study (E20) uses one small local model (Llama~3.2 3B);
+larger and API models may misground less or differently. The scorer of E20 was corrected after
+the run (a bare section number now takes the code named nearest to it), and all reported numbers
+use the corrected scorer. Some fixes were made after seeing test
 results (statute headings read from the text for IL-PCSR's bare titles and the structural
 punishment check, after E17/E18; the table-of-contents gate, after E2; the citation-vote gate,
 after the open-corpus E16), although E10 and E19 were run after all of them and were not used to
 make them. The gold labels are coarse: drift is labelled per section, one source (S2) is our
-rule-based reading of free-text notes, carry-over is validated only indirectly, and the check of
-the overruled judgments is ours rather than a lawyer's. E7, E9 and E14 are phrased like section
+rule-based reading of free-text notes, carry-over is validated only indirectly, and no set has been labelled by legal experts: the
+second judge of E4 is an AI, and the check of the overruled judgments is ours. E7, E9 and E14 are phrased like section
 headings, which favours heading matching (E4 and E19 are not); the procedure and evidence
 crosswalks are aligned automatically and contain wrong merges; and the eCourts sample covers five
 High Courts, so the Supreme Court and other High Courts may move to the new codes at a different
@@ -1053,13 +1097,12 @@ pace.
 
 \subsection{Future Work}\label{sec:future}
 \begin{itemize}
-\item \textbf{LLM misgrounding at scale.} Run E20 with local models through Ollama (Llama~3.2 3B,
-Llama~3.1 8B) and API models, under closed-book, naive, date-aware and verified RAG.
+\item \textbf{LLM misgrounding at scale.} Repeat E20 with larger local models (Llama~3.1 8B and above)
+and API models, and study why date-aware prompting hurts small models on procedure law.
 \item \textbf{Tiered KV serving.} Serve the verified RAG pipeline through PACT-KV \cite{pactkv} with
 the E22 trace, pinning hot statute chunks in GPU memory, to measure real prefill savings.
-\item \textbf{Human gold.} Complete the released annotation round (drift, treatment, answers) with
-law students and report inter-annotator agreement; fit the carry-over weights to graded
-(precedent, new section) pairs.
+\item \textbf{Learned carry-over.} Fit the carry-over weights to graded (precedent, new section)
+pairs instead of setting them by hand.
 \item \textbf{More and newer data.} Add open-india-law's BNS-era judgments at scale, IL-TUR's ILSI as
 a held-out facts$\to$statutes set, NyayaAnumana and LegalSeg; extend the citation-shift study to the
 Supreme Court and all High Courts.
@@ -1079,7 +1122,7 @@ citations?
 Kanoon-Bridge is a research tool, not legal advice; answers show their sources, corrections and
 notes. All data are public court judgments and legislation used under their licences (IL-PCSR
 CC-BY-NC-SA; eCourts and IndianBailJudgments-1200 CC-BY-4.0; India Code via open-laws CC0); raw
-data are not redistributed. Code, generated benchmarks, result tables and the annotation kit are
+data are not redistributed. Code, generated benchmarks and result tables are
 released \todo{repository URL}; every number in this paper is produced by a script listed in the
 repository. AI assistance was used in implementing and documenting the system and is declared in
 the repository's AI-use log; the second judge for E4/E6 is an AI and is reported as such.
@@ -1090,11 +1133,12 @@ partial transfer of precedent. Shared identifiers with date-based code selection
 the statutes an agent returns, and computed, claim-checked answers make a measurable difference on
 real data; down-ranking old precedent, voting by citations and training-free navigation do not.
 Courts will cite both codes for years; the system and benchmarks we release make the transition
-measurable, and the LLM harness is ready to measure how often today's models misground.
+measurable, and the LLM benchmark shows that verification, not prompting, is what stops a model
+from citing the wrong code.
 
 \begin{acks}
-\todo{Acknowledge the annotator(s) and teammates on the course project (Kashvi Tak, Sharanya Gupta,
-Shaurya) as appropriate.}
+\todo{Acknowledge teammates on the course project (Kashvi Tak, Sharanya Gupta, Shaurya) as
+appropriate.}
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}

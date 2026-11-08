@@ -5,8 +5,8 @@ Compile on Overleaf: upload this folder. Every number comes from `results/tables
 `docs/PROJECT.md` for the experiment behind each).
 
 Before submission:
-- run E20 (`scripts/19_eval_misgrounding.py`) and fill its paragraph and a table;
+- optionally repeat E20 with a larger model (`bash scripts/run_e20_ollama.sh 100 llama3.1:8b`);
 - check every bibliography entry marked TODO;
-- add the annotation-round agreement (`scripts/22_annotation_kit.py score`);
+
 - choose the venue's page limit and trim (target: NLLP workshop at EMNLP, JURIX, ICAIL, or a
   SIGIR/CIKM resource track).

@@ -143,6 +143,16 @@ BM25 and 0.409 for IL-PCSR's own BM25-trigram baseline (difference not significa
 | E4 Hindi / Hinglish / English needs (MAP) | 0.461 | **0.536** (p_holm 0.04) |
 | E1 whole judgments as queries (MAP) | 0.414 | 0.412 (keeps the core's ranking) |
 
+**LLMs cite the old code; verification stops it (E20, Llama 3.2 3B through Ollama, 300 questions).**
+
+| Condition | Right provision | Cites the code not in force |
+| --- | --- | --- |
+| Closed-book (no retrieval) | 18% | **32%** (IPC for 49 of 50 post-2024 penal questions) |
+| Naive RAG | 64% | 9% |
+| RAG v1 (date-aware prompt) | 68% | 10% (prompting alone does not help) |
+| **RAG v2 (verified)** | **74%** | **0.3%** (p_holm < 0.001) |
+| Computed answer, no LLM | 83% | 0% |
+
 **Verified answers (layer 3).** Right punishment for 86% of 273 BNS questions (an extractive
 answer: 6%); injected errors caught 82–100% per type, with no false alarm on clean answers.
 
@@ -205,7 +215,7 @@ NyayaAnumana, LegalSeg (`scripts/00_fetch_data.py --only <name>` with `HF_TOKEN`
 | `python scripts/23_eval_fair_baselines.py` | E23 crosswalk-aware baselines |
 | `python scripts/24_eval_era.py` (`--answers`) | E24 era-aware retrieval and answers |
 | `bash scripts/run_e20_ollama.sh` + `python scripts/25_report_e20.py` | E20 LLM misgrounding (needs Ollama or an API LLM) |
-| `python scripts/22_annotation_kit.py make` / `score` | human annotation sheets and agreement |
+| `python scripts/22_annotation_kit.py make` / `score` | optional: sheets for expert labels, and agreement |
 
 ## Repository layout
 
@@ -215,7 +225,7 @@ scripts/             00–23: fetch, build, evaluate (numbered in run order)
 app/                 cli.py, web_server.py + web/ (search, answers, "What changed" page)
 configs/             default.yaml (system), eval.yaml (test sets)
 data/crosswalk/      committed crosswalks and drift tables      data/queries/  generated test sets and qrels
-results/             tables/ and figures/ of every experiment   annotation/    sheets for a law student
+results/             tables/ and figures/ of every experiment   annotation/    optional expert-labelling sheets
 docs/                PROJECT.md (full write-up), RESEARCH.md (methods and sources), paper drafts, ai_use.md
 ```
 
@@ -223,8 +233,9 @@ docs/                PROJECT.md (full write-up), RESEARCH.md (methods and source
 
 ## Open items
 
-- **LLM evaluation (E20)** has not been run yet: `bash scripts/run_e20_ollama.sh` on a machine with Ollama.
-- **Human labels:** the annotation kit (`annotation/`) is ready for a law student.
+- **Larger LLMs for E20** (Llama 3.1 8B and API models): `bash scripts/run_e20_ollama.sh 100 llama3.1:8b`.
+- **Expert labels** are not part of the evaluation; the kit in `annotation/` is there if a legal
+  annotator becomes available.
 - **A trained dense or cross-encoder baseline** (needs a GPU and model weights).
 - **Gated datasets** (open-india-law, IL-TUR, NyayaAnumana, LegalSeg) need `HF_TOKEN`.
 

@@ -608,16 +608,40 @@ p_holm < 0.001; hit@1 +0.108, p_holm < 0.001; ToC vs v2: no difference, p_holm 0
 The absolute numbers are low: bail facts talk about arrest, custody and bail, so core search
 drifts to procedure and evidence sections; v2's family routing is what pulls it back to penal law.
 
-### E20 — LLM temporal misgrounding (harness ready, not yet run)
+### E20 — LLM temporal misgrounding (Llama 3.2 3B, local)
 
-`scripts/19_eval_misgrounding.py` asks one LLM the E7 / E9 / E2 questions under five conditions
-(closed-book; naive RAG with a generic prompt; RAG v1 with our date-aware prompt; RAG v2;
-the structured answer without an LLM) and scores the first section each answer names:
-right provision of the code in force, **misgrounded** (the code not in force, or a colliding
-number), no section. It works with any OpenAI-compatible server (`--generator local`: vLLM,
-Ollama, llama.cpp), OpenAI or Claude. It has not been run: this environment has no GPU, no API
-key, and its network policy blocks the Hugging Face file host the model weights come from.
-This is the experiment the paper needs most (see §9).
+`scripts/19_eval_misgrounding.py` asks one LLM the E7 / E9 / E2 questions (100 per set, balanced
+across 1 July 2024) under five conditions and scores the first section each answer names. Run
+with Llama 3.2 3B through Ollama (temperature 0, context 8,192) on a local machine; answers in
+`results/tables/misgrounding_llama3_2_3b_answers.jsonl`. Paired exact McNemar tests on the same
+questions, Holm-corrected (`misgrounding_llama3_2_3b_significance.csv`).
+
+| Condition | right@1 | misgrounded@1 | any wrong code | no section |
+| --- | --- | --- | --- | --- |
+| closed-book | 0.18 | **0.32** | 0.32 | 0.09 |
+| naive RAG (core retrieval, generic prompt) | 0.64 | 0.09 | 0.09 | 0.18 |
+| RAG v1 (date-aware prompt) | 0.68 | 0.10 | 0.21 | 0.05 |
+| **RAG v2** (agent, verification, regeneration, correction) | **0.74** | **0.003** | 0.02 | 0.11 |
+| structured (no LLM) | 0.83 | 0.00 | 0.00 | 0.01 |
+
+- **Without retrieval the model cites the old code for new incidents.** Every closed-book
+  misgrounding is the IPC / CrPC / Evidence Act cited for an incident after 1 July 2024, never the
+  reverse; for penal provisions after the replacement it cites the IPC in 49 of 50 questions.
+- **Prompting does not fix it; verification does.** Naive RAG brings misgrounding to 9%; telling
+  the model the date rule (RAG v1) does not lower it (10%, n.s.) and makes answers mention the
+  other code more often (21%). RAG v2 brings it to 0.3% (1 of 300; p_holm < 0.001 against both) and
+  raises the right provision from 64% to 74% (p_holm 0.02). Its cost: 11% of answers name no
+  section, where an unverifiable claim was removed rather than kept.
+- **The computed answer is still the most accurate** (83%, p_holm 0.02 against RAG v2).
+- **Procedure law (E9) is the weak spot of the small model:** right 74% with naive RAG, 54% with
+  the date-aware prompt and with verification (22% of answers left without a section). The model
+  often names a section of the wrong Act ("Section 27 of the Bharatiya Nyaya Sanhita" for an
+  evidence question), which the verifier removes.
+- **Scorer correction.** The first scorer required the code next to the number and missed answers
+  such as "Based on the Indian Penal Code (IPC), Section 506 applies"; a bare number now takes the
+  code named nearest to it in the same sentence (quotations excluded), and the saved answers were
+  re-scored (`scripts/25_report_e20.py --rescore`). Closed-book moved from 0.14 / 0.19 to 0.18 / 0.32
+  (right / misgrounded); the other conditions moved by at most 0.04.
 
 ### E21 — judicial treatment: overruled precedents (`rank/treatment.py`)
 

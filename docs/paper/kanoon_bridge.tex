@@ -13,7 +13,10 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{adjustbox}
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\ph}{p_{\text{Holm}}}
 
 \title{When the Law Is Renumbered: Temporal Misgrounding in Legal Retrieval\\
 at India's 2024 Criminal-Code Replacement}
@@ -43,7 +46,8 @@ the agent improves procedure-law retrieval from 0.859 to 0.903 MAP and Hindi/Hin
 from 0.461 to 0.536 (both $p_{\text{Holm}}<0.05$); on the written facts of 995 real bail orders it
 doubles MAP over the version-aware core; the answer layer states the right punishment for 86\% of
 273 BNS questions where an extractive answer does for 6\%, and catches 82--100\% of injected
-errors with no false alarms on clean answers. We release the system, six benchmarks, and an annotation kit, and
+errors with no false alarms on clean answers. With a local LLM (Llama~3.2 3B), a closed-book answer cites the code not in force for 32\% of
+questions; verified RAG brings this to 0.3\%. We release the system and the benchmarks, and
 report our negative results: drift-aware down-ranking of old precedent, citation voting, and
 table-of-contents navigation in the style of STAIR do not help.
 \end{abstract}
@@ -137,6 +141,7 @@ Evidence Act$\rightarrow$BSA families, plain edit similarity is as good (0.78 vs
 
 \begin{table}[t]
 \centering\small
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{lcc}
 \toprule
 System & F1 (S1) & F1 (S2) \\
@@ -147,6 +152,7 @@ Drift rules (hand-set) & 0.85 & 0.76 \\
 Drift vector + logistic regression & \textbf{0.89} & \textbf{0.81} \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \caption{Which IPC provisions changed in the BNS (held-out half, 183 sections).}
 \label{tab:drift}
 \end{table}
@@ -202,6 +208,7 @@ $p<0.001$).
 
 \begin{table}[t]
 \centering\small
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{lccc}
 \toprule
 Set (MAP) & core & agent v1 & agent v2 \\
@@ -215,6 +222,7 @@ E9 procedure, by date & .859 & .859 & \textbf{.903}$^\dagger$ \\
 E19 bail facts$\rightarrow$charges & .047 & .057 & \textbf{.100}$^\dagger$ \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \caption{Retrieval on the IL-PCSR corpus. $^\dagger$ $p_{\text{Holm}}<0.05$ vs core.}
 \label{tab:retrieval}
 \end{table}
@@ -229,6 +237,7 @@ was designed for, so these rates are upper bounds.
 
 \begin{table}[t]
 \centering\small
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{lcc}
 \toprule
 System & statute@1 & punishment right \\
@@ -238,17 +247,21 @@ core + computed, verified answer & .912 & .854 \\
 agent + computed, verified answer & \textbf{.927} & \textbf{.861} \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \caption{Punishment QA on the IL-PCSR corpus (273 BNS questions, incident date 2025).}
 \label{tab:answers}
 \end{table}
 
-\paragraph{LLM misgrounding.} \todo{E20: run scripts/19\_eval\_misgrounding.py with an open 7--8B
-model (and one API model) under closed-book, naive RAG, date-aware RAG, verified RAG; report
-right@1, misgrounded@1 and any-wrong-code per set. This is the paper's central LLM result.}
+\paragraph{LLM misgrounding (E20).} Llama~3.2 3B (through Ollama) on 300 E7/E9/E2 questions: closed-book,
+it names the right provision of the code in force for 18\% and cites the code not in force for
+32\%, always the old code for a post-2024 incident (the IPC for 49 of 50 penal questions). Naive
+RAG: 64\% / 9\%; a date-aware prompt: 68\% / 10\% (no gain); our verified RAG: 74\% / 0.3\%
+($\ph<0.001$ on misgrounding against both); the computed answer without an LLM: 83\% / 0\%.
+Verification, not prompting, stops the model from citing the wrong code.
 
 \paragraph{Judicial treatment.} From the precedent pool and training queries, the extractor finds
 5 overruled judgments (Golak Nath, United Motors, Northern India Caterers, Air India Statutory
-Corporation, Balsara in part), all correct on our check \todo{confirm with the annotation round};
+Corporation, Balsara in part), all correct on our check;
 an unconstrained attachment found 10, half wrong. Recall is low, and in E1 flagged judgments reach
 the top 10 for only 0.6\% of queries: a safety signal, not a ranking gain.
 
@@ -276,11 +289,12 @@ difference; down-ranking old precedent does not. The transition will last years,
 benchmarks and system we release make it measurable.
 
 \section*{Limitations}
-No LLM has yet been evaluated (E20). Two fixes were found by looking at test results (statute
+The LLM study (E20) uses one small local model (Llama~3.2 3B); its scorer was corrected after the
+run and re-applied to the saved answers. Two fixes were found by looking at test results (statute
 headings read from the text for IL-PCSR's bare titles; structural punishment support) and are
 declared in the release; E19 was run after them and was not used to decide them. The drift gold
-labels are section-level and one of them is our rule-based reading of notes; human labels are
-being collected with the released kit. E7, E9 and E14 questions are phrased like section headings;
+labels are section-level and one of them is our rule-based reading of notes; no set has been
+labelled by legal experts. E7, E9 and E14 questions are phrased like section headings;
 E4 and E19 are not. The treatment detector's recall is low.
 
 \section*{Ethics statement}
