@@ -30,39 +30,24 @@ at India's 2024 Criminal-Code Replacement}
 \renewcommand{\shortauthors}{G. Rai}
 
 \begin{abstract}
-On 1 July 2024 India replaced its three criminal codes on a single day: the Indian Penal Code
-(IPC) by the Bharatiya Nyaya Sanhita (BNS), the Code of Criminal Procedure (CrPC) by the
-Bharatiya Nagarik Suraksha Sanhita (BNSS), and the Indian Evidence Act (IEA) by the Bharatiya
-Sakshya Adhiniyam (BSA). Sections were renumbered almost everywhere, so a bare section number now
-names different provisions in the two codes, and which code governs a case depends on the date
-of the incident, not of the search. Legal retrieval and retrieval-augmented generation (RAG)
-systems that ignore this \emph{temporally misground} what they return.
-
-We study this replacement end to end. From 1,701 High Court criminal judgments we show that the
-transition is slow: through 2025, only 10--29\% of judgments a month cite the BNS while 25--35\%
-still cite the IPC. We introduce \emph{statutory drift}, a per-provision measure of how far the law
-moved, built from clause alignment with cross-code renumbering, a parser for punishments written
-in legal English, and mental-state and threshold reading; against two independent gold sources it
-detects changed provisions with F1 0.89, where text similarity reaches 0.62 and the official
-crosswalk 0.21. We present Kanoon-Bridge, a three-layer system: a version-aware retrieval core in
-which old and new provisions share identifiers; a research agent that routes questions, refines
-the code family from evidence and verifies the code in force of its statutes; and an answer layer
-that \emph{computes} punishments from statute text and verifies every claim. On the IL-PCSR corpus
-the agent raises MAP on date-dependent procedure questions from 0.859 to 0.903 and on Hindi and
-Hinglish questions from 0.461 to 0.536 ($\ph<0.05$); on the written facts of 995 real bail orders it
-doubles MAP over the core (0.047$\to$0.100, $\ph<0.001$). The answer layer states the correct
-punishment for 86\% of 273 BNS questions, where an extractive answer does for 6\%, and flags
-82--100\% of injected errors with no false alarm on clean answers. Against a fair baseline (BM25 with the same crosswalk as query expansion),
-matching offence identifiers inside the index adds 0.23--0.35 MAP on cross-version precedent search,
-while date-dependent statute questions reduce to a simple date rule. When a user asks for judgments decided
-under the new code, an era filter detected from the question's wording lifts MAP from 0.151 to
-0.454, above a crosswalk-aware baseline (0.321, $\ph<0.001$). With a local LLM (Llama~3.2 3B), a closed-book
-answer cites the code not in force for 32\% of questions; naive RAG lowers this to 9\%, a
-date-aware prompt does not lower it further (10\%), and our verified pipeline brings it to 0.3\%
-while raising the right provision from 64\% to 74\% ($\ph<0.05$). We also report negative
-results: drift-aware down-ranking of old precedent, citation voting, and training-free
-table-of-contents navigation in the style of STAIR do not improve retrieval. We release the
-system, eight benchmarks and an LLM misgrounding benchmark.
+On 1 July 2024 India replaced its three criminal codes in a single day: the Indian Penal Code
+(IPC) by the Bharatiya Nyaya Sanhita (BNS), the Code of Criminal Procedure by the BNSS, and the
+Evidence Act by the BSA. Sections were renumbered, the same number now names different provisions
+in the two codes, and the governing code depends on the date of the incident. Retrieval and
+retrieval-augmented generation (RAG) systems that ignore this \emph{temporally misground} their
+answers. In 1,701 High Court judgments, only 10--29\% per
+month cite the BNS through 2025, so both codes will coexist for years. We introduce
+\emph{statutory drift}, a per-provision measure of legal change that detects changed provisions
+with F1 0.89 against an independent gold standard, where text similarity reaches 0.62. We present
+Kanoon-Bridge, a three-layer system: version-aware retrieval in which old and new provisions share
+identifiers; a research agent that verifies the code family and the code in force of the statutes
+it returns; and an answer layer that computes punishments from statute text and verifies every
+claim. Against crosswalk-aware baselines, the system improves cross-version precedent search by
+0.23--0.35 MAP, and it doubles MAP on the written facts of 995 real bail orders ($\ph<0.001$). With
+a local LLM (Llama~3.2 3B), closed-book answers cite the code not in force for 32\% of questions;
+date-aware prompting leaves 10\%, and claim verification reduces it to 0.3\%. We also report
+negative results for drift-aware down-ranking and training-free table-of-contents navigation, and
+release the system and its benchmarks.
 \end{abstract}
 
 \keywords{legal information retrieval, temporal retrieval, statute versioning, retrieval-augmented
@@ -261,14 +246,25 @@ between the published PDF and a JSON source (468 of 494 agree); offence identifi
 section with its BNS successors (343 ids). CrPC--BNSS and IEA--BSA: aligned by text similarity
 (698 shared provision ids), flagged as automatic.
 
+\paragraph{Gold standard.} Following IR convention, we call \emph{gold} (or the gold standard) the
+reference labels against which a system's output is scored: for a retrieval set, the documents
+judged relevant to each query (its \emph{qrels}); for an answer set, the correct answer; for drift,
+the label ``changed'' or ``unchanged'' for each provision. A system is never shown the gold of a
+test set. Because several of our sets derive their gold from the same crosswalk that the system
+uses, we state the source of every set's gold (Table~\ref{tab:benchmarks}, and
+Table~\ref{tab:provenance} in \S\ref{sec:results}) and treat crosswalk-derived sets as tests of
+consistency rather than of independent relevance.
+
 \paragraph{Benchmarks.} Table~\ref{tab:benchmarks} lists the evaluation sets. E1 is IL-PCSR's own
 test split. E2--E10 are generated from the crosswalks, IL-PCSR citations and the eCourts
-judgments; E4 and E6 are written and judged by hand with a second, declared AI judge; E14 uses an
-independent punishment summary as gold; E19 uses a third-party dataset.
+judgments; E4 and E6 are written and judged by hand with a second, declared AI judge; the gold of E14 is an
+independently written punishment summary, and that of E19 the charges recorded in a third-party
+dataset.
 
 \begin{table*}[t]
 \centering\small
-\caption{Evaluation sets. ``Gold'' is the relevance source.}
+\caption{Evaluation sets. ``Gold'': the source of the reference labels (the gold standard)
+against which each set is scored.}
 \label{tab:benchmarks}
 \begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{llrll}
@@ -441,7 +437,8 @@ titles are bare), and a penalty for definition and general-explanation sections;
 issue's key terms in the retrieved precedents, searches again for uncovered issues, and writes a
 \textbf{research memo} (law in force, counterpart, punishment, what changed, issue coverage).
 \end{enumerate}
-An optional \textbf{table-of-contents navigation} step (inspired by STAIR \cite{stair}) reads the
+Layer~2 also offers an optional \textbf{table-of-contents navigation} step, inspired by STAIR
+\cite{stair}; it acts on statute retrieval only and is not used by layer~3. It reads the
 codes as a table of contents (code$\to$chapter$\to$Gazette sub-heading$\to$section heading, from
 India Code), chooses the chapters whose entry best matches the question, and favours their
 sections; it is off by default (\S\ref{sec:res-toc}).
@@ -708,7 +705,8 @@ with \texttt{era:new} (all systems) & .069 & .440 & \textbf{.595} \\
 
 \subsection{Statutory drift (E11--E12)}\label{sec:res-drift}
 
-\paragraph{Gold.} S1 is a section-level retained/changed mapping; S2 is the change notes of an
+\paragraph{Gold standard for drift.} No single authoritative list says which provisions changed,
+so we use two independent sources. S1 is a section-level retained/changed mapping; S2 is the change notes of an
 independent study platform, read into categories (unchanged, structure, punishment, substance) by
 our rules. On the 346 BNS sections with an IPC predecessor they agree at $\kappa=0.75$: ``did it
 change?'' has more than one defensible answer.
@@ -957,7 +955,7 @@ overruled; this check is ours against the legal record. An earlier version witho
 In E1 flagged judgments reach the top 10 for 0.6\% of test queries; demoting them leaves MAP
 unchanged: a safety signal for the user, not a ranking gain.
 
-\subsection{Table-of-contents navigation}\label{sec:res-toc}
+\subsection{Table-of-contents navigation in layer 2}\label{sec:res-toc}
 
 Choosing chapters by their table-of-contents entries, as STAIR does with a trained generative
 retriever \cite{stair}, did not help without training: flat on E7 (both@1 0.890$\to$0.895) and on E19
@@ -1044,7 +1042,8 @@ section (11\%): when the model's claim cannot be verified, the claim is removed 
 procedure questions (E9) the small model is hurt by the date-aware prompt (right 54\% vs 74\% for naive
 RAG), and verification does not recover it (54\%, with 22\% of answers left without a section): the
 3B model often names a section of the wrong Act (``Section 27 of the Bharatiya Nyaya Sanhita'' for an
-evidence question), which the verifier removes. A larger model is the obvious next measurement.
+evidence question), which the verifier removes. Repeating the study with a larger model is needed to separate the effect of model size from
+that of prompt design.
 
 %% ===================================================================================== 9
 \section{Discussion}\label{sec:discussion}
