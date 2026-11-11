@@ -1,7 +1,7 @@
 %% Kanoon-Bridge: full research paper (ACM acmart, sigconf).
 %% Compile on Overleaf (acmart is built in): upload this folder; main file kanoon_bridge_acm.tex.
 %% Every number is taken from results/tables/ of the repository; docs/PROJECT.md describes each
-%% experiment. Items marked \todo{} must be completed before submission.
+%% experiment.
 \documentclass[sigconf,nonacm]{acmart}
 %% For submission: \documentclass[sigconf,review,anonymous]{acmart} and fill \acmConference.
 
@@ -11,7 +11,6 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,fit,backgrounds}
 \usepackage{xcolor}
-\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
 \newcommand{\cmark}{\checkmark}
 \newcommand{\ph}{p_{\text{Holm}}}
 
@@ -20,14 +19,14 @@
 
 \begin{document}
 
-\title{When the Law Is Renumbered: Temporal Misgrounding, Statutory Drift and Verified Retrieval
-at India's 2024 Criminal-Code Replacement}
+\title{Kanoon-Bridge: A Multi-Layer Information Retrieval System for India's New Criminal Codes}
 
 \author{Gaurav Rai}
-\affiliation{\institution{\todo{institution}}\city{\todo{city}}\country{India}}
-\email{gauravrai2114@gmail.com}
-
-\renewcommand{\shortauthors}{G. Rai}
+\affiliation{\institution{2410110133}\country{}}
+\author{Shaurya Sharma}
+\affiliation{\institution{2410110317}\country{}}
+\author{Sharanya Gupta}
+\affiliation{\institution{2410110315}\country{}}
 
 \begin{abstract}
 On 1 July 2024 India replaced its three criminal codes in a single day: the Indian Penal Code
@@ -35,7 +34,7 @@ On 1 July 2024 India replaced its three criminal codes in a single day: the Indi
 Evidence Act by the BSA. Sections were renumbered, the same number now names different provisions
 in the two codes, and the governing code depends on the date of the incident. Retrieval and
 retrieval-augmented generation (RAG) systems that ignore this \emph{temporally misground} their
-answers. In 1,701 High Court judgments, only 10--29\% per
+answers. In 1,701 High Court judgments, only 8--29\% per
 month cite the BNS through 2025, so both codes will coexist for years. We introduce
 \emph{statutory drift}, a per-provision measure of legal change that detects changed provisions
 with F1 0.89 against an independent gold standard, where text similarity reaches 0.62. We present
@@ -65,9 +64,40 @@ misgrounding}, citing the version of a provision in force today when an earlier 
 \cite{fiscalqa}, and has documented temporal failure modes of statutory question answering
 \cite{oldfriend} and of agentic legal search \cite{timetravel}.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize, node distance=1.5mm,
+  sec/.style={draw=black!35, rounded corners=1.5pt, minimum height=7mm, text width=26mm,
+              align=left, inner xsep=2pt, fill=white},
+  hdr/.style={font=\scriptsize\bfseries, align=center},
+  num84/.style={fill=orange!18}, num302/.style={fill=blue!12},
+  map/.style={-{Stealth[length=1.6mm]}, draw=black!55, line width=0.5pt}]
+\node[hdr] (hi) at (0,0) {IPC\\[-1pt]\mdseries incidents before 1 Jul 2024};
+\node[hdr] (hb) at (4.9,0) {BNS\\[-1pt]\mdseries incidents from 1 Jul 2024};
+\node[sec, num84, below=2.5mm of hi] (i84) {\textbf{84}\enspace act of a person\\ of unsound mind};
+\node[sec, below=of i84] (i298) {298\enspace wounding\\ religious feelings};
+\node[sec, num302, below=of i298] (i302) {\textbf{302}\enspace punishment\\ for murder};
+\node[sec, below=of i302] (i498) {498\enspace enticing a\\ married woman};
+\node[sec, below=2.5mm of hb] (b22) {22\enspace act of a person\\ of unsound mind};
+\node[sec, num84, below=of b22] (b84) {\textbf{84}\enspace enticing a\\ married woman};
+\node[sec, below=of b84] (b103) {103\enspace punishment\\ for murder};
+\node[sec, num302, below=of b103] (b302) {\textbf{302}\enspace wounding\\ religious feelings};
+\draw[map] (i84.east) -- (b22.west);
+\draw[map] (i298.east) -- (b302.west);
+\draw[map] (i302.east) -- (b103.west);
+\draw[map] (i498.east) -- (b84.west);
+\end{tikzpicture}
+\caption{The 2024 renumbering in four sections. Arrows: the crosswalk from each IPC section to its
+BNS successor. Shaded: the same number names different offences in the two codes. ``Punishment
+under section 302'' is a question about murder for a 2023 incident and about religious feelings,
+read literally, for a 2025 one; only the incident date decides.}
+\label{fig:teaser}
+\end{figure}
+
 India's 2024 replacement of its criminal codes is the extreme case. Three codes were replaced on
 one day. About 500 IPC sections map to BNS sections through a many-to-many crosswalk, nearly every
-number changed, and some numbers now name different offences: IPC 302 is murder, BNS 302 is not;
+number changed, and some numbers now name different offences (Figure~\ref{fig:teaser}): IPC 302 is murder, BNS 302 is not;
 ``section 84'' is insanity in the IPC and a different provision in the BNS. An incident in June
 2024 and one in August 2024 fall under different codes. And the precedent built on the IPC over
 160 years transfers to the BNS only where the provision did not change: sedition (IPC 124A) and
@@ -211,15 +241,15 @@ Kerala) from the eCourts Indian High Court Judgments open dataset (CC-BY-4.0), 2
 per court and month, 1,701 in total, and extracted every section citation with our code-aware
 tokenizer (``u/s 302 IPC'', ``Section 103 of the BNS'', ``BNSS 482'').
 
-No judgment in the sample cites the BNS before October 2024. Through 2025, between 10\% and 29\% of
-judgments per month cite the BNS while 25--35\% still cite the IPC (Figure~\ref{fig:shift}); the BNS
+No judgment in the sample cites the BNS before October 2024. Through 2025, between 8\% and 29\% of
+judgments per month cite the BNS (median 17\%) while 14--58\% still cite the IPC (median 31\%) (Figure~\ref{fig:shift}); the BNS
 share of all penal section mentions ranges from 5\% to 58\% by month. Most pending cases concern
 incidents before 1 July 2024, so both codes will be cited for years (\textbf{RQ1}). A retrieval
 system must serve both, choose by date, and connect them.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/citation_shift.png}
+\includegraphics[width=\columnwidth]{figures/citation_shift.pdf}
 \caption{Share of High Court criminal judgments citing the IPC and the BNS, per month (eCourts
 open data, 1,701 judgments of five High Courts).}
 \label{fig:shift}
@@ -578,8 +608,10 @@ latency (59 ms) but keep only 0.245 of the exhaustive top 20, so they stay off.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/language_e4.png}
-\caption{E4: MAP as the typed-query steps are added (150 queries: 50 needs in three languages).}
+\includegraphics[width=\columnwidth]{figures/language_e4.pdf}
+\caption{E4: P@5 per query language as the typed-query steps are added (50 needs per language),
+with MAP over all 150 queries above each step. The legal lexicon is the step that matters; English
+queries are unaffected by design.}
 \label{fig:lang}
 \end{figure}
 
@@ -753,7 +785,7 @@ mental-state reading slightly \emph{hurts} detection (0.853 without it vs 0.843)
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/drift_ablation.png}
+\includegraphics[width=\columnwidth]{figures/drift_ablation.pdf}
 \caption{E11b: change-detection F1 of the hand-set drift rules without each component (all 346
 sections).}
 \label{fig:driftabl}
@@ -938,8 +970,10 @@ another statute's punishment & 249 & .36 & \textbf{.89} \\
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/layers_error_injection.png}
-\caption{Error injection on the open corpus: cosine support vs claim verification.}
+\includegraphics[width=\columnwidth]{figures/error_injection.pdf}
+\caption{E15: share of injected errors flagged on the open corpus, by error type: v1's cosine
+support and code check vs v2's claim verification. On clean answers v2 raises a false alarm on 1\%,
+v1 on 80\%.}
 \label{fig:inject}
 \end{figure}
 
@@ -1007,31 +1041,49 @@ prompt); RAG v2 (agent, verification, regeneration, correction); and the structu
 an LLM. It scores the first section each answer names: the right provision of the code in force,
 \emph{misgrounded} (the code not in force, or a colliding number), or no section.
 We ran it with Llama~3.2 3B on 300 questions (100 per set), the same model in every condition
-(Table~\ref{tab:llm}); conditions are compared on the same questions with exact McNemar tests,
+(Figure~\ref{fig:llm}; an example in Figure~\ref{fig:example}); conditions are compared on the same questions with exact McNemar tests,
 Holm-corrected. A bare ``Section 506'' is resolved to the code the answer names nearest to it in
 the same sentence; quotations are not counted. (An earlier scorer that required the code next to
 the number under-counted closed-book sections; all numbers here use the corrected scorer,
 applied to the saved answers.)
 
-\begin{table}[t]
-\centering\small
-\caption{E20: Llama~3.2 3B, 300 questions. Right: the right provision of the code in force named
-first; misgr.: a section of the code not in force (or a colliding number) named first.}
-\label{tab:llm}
-\begin{adjustbox}{max width=\linewidth}
-\begin{tabular}{lccccc}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/e20_outcomes.pdf}
+\caption{E20: the first section named in each of 300 answers (Llama~3.2 3B). Code not in force:
+a section of the code not in force on the incident date, or a colliding number; other section: a
+wrong section of the right code. Verification, not the date-aware prompt, removes misgrounding.}
+\label{fig:llm}
+\end{figure}
+
+\begin{figure}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.2\columnwidth}p{0.75\columnwidth}@{}}
 \toprule
-Condition & right & misgr. & any wrong code & no section & E7 misgr. \\
+\multicolumn{2}{@{}p{0.97\columnwidth}@{}}{\textit{Which section applies to: forgery of valuable
+security, will, etc.?} Incident 1 September 2024; gold: BNS 338 (formerly IPC 467).}\\
 \midrule
-closed-book & .18 & \textbf{.32} & .32 & .09 & .49 \\
-naive RAG & .64 & .09 & .09 & .18 & .09 \\
-RAG v1 (date-aware prompt) & .68 & .10 & .21 & .05 & .01 \\
-RAG v2 (verified) & .74 & \textbf{.003} & .02 & .11 & .00 \\
-structured (no LLM) & \textbf{.83} & .00 & .00 & .01 & .00 \\
+closed-book & ``\ldots the section that applies to forgery of valuable security, will, etc.\ is
+Section 464.'' (IPC) \hfill \textcolor{orange!80!black}{old code, wrong section}\\
+naive RAG & ``\ldots is Section 467 of the Indian Penal Code (IPC).''
+\hfill \textcolor{orange!80!black}{code not in force}\\
+RAG v1 & ``\ldots is BNS Section 467, which states that whoever forges a document \ldots''
+\hfill \textcolor{orange!80!black}{IPC number, BNS name}\\
+RAG v2 & ``BNS Section 338 -- Forgery of valuable security, will, etc states: `Whoever forges a
+document \ldots' [1]'' \emph{Corrections: regenerated once with the verifier's problems listed;
+replaced a contradicted sentence (names IPC 338, which [1] does not; IPC 338 is not in force on the
+incident date) by the source's own words.} \hfill \textcolor{blue!70!black}{right}\\
+structured & ``The provision that applies to an incident on or after 1 July 2024 is BNS 338 \ldots\
+It is punishable with life imprisonment, imprisonment up to 10 years, fine. [1]''
+\hfill \textcolor{blue!70!black}{right}\\
 \bottomrule
 \end{tabular}
-\end{adjustbox}
-\end{table}
+\caption{One E20 question under the five conditions (real answers, abridged with \ldots). Only the
+verified and the computed answers name the provision in force; the verifier's correction log is
+shown with the answer.}
+\label{fig:example}
+\end{figure}
 
 \paragraph{Findings.} (1) Without retrieval the model misgrounds a third of the answers, and in every
 case the same way: it cites the old code (IPC, CrPC, Evidence Act) for an incident after 1 July
@@ -1061,7 +1113,7 @@ is caused by the removed passages.
 
 Removing the wrong-code passages fixed 16 of 27 naive-RAG misgroundings (59\%; exact McNemar,
 $\ph<0.001$) but only 7 of 31 under the date-aware prompt (23\%; $\ph=0.08$)
-(Table~\ref{tab:origin}). A diagnosis from the context alone predicted less: only 9 of the 58
+(Figure~\ref{fig:origin}). A diagnosis from the context alone predicted less: only 9 of the 58
 answers cite a wrong-code section that is in the context, and 40 instead read a bare number in the
 question (``punishment under section 323'') as an IPC section that was never retrieved. Yet removing
 old-code passages fixed 7 of the 15 such naive-RAG answers: old-code text and old-era judgments in
@@ -1073,30 +1125,16 @@ in force in retrieval (layers 1--2), but cannot replace checking the answer: 35 
 Only the misgrounded answers were regenerated, so whether the removal harms answers that were right
 is not measured.
 
-\begin{table}[t]
-\centering\small
-\caption{E25: the 58 misgrounded E20 answers (Llama~3.2 3B) regenerated with every wrong-code
-passage removed. Source: where the wrong section came from, judged from the context (copied: in the
-context; question number: a bare number in the question read as the other code; mislabel: the
-right number under the other code's name). Fixed: no longer misgrounded after removal.}
-\label{tab:origin}
-\begin{adjustbox}{max width=\linewidth}
-\begin{tabular}{lcccc}
-\toprule
- & \multicolumn{2}{c}{naive RAG} & \multicolumn{2}{c}{RAG v1 (date-aware prompt)} \\
-Source & answers & fixed & answers & fixed \\
-\midrule
-copied from context & 5 & 4 & 4 & 2 \\
-question number & 15 & 7 & 25 & 4 \\
-mislabel & 4 & 3 & 1 & 1 \\
-recalled & 3 & 2 & 1 & 0 \\
-\midrule
-total & 27 & \textbf{16} (59\%) & 31 & 7 (23\%) \\
-\quad of which now right / no section & & 7 / 8 & & 5 / 1 \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/e25_ablation.pdf}
+\caption{E25: the 58 misgrounded E20 answers regenerated with every wrong-code passage removed, by
+where the wrong section came from (judged from the context): copied from it, a bare number in the
+question read as the IPC, the right BNS number under the IPC's name, or recalled. Of the fixed
+answers, 7 of 16 (naive RAG) and 5 of 7 (RAG v1) name the right provision; the rest mostly name no
+section.}
+\label{fig:origin}
+\end{figure}
 
 %% ===================================================================================== 9
 \section{Discussion}\label{sec:discussion}
@@ -1175,7 +1213,6 @@ sentencing paragraphs when only the punishment changed.
 channel; per-question-kind switching of the family search; disabling citation votes.
 \item \textbf{A user study} with law students: does the ``What changed'' view reduce wrong-code
 citations?
-\item \todo{items from the Overleaf slides}
 \end{itemize}
 
 \section*{Ethics, licences and reproducibility}
@@ -1196,10 +1233,6 @@ Courts will cite both codes for years; the system and benchmarks we release make
 measurable, and the LLM benchmark shows that verification, not prompting, is what stops a model
 from citing the wrong code.
 
-\begin{acks}
-\todo{Acknowledge teammates on the course project (Kashvi Tak, Sharanya Gupta, Shaurya) as
-appropriate.}
-\end{acks}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}

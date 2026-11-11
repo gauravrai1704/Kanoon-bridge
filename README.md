@@ -6,7 +6,7 @@ On 1 July 2024 India replaced the Indian Penal Code (IPC) with the Bharatiya Nya
 the Code of Criminal Procedure (CrPC) with the BNSS, and the Evidence Act with the BSA, on a
 single day. Almost every section was renumbered: "section 302" is murder in the IPC and a
 different offence in the BNS, and which code applies depends on the date of the incident. Courts
-will use both codes for years. In a sample of 1,701 High Court criminal judgments, only 10–29% a
+will use both codes for years. In a sample of 1,701 High Court criminal judgments, only 8–29% a
 month cited the BNS through 2025.
 
 Ordinary legal search and AI assistants therefore often return the wrong law. Kanoon-Bridge is a

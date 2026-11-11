@@ -759,8 +759,8 @@ tail) rather than for a bigger single cache. Assumptions: chunk KV reusable at a
 High Courts, 2023–2025 (12–30 per court and month).
 
 **The transition is slow (`results/tables/citation_shift.csv`).** No judgment in the sample cites
-the BNS before October 2024; from 2025 on, only 10–29% per month cite the BNS while 25–35% still
-cite the IPC. Courts will keep citing both codes for years (most pending cases concern pre-July
+the BNS before October 2024; from 2025 on, only 8–29% per month cite the BNS (median 17%) while 14–58%
+(median 31%) still cite the IPC. Courts will keep citing both codes for years (most pending cases concern pre-July
 2024 incidents), which is why a retrieval system has to bridge them.
 
 **E10** (39 questions such as "cases under section 503 IPC"; gold: 348 BNS-era judgments citing

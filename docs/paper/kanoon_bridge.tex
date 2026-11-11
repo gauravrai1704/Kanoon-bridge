@@ -1,7 +1,6 @@
 % Kanoon-Bridge paper draft (ACL format). Compile on Overleaf: upload this folder (acl.sty,
 % acl_natbib.bst, references.bib, figures from ../../results/figures). Numbers are from the
 % committed tables in results/tables; see docs/PROJECT.md for every experiment and caveat.
-% Items marked \todo{} must be filled before submission.
 \documentclass[11pt]{article}
 \usepackage[review]{acl}            % [final] for the camera-ready version
 \usepackage{times}
@@ -15,15 +14,12 @@
 \usepackage{xcolor}
 \usepackage{amsmath}
 \usepackage{adjustbox}
-\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
 \newcommand{\ph}{p_{\text{Holm}}}
 
 \title{When the Law Is Renumbered: Temporal Misgrounding in Legal Retrieval\\
 at India's 2024 Criminal-Code Replacement}
 
-\author{Gaurav Rai \\
-  \todo{affiliation} \\
-  \texttt{gauravrai2114@gmail.com}}
+\author{Gaurav Rai \\ 2410110133 \And Shaurya Sharma \\ 2410110317 \And Sharanya Gupta \\ 2410110315}
 
 \begin{document}
 \maketitle
@@ -36,7 +32,7 @@ different offences in the two codes (IPC 302 is murder; BNS 302 is not), and whi
 depends on the date of the incident, not of the question. Legal retrieval and retrieval-augmented
 generation (RAG) systems that ignore this \emph{temporally misground} their answers. We study the
 problem end to end. (1) We show from 1,701 High Court criminal judgments that the transition is
-slow: in 2025 only 10--29\% of judgments a month cite the BNS. (2) We measure, per provision, how
+slow: in 2025 only 8--29\% of judgments a month cite the BNS. (2) We measure, per provision, how
 far the law moved (\emph{statutory drift}), with clause alignment, a punishment parser and
 cross-code renumbering; it detects changed provisions with F1 0.89 against an independent gold
 standard, where text similarity reaches 0.62. (3) We build a retrieval agent that routes questions,
@@ -109,13 +105,13 @@ on statutes. RAGCache \citep{ragcache}, CacheBlend \citep{cacheblend} and tiered
 We sampled criminal judgments of five High Courts (Delhi, Allahabad, Punjab and Haryana, Gujarat,
 Kerala) from the eCourts open dataset (CC-BY-4.0), 2023--2025, 12--30 per court and month, 1,701
 in total, and extracted every section citation with a code-aware tokenizer. No judgment in the
-sample cites the BNS before October 2024. Through 2025, 10--29\% of judgments per month cite the
-BNS and 25--35\% still cite the IPC (Figure~\ref{fig:shift}): most pending cases concern
+sample cites the BNS before October 2024. Through 2025, 8--29\% of judgments per month cite the
+BNS and 14--58\% still cite the IPC (Figure~\ref{fig:shift}): most pending cases concern
 incidents before 1 July 2024, so both codes will be cited for years.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/citation_shift.png}
+\includegraphics[width=\columnwidth]{figures/citation_shift.pdf}
 \caption{Share of High Court criminal judgments citing the IPC and the BNS, per month (eCourts,
 1,701 judgments).}
 \label{fig:shift}
@@ -259,7 +255,15 @@ it names the right provision of the code in force for 18\% and cites the code no
 32\%, always the old code for a post-2024 incident (the IPC for 49 of 50 penal questions). Naive
 RAG: 64\% / 9\%; a date-aware prompt: 68\% / 10\% (no gain); our verified RAG: 74\% / 0.3\%
 ($\ph<0.001$ on misgrounding against both); the computed answer without an LLM: 83\% / 0\%.
-Verification, not prompting, stops the model from citing the wrong code.
+Verification, not prompting, stops the model from citing the wrong code (Figure~\ref{fig:llm}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/e20_outcomes.pdf}
+\caption{E20: the first section named in each of 300 answers (Llama~3.2 3B). Code not in force:
+the code not in force on the incident date, or a colliding number.}
+\label{fig:llm}
+\end{figure}
 
 \paragraph{Where misgrounding comes from (E25).} Following RAGViz's remove-and-regenerate
 diagnosis \citep{ragviz}, we regenerated the 58 misgrounded naive-RAG and RAG v1 answers with every
@@ -269,7 +273,15 @@ prompt (23\%, n.s.). Only 9 of the 58 cite a wrong-code section present in the c
 bare number in the question as the IPC, yet removing old-code passages fixed half of those under
 naive RAG: old-era text biases how the model reads an ambiguous number. Filtering the context by the
 code in force helps, but 60\% of the errors survive it, and half of the fixed naive-RAG answers then
-name no section: the answer still has to be checked.
+name no section: the answer still has to be checked (Figure~\ref{fig:origin}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/e25_ablation.pdf}
+\caption{E25: the 58 misgrounded E20 answers regenerated with every wrong-code passage removed, by
+where the wrong section came from.}
+\label{fig:origin}
+\end{figure}
 
 \paragraph{Judicial treatment.} From the precedent pool and training queries, the extractor finds
 5 overruled judgments (Golak Nath, United Motors, Northern India Caterers, Air India Statutory
