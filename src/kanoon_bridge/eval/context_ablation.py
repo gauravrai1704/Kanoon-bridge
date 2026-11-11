@@ -72,17 +72,26 @@ def _ref_code(engine, doc_id: str) -> str:
     return statute_ref(engine, doc_id).split(":", 1)[0]
 
 
-def ablate(engine, result, bad: str):
-    """`result` without the statutes of code `bad` and without the judgments that cite it."""
+def ablate(engine, result, bad: str, rag=None, rounds: int = 20):
+    """`result` without the statutes of code `bad` and the judgments that cite it. Judgments' cited
+    sections (facets.metas) are incomplete, so with `rag` the context is also built and every hit
+    whose passage still names a section of `bad` is dropped, until none is left."""
     metas = engine.facets.metas
 
     def cites_bad(doc_id):
         m = metas.get(doc_id)
         return any(r.split(":", 1)[0] == bad for r in (getattr(m, "statutes_cited", None) or []))
 
-    return dataclasses.replace(result,
-                               statutes=[h for h in result.statutes if _ref_code(engine, h.doc_id) != bad],
-                               precedents=[h for h in result.precedents if not cites_bad(h.doc_id)])
+    out = dataclasses.replace(result,
+                              statutes=[h for h in result.statutes if _ref_code(engine, h.doc_id) != bad],
+                              precedents=[h for h in result.precedents if not cites_bad(h.doc_id)])
+    for _ in range(rounds if rag is not None else 0):
+        drop = {c.doc_id for c in chunks_of(rag, out) if any(r.split(":")[0] == bad for r in _chunk_refs(engine, c))}
+        if not drop:
+            break
+        out = dataclasses.replace(out, statutes=[h for h in out.statutes if h.doc_id not in drop],
+                                  precedents=[h for h in out.precedents if h.doc_id not in drop])
+    return out
 
 
 def chunks_of(rag, result):
@@ -105,8 +114,20 @@ def _chunk_refs(engine, chunk) -> set[str]:
     return refs
 
 
-def diagnose(engine, chunks, answer: str, row: dict, bad: str) -> dict:
-    """No LLM: does the context hold wrong-code text, and is the answer's first section in it?"""
+def _right_number(first, row: dict, normalizer) -> bool:
+    """The first section's NUMBER is the right provision of the code in force (only its code is wrong).
+    Not for E2: there the question gives the number, and the code is what is tested."""
+    if not first or row["set"].startswith("e2"):
+        return False
+    num = first.split(":", 1)[1]
+    offences = set(normalizer.offences_for(f"{row['expected_code']}:{num}")) if normalizer is not None else set()
+    return row.get("offence") in offences
+
+
+def diagnose(engine, chunks, answer: str, row: dict, bad: str, normalizer=None) -> dict:
+    """No LLM: does the context hold wrong-code text, and is the answer's first section in it?
+    `mislabel`: the first section has the right number of the code in force under the other code's
+    name ("Section 118 of the Indian Penal Code (BNS)")."""
     refs = [_chunk_refs(engine, c) for c in chunks]
     wrong = sum(any(r.split(":")[0] == bad for r in rs) for rs in refs)
     secs = M._sections(answer)
@@ -115,6 +136,7 @@ def diagnose(engine, chunks, answer: str, row: dict, bad: str) -> dict:
     match = [int(n) <= len(chunks) and _chunk_refs(engine, chunks[int(n) - 1]) & {f"{c.lower()}:{s.lower()}"}
              for n, c, s in heads]
     return {"n_chunks": len(chunks), "wrong_code_chunks": wrong,
+            "mislabel": float(bool(secs) and secs[0].code.value == bad and _right_number(first, row, normalizer)),
             "first_section_in_context": float(bool(first) and any(first in rs for rs in refs)),
             "headers": len(heads), "headers_matching": sum(bool(m) for m in match)}
 
@@ -129,9 +151,11 @@ def _answer(rag, result, cond: str, gen: str) -> str:
         return f"[error: {err}]"
 
 
-def classify(control_mis: float, ablated_mis: float, ablated_wrong_chunks: int) -> str:
+def classify(control_mis: float, ablated_mis: float, ablated_wrong_chunks: int, mislabel: float = 0.0) -> str:
     if not control_mis:
         return "not misgrounded"
+    if mislabel:
+        return "mislabel"
     if not ablated_mis:
         return "context-induced"
     return "parametric" if ablated_wrong_chunks == 0 else "unresolved (wrong-code text left)"
@@ -150,20 +174,22 @@ def run(engine, rag, agent, saved: list[dict], gen: str | None, conditions=CONDI
         row, cond = gold[s["id"]], s["condition"]
         bad = wrong_code(row)
         result = retrieve(engine, agent, row, cond)
-        abl = ablate(engine, result, bad)
+        abl = ablate(engine, result, bad, rag)
         ctx, ctx_abl = chunks_of(rag, result), chunks_of(rag, abl)
         out = {"id": s["id"], "set": row["set"], "condition": cond, "incident_date": row.get("incident_date"),
                "wrong_code": bad, "e20_misgrounded@1": s["misgrounded@1"], "e20_right@1": s["right@1"],
-               **diagnose(engine, ctx, s["answer"], row, bad),
-               "ablated_wrong_code_chunks": diagnose(engine, ctx_abl, "", row, bad)["wrong_code_chunks"]}
+               **diagnose(engine, ctx, s["answer"], row, bad, norm),
+               "ablated_wrong_code_chunks": diagnose(engine, ctx_abl, "", row, bad)["wrong_code_chunks"],
+               "ablated_n_chunks": len(ctx_abl)}
         if gen:
             for name, res in (("control", result), ("ablated", abl)):
                 text = _answer(rag, res, cond, gen)
                 sc = M.score_answer(text, row, norm)
-                out.update({f"{name}_answer": text, f"{name}_misgrounded@1": sc["misgrounded@1"],
+                d = diagnose(engine, ctx if name == "control" else ctx_abl, text, row, bad, norm)
+                out.update({f"{name}_mislabel": d["mislabel"], f"{name}_answer": text, f"{name}_misgrounded@1": sc["misgrounded@1"],
                             f"{name}_right@1": sc["right@1"], f"{name}_no_section": sc["no_section"]})
             out["cause"] = classify(out["control_misgrounded@1"], out["ablated_misgrounded@1"],
-                                    out["ablated_wrong_code_chunks"])
+                                    out["ablated_wrong_code_chunks"], out["control_mislabel"])
         rows.append(out)
         if log and (i + 1) % 25 == 0:
             log(f"  {i + 1}/{len(todo)} answers")
@@ -185,6 +211,11 @@ def summarize(rows: list[dict]) -> list[dict]:
              "ablated_has_wrong_code": round(sum(r["ablated_wrong_code_chunks"] > 0 for r in rs) / n, 4),
              "misgrounded_n": len(mis),
              "misgrounded_section_in_context": round(sum(r["first_section_in_context"] for r in mis) / len(mis), 4) if mis else "",
+             "misgrounded_mislabel": round(sum(r["mislabel"] for r in mis) / len(mis), 4) if mis else "",
+             "misgrounded_copied": round(sum(r["first_section_in_context"] and not r["mislabel"] for r in mis) / len(mis), 4) if mis else "",
+             "misgrounded_recalled": round(sum(not r["first_section_in_context"] and not r["mislabel"] for r in mis) / len(mis), 4) if mis else "",
+             "chunks": round(sum(r["n_chunks"] for r in rs) / n, 2),
+             "ablated_chunks": round(sum(r.get("ablated_n_chunks", r["n_chunks"]) for r in rs) / n, 2),
              "misgrounded_no_wrong_code_in_context": round(sum(r["wrong_code_chunks"] == 0 for r in mis) / len(mis), 4) if mis else "",
              "header_match": round(sum(r["headers_matching"] for r in rs) / max(1, sum(r["headers"] for r in rs)), 4)}
         if "cause" in rs[0]:
@@ -194,7 +225,7 @@ def summarize(rows: list[dict]) -> list[dict]:
             ctl = [r for r in rs if r["control_misgrounded@1"]]
             t["control_misgrounded_n"] = len(ctl)
             t["unstable_vs_e20"] = round(sum(r["control_misgrounded@1"] != r["e20_misgrounded@1"] for r in rs) / n, 4)
-            for cause in ("context-induced", "parametric", "unresolved (wrong-code text left)"):
+            for cause in ("mislabel", "context-induced", "parametric", "unresolved (wrong-code text left)"):
                 t[cause] = round(sum(r["cause"] == cause for r in ctl) / len(ctl), 4) if ctl else ""
         table.append(t)
     order = {c: i for i, c in enumerate(CONDITIONS)}

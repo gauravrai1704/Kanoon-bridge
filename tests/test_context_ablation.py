@@ -51,14 +51,43 @@ def test_diagnose_finds_wrong_code_text_and_the_copied_section():
     assert d2["wrong_code_chunks"] == 0 and d2["first_section_in_context"] == 0.0
 
 
+def test_mislabel_is_the_right_number_under_the_old_name():
+    eng = _Engine()
+    norm = SimpleNamespace(offences_for=lambda ref: {"off:murder"} if ref == "bns:103" else set())
+    row = {"set": "e7_temporal", "expected_code": "bns", "offence": "off:murder", "incident_date": "2025-01-01"}
+    assert A.diagnose(eng, [], "Section 103 of the Indian Penal Code applies.", row, "ipc", norm)["mislabel"] == 1.0
+    assert A.diagnose(eng, [], "Section 302 of the Indian Penal Code applies.", row, "ipc", norm)["mislabel"] == 0.0
+    e2 = {"set": "e2_collision", "expected": "bns:103", "incident_date": "2025-01-01"}
+    assert A.diagnose(eng, [], "Section 103 IPC applies.", e2, "ipc", norm)["mislabel"] == 0.0
+
+
+def test_ablate_with_context_removes_unlisted_citations():
+    eng = _Engine()
+    eng.facets.metas["P_hidden"] = SimpleNamespace(statutes_cited=[])
+    texts = {"P_hidden": "Convicted under Section 302 IPC.", "P_none": "Bail is the rule."}
+    rag = SimpleNamespace()
+    import kanoon_bridge.eval.context_ablation as mod
+
+    orig = mod.chunks_of
+    mod.chunks_of = lambda _rag, res: [Chunk(i + 1, h.doc_id, "ratio", texts[h.doc_id], 1, 1.0, h.doc_id)
+                                       for i, h in enumerate(res.precedents)]
+    try:
+        res = SearchResult(AnalyzedQuery(Query("murder")), statutes=[],
+                           precedents=[ScoredDoc("P_hidden", 2.0), ScoredDoc("P_none", 1.0)])
+        assert [h.doc_id for h in A.ablate(eng, res, "ipc", rag).precedents] == ["P_none"]
+    finally:
+        mod.chunks_of = orig
+
+
 def test_classify_and_summary():
     assert A.classify(1.0, 0.0, 0) == "context-induced"
     assert A.classify(1.0, 1.0, 0) == "parametric"
     assert A.classify(1.0, 1.0, 2).startswith("unresolved")
     assert A.classify(0.0, 1.0, 0) == "not misgrounded"
+    assert A.classify(1.0, 1.0, 0, mislabel=1.0) == "mislabel"
     base = {"set": "e7_temporal", "condition": "naive RAG", "e20_right@1": 0.0, "n_chunks": 4, "headers": 0,
             "headers_matching": 0, "ablated_wrong_code_chunks": 0, "control_right@1": 0.0, "ablated_right@1": 1.0,
-            "ablated_no_section": 0.0}
+            "ablated_no_section": 0.0, "mislabel": 0.0}
     rows = [{**base, "id": "a", "e20_misgrounded@1": 1.0, "wrong_code_chunks": 2, "first_section_in_context": 1.0,
              "control_misgrounded@1": 1.0, "ablated_misgrounded@1": 0.0, "cause": "context-induced"},
             {**base, "id": "b", "e20_misgrounded@1": 1.0, "wrong_code_chunks": 0, "first_section_in_context": 0.0,
