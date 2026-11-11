@@ -93,6 +93,7 @@ def test_classify_and_summary():
             {**base, "id": "b", "e20_misgrounded@1": 1.0, "wrong_code_chunks": 0, "first_section_in_context": 0.0,
              "control_misgrounded@1": 1.0, "ablated_misgrounded@1": 1.0, "cause": "parametric"}]
     t = next(t for t in A.summarize(rows) if t["set"] == "all")
+    assert (t["misgrounded_copied"], t["misgrounded_recalled"]) == (0.5, 0.5)
     assert t["context-induced"] == 0.5 and t["parametric"] == 0.5
     assert t["misgrounded_no_wrong_code_in_context"] == 0.5
     sig = A.significance(rows)

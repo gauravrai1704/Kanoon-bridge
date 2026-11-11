@@ -136,6 +136,8 @@ def diagnose(engine, chunks, answer: str, row: dict, bad: str, normalizer=None) 
     match = [int(n) <= len(chunks) and _chunk_refs(engine, chunks[int(n) - 1]) & {f"{c.lower()}:{s.lower()}"}
              for n, c, s in heads]
     return {"n_chunks": len(chunks), "wrong_code_chunks": wrong,
+            "question_number": float(bool(first) and first.split(":", 1)[1]
+                                     in {n.lower() for n in re.findall(r"\d+[A-Za-z]*", row.get("text", ""))}),
             "mislabel": float(bool(secs) and secs[0].code.value == bad and _right_number(first, row, normalizer)),
             "first_section_in_context": float(bool(first) and any(first in rs for rs in refs)),
             "headers": len(heads), "headers_matching": sum(bool(m) for m in match)}
@@ -196,6 +198,21 @@ def run(engine, rag, agent, saved: list[dict], gen: str | None, conditions=CONDI
     return summarize(rows), rows
 
 
+def _kind(r: dict) -> str:
+    """Why a misgrounded E20 answer named the wrong code, from the context alone (no LLM):
+    mislabel         the right number of the code in force under the other code's name (E7/E9)
+    copied           the wrong-code section is in the retrieved context
+    question number  the question's own bare number read as the other code (E2), not in the context
+    recalled         none of these: the section came from the model's memory"""
+    if r["mislabel"]:
+        return "mislabel"
+    if r["first_section_in_context"]:
+        return "copied"
+    if r.get("question_number") and r["set"].startswith("e2"):
+        return "question number"
+    return "recalled"
+
+
 def summarize(rows: list[dict]) -> list[dict]:
     groups = defaultdict(list)
     for r in rows:
@@ -212,8 +229,9 @@ def summarize(rows: list[dict]) -> list[dict]:
              "misgrounded_n": len(mis),
              "misgrounded_section_in_context": round(sum(r["first_section_in_context"] for r in mis) / len(mis), 4) if mis else "",
              "misgrounded_mislabel": round(sum(r["mislabel"] for r in mis) / len(mis), 4) if mis else "",
-             "misgrounded_copied": round(sum(r["first_section_in_context"] and not r["mislabel"] for r in mis) / len(mis), 4) if mis else "",
-             "misgrounded_recalled": round(sum(not r["first_section_in_context"] and not r["mislabel"] for r in mis) / len(mis), 4) if mis else "",
+             "misgrounded_copied": round(sum(_kind(r) == "copied" for r in mis) / len(mis), 4) if mis else "",
+             "misgrounded_question_number": round(sum(_kind(r) == "question number" for r in mis) / len(mis), 4) if mis else "",
+             "misgrounded_recalled": round(sum(_kind(r) == "recalled" for r in mis) / len(mis), 4) if mis else "",
              "chunks": round(sum(r["n_chunks"] for r in rs) / n, 2),
              "ablated_chunks": round(sum(r.get("ablated_n_chunks", r["n_chunks"]) for r in rs) / n, 2),
              "misgrounded_no_wrong_code_in_context": round(sum(r["wrong_code_chunks"] == 0 for r in mis) / len(mis), 4) if mis else "",
