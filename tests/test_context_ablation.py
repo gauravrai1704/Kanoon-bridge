@@ -1,10 +1,10 @@
-"""E25 context ablation (eval/ablation.py) on hand-made inputs: no corpus, no LLM."""
+"""E25 context ablation (eval/context_ablation.py) on hand-made inputs: no corpus, no LLM."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 
-from kanoon_bridge.eval import ablation as A
+from kanoon_bridge.eval import context_ablation as A
 from kanoon_bridge.eval.significance import mcnemar_exact
 from kanoon_bridge.rag.chunker import Chunk
 from kanoon_bridge.schema import AnalyzedQuery, Query, ScoredDoc, SearchResult

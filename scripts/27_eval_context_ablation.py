@@ -1,16 +1,16 @@
-"""E25: context ablation of the E20 RAG answers (eval/ablation.py).  [owner: Gaurav — working]
+"""E25: context ablation of the E20 RAG answers (eval/context_ablation.py).  [owner: Gaurav — working]
 
 Needs the corpus E20 ran on and, for the LLM part, the same model through Ollama:
 
-    python scripts/27_eval_ablation.py --diagnose-only                      # no LLM, seconds per answer
+    python scripts/27_eval_context_ablation.py --diagnose-only                      # no LLM, seconds per answer
     OLLAMA_CONTEXT_LENGTH=8192 ollama serve
-    python scripts/27_eval_ablation.py --model llama3.2:3b                  # control + ablated, 2 calls per answer
-    python scripts/27_eval_ablation.py --model llama3.2:3b --only-misgrounded   # quick: the misgrounded ones only
+    python scripts/27_eval_context_ablation.py --model llama3.2:3b                  # control + ablated, 2 calls per answer
+    python scripts/27_eval_context_ablation.py --model llama3.2:3b --only-misgrounded   # quick: the misgrounded ones only
 
     --tag llama3_2_3b reads results/tables/misgrounding_<tag>_answers.jsonl (E20) and writes
-    results/tables/ablation_<tag>.csv               per condition and set
-    results/tables/ablation_<tag>_significance.csv  control vs ablated, exact McNemar + Holm
-    results/tables/ablation_<tag>_rows.jsonl        every answer (diagnose-only: ablation_<tag>_context.*)
+    results/tables/context_ablation_<tag>.csv               per condition and set
+    results/tables/context_ablation_<tag>_significance.csv  control vs ablated, exact McNemar + Holm
+    results/tables/context_ablation_<tag>_rows.jsonl        every answer (diagnose-only: context_ablation_<tag>_context.*)
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ import time
 
 from kanoon_bridge.agent.research import ResearchAgentV2
 from kanoon_bridge.config import project_path
-from kanoon_bridge.eval import ablation as A
+from kanoon_bridge.eval import context_ablation as A
 from kanoon_bridge.eval.misgrounding import rescore
 from kanoon_bridge.rag.answer import RagPipeline
 from kanoon_bridge.search import SearchEngine
@@ -67,7 +67,7 @@ def main() -> None:
     agent = ResearchAgentV2.load(engine, docs=rag.docs)
     _, saved = rescore(src, engine.analyzer.text_res.normalizer)          # the current E20 scorer
     table, rows = A.run(engine, rag, agent, saved, gen, args.conditions, args.only_misgrounded)
-    name = f"ablation_{args.tag}" + ("_context" if not gen else "")
+    name = f"context_ablation_{args.tag}" + ("_context" if not gen else "")
     write_csv(table, tables / f"{name}.csv")
     with open(tables / f"{name}_rows.jsonl", "w", encoding="utf-8") as f:
         for r in rows:
