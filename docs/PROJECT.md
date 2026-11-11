@@ -643,6 +643,33 @@ questions, Holm-corrected (`misgrounding_llama3_2_3b_significance.csv`).
   re-scored (`scripts/25_report_e20.py --rescore`). Closed-book moved from 0.14 / 0.19 to 0.18 / 0.32
   (right / misgrounded); the other conditions moved by at most 0.04.
 
+### E25 — where misgrounding comes from (context ablation, `scripts/27_eval_context_ablation.py`)
+
+After RAGViz's add/remove-document diagnosis (Wang et al., EMNLP 2024 demo), each E20 RAG answer's
+context is rebuilt from the corpus (deterministic retrieval) and examined; no LLM call. The rebuilt
+context is E20's: 95 of the 98 source headers the naive-RAG answers quote ("[1] IPC Section 506")
+name the statute at that position. Of the 58 misgrounded naive-RAG / RAG v1 answers:
+
+| Condition | misgrounded | copied from context | question's bare number read as IPC | right BNS number, IPC's name | recalled |
+| --- | --- | --- | --- | --- | --- |
+| naive RAG | 27 | 5 | 15 | 4 | 3 |
+| RAG v1 | 31 | 4 | 25 | 1 | 1 |
+| total | 58 | 9 (16%) | 40 (69%) | 5 (9%) | 4 (7%) |
+
+- A wrong-code passage is in the context for 28% of questions, but only 16% of misgrounded answers
+  name a section that is in it. Most come from the **question**: a bare "section 323" read as the
+  IPC (E2). Filtering the context can remove at most the copied share; resolving the question's
+  code by date (layer 1) and checking the answer's sections (layer 3) remove the rest - which is
+  what RAG v2 does (0.3%).
+- The harness also regenerates every answer twice - context unchanged (control) and with every
+  wrong-code passage removed (that code's statutes, and every judgment whose passage names it; the
+  context keeps 7.7 of 8 passages) - and classifies each control-misgrounded answer as
+  context-induced or parametric, with exact McNemar control vs ablated. **This LLM part has not been
+  run yet**: `python scripts/27_eval_context_ablation.py --model llama3.2:3b` with Ollama running
+  (2 calls per answer; `--only-misgrounded` for a quick pass).
+- Outputs: `results/tables/context_ablation_llama3_2_3b_context{.csv,_rows.jsonl}` (diagnostics);
+  the LLM run writes `context_ablation_<tag>{.csv,_significance.csv,_rows.jsonl}`.
+
 ### Error analysis of E2 and E19 (`scripts/26_error_analysis.py`)
 
 - **E2.** The core's errors are mostly the code not in force: 15% of questions, 28% of
@@ -747,9 +774,8 @@ on IL-PCSR alone. Identical sections are untouched; stale precedents are rare in
 
 ## 8. Limitations
 
-- **No LLM has been evaluated yet** (E20 is a harness): no GPU, no API key, and the model weights'
-  host blocked in this environment. The misgrounding rates of real models are the main missing
-  result.
+- **One small LLM.** E20 is run with Llama 3.2 3B only; larger local and API models are not yet
+  evaluated, and E25's regeneration step (context ablation with the LLM) has not been run.
 - **Fixes after seeing results.** The statute-heading fix and the structural punishment support
   were found by looking at E17/E18, and the ToC gate at E2; all are declared where they appear.
   A fresh held-out set (e.g. IL-TUR's ILSI, or new BNS-era questions) would remove the doubt.

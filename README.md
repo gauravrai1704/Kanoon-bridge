@@ -83,6 +83,9 @@ python app/cli.py "punishment for cheating" --date 2025-01-03 --agent --answer -
 - **LLM misgrounding benchmark (E20):** `bash scripts/run_e20_ollama.sh 100 llama3.2:3b llama3.1:8b`
   (checks that Ollama answers first), then `python scripts/25_report_e20.py` prints the tables for
   the README and the paper.
+- **Where misgrounding comes from (E25):** `python scripts/27_eval_context_ablation.py --model llama3.2:3b`
+  re-asks each E20 RAG answer with the context unchanged and with every old-code passage removed
+  (`--diagnose-only` for the no-LLM context diagnosis; `--only-misgrounded` for a quick pass).
 
 ## Results
 
@@ -153,6 +156,11 @@ BM25 and 0.409 for IL-PCSR's own BM25-trigram baseline (difference not significa
 | **RAG v2 (verified)** | **74%** | **0.3%** (p_holm < 0.001) |
 | Computed answer, no LLM | 83% | 0% |
 
+Where the wrong code comes from (E25, context diagnosis of the 58 misgrounded RAG answers): only
+16% copy a wrong-code section from the retrieved text; 69% read a bare section number in the
+question as the IPC, 9% give the right BNS number under the IPC's name. Context filtering alone
+cannot fix that; resolving the question by date and checking the answer can.
+
 **Verified answers (layer 3).** Right punishment for 86% of 273 BNS questions (an extractive
 answer: 6%); injected errors caught 82–100% per type, with no false alarm on clean answers.
 
@@ -215,6 +223,7 @@ NyayaAnumana, LegalSeg (`scripts/00_fetch_data.py --only <name>` with `HF_TOKEN`
 | `python scripts/23_eval_fair_baselines.py` | E23 crosswalk-aware baselines |
 | `python scripts/24_eval_era.py` (`--answers`) | E24 era-aware retrieval and answers |
 | `bash scripts/run_e20_ollama.sh` + `python scripts/25_report_e20.py` | E20 LLM misgrounding (needs Ollama or an API LLM) |
+| `python scripts/27_eval_context_ablation.py [--diagnose-only]` | E25 where misgrounding comes from: context diagnosis, and regeneration with wrong-code passages removed |
 | `python scripts/22_annotation_kit.py make` / `score` | optional: sheets for expert labels, and agreement |
 
 ## Repository layout

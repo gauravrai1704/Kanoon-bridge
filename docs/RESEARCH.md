@@ -101,6 +101,7 @@ systems.
 | **E17** agent v2 on every judged IL-PCSR set | Paired randomization test, Holm over 32 comparisons | `eval/ilpcsr_layers.py` |
 | **E19** written facts → charged sections | Real case data: IndianBailJudgments-1200 (Deshmukh et al. 2025); IL-TUR ILSI (Paul et al., ACL 2024) when available; code-blind scoring through the crosswalk | `eval/facts_eval.py` |
 | **E20** LLM temporal misgrounding at a code replacement | "Temporal misgrounding" (FiscalQA Pro, arXiv 2608.09393); temporal statutory QA (arXiv 2605.23497, 2605.25920). Ours: a one-day replacement of three codes with colliding numbers | `eval/misgrounding.py` |
+| **E25** where misgrounding comes from | RAGViz add/remove-document diagnosis (Wang et al., EMNLP 2024 demo, arXiv 2411.01751). Ours: classify each misgrounded answer from its rebuilt context (copied / question number / mislabel / recalled) and regenerate with wrong-code passages removed | `eval/context_ablation.py` |
 | **E21** judicial treatment (overruled / doubted / followed) | Citator signals (Shepard's, KeyCite) do not exist for Indian judgments; mined from the judgments' own sentences. **Ours** | `rank/treatment.py` |
 | **E22** KV-cache reuse in legal RAG | Workload study for tiered KV caches: PACT-KV (Rai), RAGCache (Jin et al. 2024), CacheBlend (Yao et al., EuroSys 2025) | `eval/kv_reuse.py` |
 | E14–E16 agent v2 / RAG v2 | Punishment QA against an independent gold; error injection for the verifier (upper bound); ablations of each agent part | `eval/layers_eval.py`, `eval/open_eval.py` |

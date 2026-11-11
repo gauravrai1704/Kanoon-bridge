@@ -1,0 +1,13 @@
+condition,set,n,e20_misgrounded@1,context_has_wrong_code,ablated_has_wrong_code,misgrounded_n,misgrounded_section_in_context,misgrounded_mislabel,misgrounded_copied,misgrounded_question_number,misgrounded_recalled,chunks,ablated_chunks,misgrounded_no_wrong_code_in_context,header_match
+naive RAG,all,300,0.09,0.2767,0.0,27,0.1852,0.1481,0.1852,0.5556,0.1111,8.0,7.72,0.3333,0.9694
+naive RAG,e2_collision,100,0.17,0.3,0.0,17,0.0588,0.0,0.0588,0.8824,0.0588,8.0,7.68,0.4118,1.0
+naive RAG,e7_temporal,100,0.09,0.21,0.0,9,0.3333,0.4444,0.3333,0.0,0.2222,8.0,7.65,0.2222,0.9524
+naive RAG,e9_procedure_temporal,100,0.01,0.32,0.0,1,1.0,0.0,1.0,0.0,0.0,8.0,7.82,0.0,1.0
+RAG v1,all,300,0.1033,0.2767,0.0,31,0.129,0.0323,0.129,0.8065,0.0323,8.0,7.72,0.3548,0.0
+RAG v1,e2_collision,100,0.28,0.3,0.0,28,0.1071,0.0,0.1071,0.8929,0.0,8.0,7.68,0.3929,0.0
+RAG v1,e7_temporal,100,0.01,0.21,0.0,1,0.0,1.0,0.0,0.0,0.0,8.0,7.65,0.0,0.0
+RAG v1,e9_procedure_temporal,100,0.02,0.32,0.0,2,0.5,0.0,0.5,0.0,0.5,8.0,7.82,0.0,0.0
+RAG v2,all,300,0.0033,0.2933,0.0,1,1.0,0.0,1.0,0.0,0.0,8.0,7.74,0.0,0.3704
+RAG v2,e2_collision,100,0.0,0.32,0.0,0,,,,,,8.0,7.68,,0.2857
+RAG v2,e7_temporal,100,0.0,0.27,0.0,0,,,,,,8.0,7.68,,0.7143
+RAG v2,e9_procedure_temporal,100,0.01,0.29,0.0,1,1.0,0.0,1.0,0.0,0.0,8.0,7.87,0.0,0.1667

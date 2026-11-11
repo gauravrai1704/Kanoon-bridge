@@ -165,7 +165,10 @@ Attribution is evaluated sentence by sentence in ALCE \cite{alce} and atomic-fac
 FActScore \cite{factscore}; RARR revises generated text to agree with retrieved evidence
 \cite{rarr}; Self-RAG trains a model to retrieve and critique on demand \cite{selfrag}; corrective
 RAG evaluates retrieved documents and corrects the retrieval \cite{crag}. Recent legal benchmarks
-check citations claim by claim \cite{lephantomcite,parcel}. Our answer layer differs in computing
+check citations claim by claim \cite{lephantomcite,parcel}. RAGViz diagnoses which retrieved
+documents an answer depends on by visualising attention and by adding or removing documents and
+generating again \cite{ragviz}; we use the same remove-and-regenerate diagnosis to ask where
+misgrounding comes from (E25). Our answer layer differs in computing
 what can be computed (the punishment) instead of generating it, and in domain-specific checks:
 quantities, section identity across codes, the code in force, modal negation, verbatim quotation.
 
@@ -288,6 +291,7 @@ E19 & written facts of bail orders $\to$ charged sections & 995 & charge sheets 
 E20 & E7/E9/E2 asked to an LLM & 300 & code in force & LLM misgrounding \\
 E21 & overruled / doubted / followed & 116 judgments & legal record & judicial treatment \\
 E22 & 2,082 RAG questions & -- & -- & KV-cache reuse \\
+E25 & E20's RAG answers, context diagnosed / ablated & 900 & E20 labels & source of misgrounding \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -1045,6 +1049,41 @@ RAG), and verification does not recover it (54\%, with 22\% of answers left with
 evidence question), which the verifier removes. Repeating the study with a larger model is needed to separate the effect of model size from
 that of prompt design.
 
+\paragraph{Where misgrounding comes from (E25).} Following the remove-and-regenerate diagnosis of
+RAGViz \cite{ragviz}, we rebuilt each RAG answer's context from the corpus and examined the 58
+misgrounded answers of naive RAG and RAG v1. The rebuilt context is the one E20 used: 98
+naive-RAG answers quote source headers (``[1] IPC Section 506''), and 97\% of those headers name
+the statute at that position of the rebuilt context. A passage of the code not in force is in the context for
+28\% of the questions, yet only 16\% of misgrounded answers (9 of 58) name a wrong-code section
+that is in the context. Most (69\%, 40 of 58) answer a bare-number question (E2: ``punishment under
+section 323'') by reading the number as an IPC section that was never retrieved: the error comes
+from the question, not the context. Another 9\% (5) give the right BNS number under the IPC's name
+(``Section 118 of the Indian Penal Code (BNS)''), and 7\% (4) name a wrong-code section found
+nowhere in the context (Table~\ref{tab:origin}). Removing wrong-code passages from the context
+can therefore remove at most the copied share; the rest needs the question's code resolved by
+the incident date (layer 1) and the answer's sections checked (layer 3), which is what RAG v2 does.
+The harness also regenerates every answer with the wrong-code passages removed (statutes of that
+code and every judgment whose passage names it; the context keeps 7.7 of its 8 passages) and
+with the context unchanged, as a control; this run needs the LLM and is released with the code.
+
+\begin{table}[t]
+\centering\small
+\caption{E25: why misgrounded E20 answers name the wrong code (Llama~3.2 3B), from the rebuilt
+context. Copied: the wrong-code section is in the context. Question number: a bare number in the
+question read as the other code. Mislabel: the right number under the other code's name.}
+\label{tab:origin}
+\begin{tabular}{lccccc}
+\toprule
+Condition & misgr. & copied & question number & mislabel & recalled \\
+\midrule
+naive RAG & 27 & 5 & 15 & 4 & 3 \\
+RAG v1 & 31 & 4 & 25 & 1 & 1 \\
+\midrule
+total & 58 & 9 (16\%) & 40 (69\%) & 5 (9\%) & 4 (7\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 %% ===================================================================================== 9
 \section{Discussion}\label{sec:discussion}
 
@@ -1087,7 +1126,8 @@ as offence provisions (recall@10 0.05 vs 0.11), since the facts rarely state the
 %% ===================================================================================== 10
 \subsection{Limitations}\label{sec:limits}
 Our study has several limitations. The LLM study (E20) uses one small local model (Llama~3.2 3B);
-larger and API models may misground less or differently. The scorer of E20 was corrected after
+larger and API models may misground less or differently. E25 classifies misgrounded answers from
+their context alone; its regeneration with wrong-code passages removed has not yet been run. The scorer of E20 was corrected after
 the run (a bare section number now takes the code named nearest to it), and all reported numbers
 use the corrected scorer. Some fixes were made after seeing test
 results (statute headings read from the text for IL-PCSR's bare titles and the structural
