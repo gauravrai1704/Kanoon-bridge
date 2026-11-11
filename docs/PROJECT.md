@@ -645,30 +645,38 @@ questions, Holm-corrected (`misgrounding_llama3_2_3b_significance.csv`).
 
 ### E25 — where misgrounding comes from (context ablation, `scripts/27_eval_context_ablation.py`)
 
-After RAGViz's add/remove-document diagnosis (Wang et al., EMNLP 2024 demo), each E20 RAG answer's
-context is rebuilt from the corpus (deterministic retrieval) and examined; no LLM call. The rebuilt
-context is E20's: 95 of the 98 source headers the naive-RAG answers quote ("[1] IPC Section 506")
-name the statute at that position. Of the 58 misgrounded naive-RAG / RAG v1 answers:
+After RAGViz's add/remove-document diagnosis (Wang et al., EMNLP 2024 demo). The 58 misgrounded
+naive-RAG / RAG v1 answers of E20 (Llama 3.2 3B, Ollama) were asked again twice: context unchanged
+(control) and with every passage of the code not in force removed (that code's statutes, and every
+judgment that cites it or whose passage names it; the context keeps 7.3 of 8 passages). Run on the
+E20 machine with `--only-misgrounded`; `results/tables/context_ablation_llama3_2_3b*`.
 
-| Condition | misgrounded | copied from context | question's bare number read as IPC | right BNS number, IPC's name | recalled |
-| --- | --- | --- | --- | --- | --- |
-| naive RAG | 27 | 5 | 15 | 4 | 3 |
-| RAG v1 | 31 | 4 | 25 | 1 | 1 |
-| total | 58 | 9 (16%) | 40 (69%) | 5 (9%) | 4 (7%) |
+- **The setup is sound.** The rebuilt context is E20's (every source header the answers quote names
+  the statute at that position); the control reproduced all 58 misgrounded answers at temperature 0;
+  the 9 answers whose context the removal left unchanged did not change.
+- **Removal fixes most naive-RAG errors, few under the date-aware prompt.**
 
-- A wrong-code passage is in the context for 28% of questions, but only 16% of misgrounded answers
-  name a section that is in it. Most come from the **question**: a bare "section 323" read as the
-  IPC (E2). Filtering the context can remove at most the copied share; resolving the question's
-  code by date (layer 1) and checking the answer's sections (layer 3) remove the rest - which is
-  what RAG v2 does (0.3%).
-- The harness also regenerates every answer twice - context unchanged (control) and with every
-  wrong-code passage removed (that code's statutes, and every judgment whose passage names it; the
-  context keeps 7.7 of 8 passages) - and classifies each control-misgrounded answer as
-  context-induced or parametric, with exact McNemar control vs ablated. **This LLM part has not been
-  run yet**: `python scripts/27_eval_context_ablation.py --model llama3.2:3b` with Ollama running
-  (2 calls per answer; `--only-misgrounded` for a quick pass).
-- Outputs: `results/tables/context_ablation_llama3_2_3b_context{.csv,_rows.jsonl}` (diagnostics);
-  the LLM run writes `context_ablation_<tag>{.csv,_significance.csv,_rows.jsonl}`.
+| Source of the wrong section (from the context) | naive RAG: answers | fixed | RAG v1: answers | fixed |
+| --- | --- | --- | --- | --- |
+| copied from the context | 5 | 4 | 4 | 2 |
+| question's bare number read as the IPC | 15 | 7 | 25 | 4 |
+| right BNS number under the IPC's name | 4 | 3 | 1 | 1 |
+| recalled (in neither) | 3 | 2 | 1 | 0 |
+| **total** | 27 | **16 (59%)**, p_holm < 0.001 | 31 | 7 (23%), p_holm 0.08 |
+| of the fixed: now right / no section | | 7 / 8 | | 5 / 1 |
+
+- **The context matters more than copying suggests.** A no-LLM diagnosis (`--diagnose-only`) finds
+  only 9 of 58 answers citing a wrong-code section that is in the context; it predicted removal
+  would fix little. It fixed 16 of 27 under naive RAG, including 7 of 15 bare-number errors:
+  old-code text and old-era judgments bias how the model reads an ambiguous number even when it
+  cites nothing from them. Under the date-aware prompt the bias sits in the model's reading of the
+  question (21 of 25 bare-number errors persist).
+- **What follows for the design.** Filtering retrieval by the code in force helps (layers 1–2), but
+  60% of the errors survive it, and half of the fixed naive-RAG answers then name no section: the
+  answer still has to be checked (layer 3), which is what brings RAG v2 to 0.3%.
+- **Not measured:** only misgrounded answers were regenerated, so whether removal harms answers
+  that were right is unknown (the full run, without `--only-misgrounded`, measures it: about 6 h
+  for naive RAG and RAG v1 on the E20 machine).
 
 ### Error analysis of E2 and E19 (`scripts/26_error_analysis.py`)
 
@@ -775,7 +783,7 @@ on IL-PCSR alone. Identical sections are untouched; stale precedents are rare in
 ## 8. Limitations
 
 - **One small LLM.** E20 is run with Llama 3.2 3B only; larger local and API models are not yet
-  evaluated, and E25's regeneration step (context ablation with the LLM) has not been run.
+  evaluated; E25 regenerated only the misgrounded answers.
 - **Fixes after seeing results.** The statute-heading fix and the structural punishment support
   were found by looking at E17/E18, and the ToC gate at E2; all are declared where they appear.
   A fresh held-out set (e.g. IL-TUR's ILSI, or new BNS-era questions) would remove the doubt.

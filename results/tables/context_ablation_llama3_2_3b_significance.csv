@@ -1,0 +1,7 @@
+condition,metric,n,control_only,ablated_only,p,p_holm
+naive RAG,misgrounded@1,27,16,0,3.0517578125e-05,0.00018310546875
+naive RAG,right@1,27,0,7,0.015625,0.078125
+RAG v1,misgrounded@1,31,7,0,0.015625,0.078125
+RAG v1,right@1,31,0,5,0.0625,0.1875
+RAG v2,misgrounded@1,1,1,0,1.0,1.0
+RAG v2,right@1,1,0,0,1.0,1.0

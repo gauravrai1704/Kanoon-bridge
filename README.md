@@ -156,10 +156,10 @@ BM25 and 0.409 for IL-PCSR's own BM25-trigram baseline (difference not significa
 | **RAG v2 (verified)** | **74%** | **0.3%** (p_holm < 0.001) |
 | Computed answer, no LLM | 83% | 0% |
 
-Where the wrong code comes from (E25, context diagnosis of the 58 misgrounded RAG answers): only
-16% copy a wrong-code section from the retrieved text; 69% read a bare section number in the
-question as the IPC, 9% give the right BNS number under the IPC's name. Context filtering alone
-cannot fix that; resolving the question by date and checking the answer can.
+Where the wrong code comes from (E25, after RAGViz): regenerating the 58 misgrounded RAG answers
+with every old-code passage removed fixes 59% of naive-RAG errors (p_holm < 0.001) but only 23%
+under the date-aware prompt; 60% survive overall, and half of the fixed answers then name no
+section. Filtering by the code in force helps; checking the answer is still needed.
 
 **Verified answers (layer 3).** Right punishment for 86% of 273 BNS questions (an extractive
 answer: 6%); injected errors caught 82–100% per type, with no false alarm on clean answers.
