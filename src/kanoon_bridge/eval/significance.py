@@ -81,6 +81,16 @@ def holm(pvalues: list[float]) -> list[float]:
     return adjusted
 
 
+def mcnemar_exact(b: int, c: int) -> float:
+    """Two-sided exact McNemar p-value from the discordant counts b and c."""
+    from math import comb
+
+    n = b + c
+    if n == 0:
+        return 1.0
+    return min(1.0, 2 * sum(comb(n, i) for i in range(min(b, c) + 1)) / 2 ** n)
+
+
 def compare(scores_a: dict[str, float], scores_b: dict[str, float], n_perm: int = 10000) -> dict:
     """Paired comparison over the queries both have (B - A)."""
     common = sorted(set(scores_a) & set(scores_b))

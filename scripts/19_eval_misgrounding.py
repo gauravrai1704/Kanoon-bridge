@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import time
 
 from kanoon_bridge.agent.research import ResearchAgentV2
@@ -53,6 +54,8 @@ def main() -> None:
     ap.add_argument("--conditions", nargs="*", default=list(M.CONDITIONS))
     ap.add_argument("--tag", default="local")
     args = ap.parse_args()
+    if args.model:            # every condition, not only closed-book: the RAG paths read the model from here
+        os.environ[{"claude": "KB_RAG_MODEL", "openai": "OPENAI_RAG_MODEL"}.get(args.generator, "KB_LLM_MODEL")] = args.model
     t0 = time.perf_counter()
     preflight(args.generator, args.model)
     engine = SearchEngine.load()

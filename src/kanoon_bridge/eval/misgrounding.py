@@ -91,14 +91,14 @@ class _Mention:
         return type("C", (), {"value": self.code_value})()
 
 
-def _sections(text: str):
+def _sections(text: str, strip_quotes: bool = True):
     """Section mentions in the answer's own words, in order. A bare "Section 506" takes the code
     named nearest to it in the same sentence ("Based on the Indian Penal Code (IPC), Section 506
     applies"); LLM answers often name the code apart from the number."""
     from kanoon_bridge.rag._util import split_sentences
     from kanoon_bridge.text.tokenize import extract_sections
 
-    clean = _QUOTED.sub(" ", text or "")
+    clean = _QUOTED.sub(" ", text or "") if strip_quotes else (text or "")
     out, offset = [], 0
     for sent in split_sentences(clean) or [clean]:
         start = clean.find(sent, offset)
