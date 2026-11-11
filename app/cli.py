@@ -75,13 +75,13 @@ def main(argv: list[str] | None = None) -> int:
 
     agent = None
     if args.agent:
-        from kanoon_bridge.agent.research import ResearchAgent
+        from kanoon_bridge.agent.research import make_agent
 
         if args.planner:
             from kanoon_bridge.config import load_config
 
             engine.cfg = load_config(overrides={"agent": {"planner": args.planner}})
-        agent = ResearchAgent.load(engine, fusion=args.fusion)
+        agent = make_agent(engine, fusion=args.fusion)        # agent.version (v2), as in the web app
         res = agent.run(query, opt)
         trace = res.analyzed.trace + res.trace
     else:
