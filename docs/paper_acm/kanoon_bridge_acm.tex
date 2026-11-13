@@ -606,13 +606,18 @@ baseline, BM25 over word trigrams, run by us. On pasted judgments the core reach
 0.220 for BM25; the gain is the trigram channel (Table~\ref{tab:ablation}), and over the trigram
 baseline itself the difference is not significant ($+0.005$, $p=0.34$). On statutes and on
 40-word typed-question proxies the core is significantly better ($+0.035$ and $+0.013$ MAP). The
-IL-PCSR paper's trained models remain ahead on E1 (Para-GNN with BM25: 0.502 MAP; GPT-4.1
-re-ranking: 0.544 on precedents \cite{ilpcsr}); our contribution is not E1 but the transition.
+\emph{Comparison with the published results} \cite{ilpcsr}. Against the IL-PCSR paper's own
+numbers on the same split and metrics, our run of its trigram baseline is within 0.03 of the
+published values. The core is below the published trigram baseline on precedents (MAP 0.414 vs
+0.434; MRR 0.560 vs 0.575) and above it on statutes (MAP 0.220 vs 0.194; MRR 0.449 vs 0.417), and
+the paper's trained models remain ahead on precedents (Para-GNN with BM25: 0.502 MAP; GPT-4.1
+re-ranking: 0.544). Our contribution is not E1 but the transition, for which no published system
+exists; there we compare against crosswalk-aware baselines (E23).
 
 \begin{table}[t]
 \centering\small
-\caption{E1 on IL-PCSR's test split (627 judgments). The 3-gram baseline is IL-PCSR's; the
-paper's published values in brackets.}
+\caption{E1 on IL-PCSR's test split (627 judgments). The 3-gram baseline is IL-PCSR's, run by us;
+the paper's published values in brackets. Bold: best of the systems we ran.}
 \label{tab:e1}
 \begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{llccc}
