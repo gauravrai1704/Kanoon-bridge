@@ -224,6 +224,7 @@ NyayaAnumana, LegalSeg (`scripts/00_fetch_data.py --only <name>` with `HF_TOKEN`
 | `python scripts/24_eval_era.py` (`--answers`) | E24 era-aware retrieval and answers |
 | `bash scripts/run_e20_ollama.sh` + `python scripts/25_report_e20.py` | E20 LLM misgrounding (needs Ollama or an API LLM) |
 | `python scripts/27_eval_context_ablation.py [--diagnose-only]` | E25 where misgrounding comes from: context diagnosis, and regeneration with wrong-code passages removed |
+| `bash scripts/make_submission.sh <report.pdf> <Member1> <Member2> <Member3>` | CSD358 submission ZIP: report + GitHub link, source code, datasets (`--with-restricted` adds IL-PCSR) |
 | `python scripts/22_annotation_kit.py make` / `score` | optional: sheets for expert labels, and agreement |
 
 ## Repository layout
